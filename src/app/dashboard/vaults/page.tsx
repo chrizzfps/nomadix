@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
     Plus,
@@ -11,6 +11,8 @@ import {
     Bag,
     Book,
     GameController,
+    MagnifyingGlass,
+    Tag,
     Ticket,
     TShirt,
     House,
@@ -27,7 +29,7 @@ import { NewTransactionModal } from "@/components/vaults/new-transaction-modal";
 import { TransactionEditModal } from "@/components/vaults/transaction-edit-modal";
 import { CurrencyToggle } from "@/components/shared/currency-toggle";
 import { useCurrencyStore } from "@/stores/currency-store";
-import { CURRENCY_SYMBOLS } from "@/lib/constants";
+import { CURRENCY_SYMBOLS, TRANSACTION_CATEGORIES } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 
 interface VaultData {
@@ -61,6 +63,8 @@ const categoryIcons: Record<string, React.ElementType> = {
     Shopping: ShoppingBag,
     Food: Coffee,
     Snacks: Coffee,
+    Entertainment: Ticket,
+    Sport: Heart,
     Tickets: Ticket,
     Clothing: TShirt,
     "Video Games": GameController,
@@ -91,6 +95,9 @@ export default function VaultsPage() {
     const [activityFilter, setActivityFilter] = useState<
         "all" | "income" | "expense" | "transfer"
     >("all");
+    const [categoryFilterOpen, setCategoryFilterOpen] = useState(false);
+    const [categoryQuery, setCategoryQuery] = useState("");
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
     const loadData = useCallback(async () => {
         setActivityError(null);
@@ -163,17 +170,43 @@ export default function VaultsPage() {
 
     useEffect(() => {
         setActivityVisibleCount(ACTIVITY_PAGE_SIZE);
-    }, [activityFilter]);
+    }, [activityFilter, selectedCategories]);
 
     const totalBalance = vaults.reduce(
         (sum, v) => sum + convert(v.balance, v.currency as "EUR" | "USD"),
         0
     );
 
-    const filteredActivity =
+    const filteredByType =
         activityFilter === "all"
             ? transactions
             : transactions.filter((a) => a.type === activityFilter);
+
+    const availableCategories = useMemo(() => {
+        const fromData = Array.from(
+            new Set(
+                transactions
+                    .map((t) => t.category)
+                    .filter((c): c is string => !!c && c.trim().length > 0)
+            )
+        );
+        const base = fromData.length > 0 ? fromData : [...TRANSACTION_CATEGORIES];
+        return base.sort((a, b) => a.localeCompare(b));
+    }, [transactions]);
+
+    const filteredCategories = useMemo(() => {
+        const q = categoryQuery.trim().toLowerCase();
+        if (!q) return availableCategories;
+        return availableCategories.filter((c) => c.toLowerCase().includes(q));
+    }, [availableCategories, categoryQuery]);
+
+    const filteredActivity = useMemo(() => {
+        if (selectedCategories.length === 0) return filteredByType;
+        const set = new Set(selectedCategories.map((c) => c.toLowerCase()));
+        return filteredByType.filter((t) =>
+            set.has((t.category || "").toLowerCase())
+        );
+    }, [filteredByType, selectedCategories]);
 
     const applyTransactionUpdate = (update: {
         id: string;
@@ -374,6 +407,113 @@ export default function VaultsPage() {
                                     {f.label}
                                 </button>
                             ))}
+                        </div>
+                        <div className="relative">
+                            <button
+                                type="button"
+                                aria-label="Filtrar por categoría"
+                                onClick={() =>
+                                    setCategoryFilterOpen((v) => !v)
+                                }
+                                className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+                            >
+                                <Tag size={14} className="text-zinc-500" />
+                                {selectedCategories.length > 0
+                                    ? `Categorías (${selectedCategories.length})`
+                                    : "Categorías"}
+                            </button>
+
+                            {categoryFilterOpen && (
+                                <div className="absolute right-0 z-20 mt-2 w-[260px] overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl">
+                                    <div className="border-b border-zinc-100 p-3 space-y-2">
+                                        <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+                                            <MagnifyingGlass
+                                                size={14}
+                                                className="text-zinc-400"
+                                            />
+                                            <input
+                                                value={categoryQuery}
+                                                onChange={(e) =>
+                                                    setCategoryQuery(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                placeholder="Buscar…"
+                                                className="w-full bg-transparent text-sm text-zinc-900 outline-none"
+                                            />
+                                        </div>
+                                        {selectedCategories.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedCategories([]);
+                                                    setCategoryQuery("");
+                                                }}
+                                                className="text-xs font-semibold text-zinc-500 hover:text-zinc-700"
+                                            >
+                                                Limpiar filtro
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="max-h-60 overflow-auto p-1">
+                                        {filteredCategories.length === 0 ? (
+                                            <div className="px-3 py-4 text-center text-sm text-zinc-400">
+                                                Sin resultados.
+                                            </div>
+                                        ) : (
+                                            filteredCategories.map((c) => {
+                                                const active =
+                                                    selectedCategories
+                                                        .map((x) =>
+                                                            x.toLowerCase()
+                                                        )
+                                                        .includes(
+                                                            c.toLowerCase()
+                                                        );
+                                                return (
+                                                    <button
+                                                        key={c}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedCategories(
+                                                                (prev) => {
+                                                                    const exists =
+                                                                        prev
+                                                                            .map(
+                                                                                (
+                                                                                    x
+                                                                                ) =>
+                                                                                    x.toLowerCase()
+                                                                            )
+                                                                            .includes(
+                                                                                c.toLowerCase()
+                                                                            );
+                                                                    if (exists)
+                                                                        return prev.filter(
+                                                                            (x) =>
+                                                                                x.toLowerCase() !==
+                                                                                c.toLowerCase()
+                                                                        );
+                                                                    return [
+                                                                        ...prev,
+                                                                        c,
+                                                                    ];
+                                                                }
+                                                            );
+                                                        }}
+                                                        className={`w-full rounded-xl px-3 py-2 text-left text-sm transition-colors ${active
+                                                            ? "bg-zinc-900 text-white"
+                                                            : "text-zinc-700 hover:bg-zinc-50"
+                                                            }`}
+                                                    >
+                                                        {c}
+                                                    </button>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

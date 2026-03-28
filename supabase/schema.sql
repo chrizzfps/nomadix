@@ -68,3 +68,18 @@ on public.user_exchange_rates
 for delete
 using (auth.uid() = user_id);
 
+do $$
+begin
+    if to_regclass('public.transactions') is not null then
+        update public.transactions
+        set category = null
+        where type = 'transfer' and category is not null;
+
+        alter table public.transactions
+        drop constraint if exists transactions_transfer_no_category;
+
+        alter table public.transactions
+        add constraint transactions_transfer_no_category
+        check (type <> 'transfer' or category is null);
+    end if;
+end $$;

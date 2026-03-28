@@ -34,8 +34,8 @@ jest.mock("@/lib/supabase/client", () => {
         vault_id: "v1",
         amount: -(i + 1),
         type: "expense",
-        category: "Food",
-        description: `Tx ${i + 1}`,
+        category: i % 2 === 0 ? "Food" : "Home",
+        description: `${i % 2 === 0 ? "Food" : "Home"} Tx ${i + 1}`,
         date: "2026-03-20",
         original_currency: "USD",
         created_at: `2026-03-${String(28 - i).padStart(2, "0")}T10:00:00.000Z`,
@@ -75,12 +75,28 @@ describe("Vaults Recent Activity pagination", () => {
         await screen.findByText("Recent Activity");
 
         expect(screen.getByText("Ver más movimientos")).toBeInTheDocument();
-        expect(screen.queryByText("Tx 11")).not.toBeInTheDocument();
+        expect(screen.queryByText("Food Tx 11")).not.toBeInTheDocument();
 
         await user.click(screen.getByText("Ver más movimientos"));
 
         await waitFor(() => {
-            expect(screen.getByText("Tx 11")).toBeInTheDocument();
+            expect(screen.getByText("Food Tx 11")).toBeInTheDocument();
         });
+    });
+
+    it("filters movements by category without reloading", async () => {
+        const user = userEvent.setup();
+        render(<VaultsPage />);
+
+        await screen.findByText("Recent Activity");
+
+        expect(screen.getByText("Food Tx 1")).toBeInTheDocument();
+        expect(screen.getByText("Home Tx 2")).toBeInTheDocument();
+
+        await user.click(screen.getByLabelText("Filtrar por categoría"));
+        await user.click(screen.getByRole("button", { name: "Home" }));
+
+        expect(screen.queryByText("Food Tx 1")).not.toBeInTheDocument();
+        expect(screen.getByText("Home Tx 2")).toBeInTheDocument();
     });
 });

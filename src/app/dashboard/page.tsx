@@ -48,6 +48,8 @@ const categoryIcons: Record<string, React.ElementType> = {
     Shopping: ShoppingBag,
     Food: Coffee,
     Snacks: Coffee,
+    Entertainment: Ticket,
+    Sport: PiggyBank,
     Tickets: Ticket,
     Clothing: TShirt,
     "Video Games": GameController,
@@ -214,8 +216,8 @@ export default function DashboardPage() {
             allTx.forEach((tx) => {
                 const txDate = new Date(tx.created_at);
                 if (txDate >= weekStart && txDate <= weekEnd) {
-                    if (tx.amount > 0) income += tx.amount;
-                    else expenses += Math.abs(tx.amount);
+                    if (tx.type === "income") income += tx.amount;
+                    else if (tx.type === "expense") expenses += Math.abs(tx.amount);
                 }
             });
 

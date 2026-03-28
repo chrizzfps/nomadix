@@ -25,6 +25,16 @@ type CategoryRow = {
 export default function CategoriesPage() {
     const supabase = createClient();
 
+    const formatDbError = (message: string) => {
+        if (
+            message.includes("schema cache") ||
+            message.includes("Could not find the table")
+        ) {
+            return "Falta crear la tabla transaction_categories en Supabase. Ejecuta supabase/schema.sql en el SQL Editor y luego recarga el schema de la API en Supabase (Settings → API → Reload schema).";
+        }
+        return message;
+    };
+
     const [categories, setCategories] = useState<CategoryRow[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -66,7 +76,7 @@ export default function CategoriesPage() {
             .order("name", { ascending: true });
 
         if (fetchError) {
-            setError(fetchError.message);
+            setError(formatDbError(fetchError.message));
             setIsLoading(false);
             return;
         }
@@ -88,7 +98,7 @@ export default function CategoriesPage() {
                 .upsert(seed, { onConflict: "user_id,key" });
 
             if (seedError) {
-                setError(seedError.message);
+                setError(formatDbError(seedError.message));
                 setIsLoading(false);
                 return;
             }
@@ -184,7 +194,7 @@ export default function CategoriesPage() {
                 .single();
 
             if (updateError) {
-                setFormError(updateError.message);
+                setFormError(formatDbError(updateError.message));
                 setFormSaving(false);
                 return;
             }
@@ -222,7 +232,7 @@ export default function CategoriesPage() {
             .single();
 
         if (createError) {
-            setFormError(createError.message);
+            setFormError(formatDbError(createError.message));
             setFormSaving(false);
             return;
         }
@@ -249,7 +259,7 @@ export default function CategoriesPage() {
             setCategories((prev) =>
                 prev.map((c) => (c.id === row.id ? row : c))
             );
-            setError(updateError.message);
+            setError(formatDbError(updateError.message));
         }
     };
 
@@ -520,4 +530,3 @@ export default function CategoriesPage() {
         </motion.div>
     );
 }
-

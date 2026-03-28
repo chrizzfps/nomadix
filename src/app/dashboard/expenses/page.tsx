@@ -166,7 +166,7 @@ export default function ExpensesPage() {
     const filteredExpenses = useMemo(() => {
         const { from, to } = rangeBounds;
         return transactions.filter((t) => {
-            const isExpense = t.type === "expense" || t.amount < 0;
+            const isExpense = t.type === "expense";
             if (!isExpense) return false;
             if (vaultFilter !== "all" && t.vault_id !== vaultFilter) return false;
             const txDate = new Date(t.date || t.created_at);
@@ -238,7 +238,7 @@ export default function ExpensesPage() {
 
         const sumInBounds = (bounds: { from: Date; to: Date }) =>
             transactions.reduce((acc, t) => {
-                const isExpense = t.type === "expense" || t.amount < 0;
+                const isExpense = t.type === "expense";
                 if (!isExpense) return acc;
                 if (vaultFilter !== "all" && t.vault_id !== vaultFilter) return acc;
                 const txDate = new Date(t.date || t.created_at);

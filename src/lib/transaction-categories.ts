@@ -39,6 +39,7 @@ export type TransactionCategoryKey =
     | "technology"
     | "books"
     | "wellness"
+    | "sport"
     | "home";
 
 export type TransactionCategory = {
@@ -115,6 +116,14 @@ export const DEFAULT_TRANSACTION_CATEGORIES: TransactionCategory[] = [
         isActive: true,
     },
     {
+        key: "entertainment",
+        name: "Entertainment",
+        description: "Movies, streaming, hobbies, and leisure.",
+        iconKey: "ticket",
+        color: "#18181b",
+        isActive: true,
+    },
+    {
         key: "other",
         name: "Other",
         description: "Uncategorized expenses.",
@@ -182,6 +191,14 @@ export const DEFAULT_TRANSACTION_CATEGORIES: TransactionCategory[] = [
         key: "wellness",
         name: "Wellness",
         description: "Gym, supplements, and medicines.",
+        iconKey: "heart",
+        color: "#18181b",
+        isActive: true,
+    },
+    {
+        key: "sport",
+        name: "Sport",
+        description: "Training, sports fees, and equipment.",
         iconKey: "heart",
         color: "#18181b",
         isActive: true,

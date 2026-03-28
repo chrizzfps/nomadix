@@ -30,6 +30,7 @@ export const TRANSACTION_CATEGORIES = [
     "Tech",
     "Technology",
     "Entertainment",
+    "Sport",
     "Tickets",
     "Health",
     "Wellness",

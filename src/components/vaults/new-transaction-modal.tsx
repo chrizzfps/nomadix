@@ -112,6 +112,8 @@ export function NewTransactionModal({
             "Travel",
             "Health",
             "Wellness",
+            "Sport",
+            "Entertainment",
             "Books",
             "Tickets",
             "Shopping",
@@ -282,7 +284,7 @@ export function NewTransactionModal({
                     amount: -transferAmount,
                     type: "transfer",
                     original_currency: fromVault.currency,
-                    category: category || "Transfer",
+                    category: null,
                     description: `[Transfer → ${toVault.name}] ${descText}`,
                 },
                 {
@@ -291,7 +293,7 @@ export function NewTransactionModal({
                     amount: receivedAmount,
                     type: "transfer",
                     original_currency: toVault.currency,
-                    category: category || "Transfer",
+                    category: null,
                     description: `[Transfer ← ${fromVault.name}] ${descText}`,
                 },
             ]);

@@ -40,7 +40,15 @@ export async function GET(request: Request) {
         .maybeSingle();
 
     if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const msg =
+            error.message.includes("schema cache") ||
+            error.message.includes("Could not find the table")
+                ? "Missing table user_exchange_rates. Apply supabase/schema.sql and reload the API schema cache in Supabase."
+                : error.message;
+        return NextResponse.json(
+            { error: msg },
+            { status: msg.startsWith("Missing table") ? 503 : 500 }
+        );
     }
 
     return NextResponse.json(
@@ -95,7 +103,15 @@ export async function PUT(request: Request) {
         .single();
 
     if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const msg =
+            error.message.includes("schema cache") ||
+            error.message.includes("Could not find the table")
+                ? "Missing table user_exchange_rates. Apply supabase/schema.sql and reload the API schema cache in Supabase."
+                : error.message;
+        return NextResponse.json(
+            { error: msg },
+            { status: msg.startsWith("Missing table") ? 503 : 500 }
+        );
     }
 
     return NextResponse.json({

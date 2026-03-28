@@ -119,6 +119,15 @@ export function TransactionEditModal({
 
     useEffect(() => {
         if (!isOpen) return;
+        if (type === "transfer") {
+            setCategory("");
+            setCategoryOpen(false);
+            setCategoryQuery("");
+        }
+    }, [isOpen, type]);
+
+    useEffect(() => {
+        if (!isOpen) return;
         let cancelled = false;
         (async () => {
             const {
@@ -459,12 +468,18 @@ export function TransactionEditModal({
                                 </label>
                                 <button
                                     type="button"
-                                    onClick={() => setCategoryOpen((v) => !v)}
+                                    onClick={() => {
+                                        if (type === "transfer") return;
+                                        setCategoryOpen((v) => !v);
+                                    }}
+                                    disabled={type === "transfer"}
                                     className="flex w-full items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-left text-sm text-zinc-900 hover:bg-zinc-100"
                                 >
                                     <Tag size={16} className="text-zinc-400" />
                                     <span className="flex-1 truncate">
-                                        {category || "Select category"}
+                                        {type === "transfer"
+                                            ? "Not applicable for transfers"
+                                            : category || "Select category"}
                                     </span>
                                     <MagnifyingGlass
                                         size={16}
@@ -615,4 +630,3 @@ export function TransactionEditModal({
         </AnimatePresence>
     );
 }
-

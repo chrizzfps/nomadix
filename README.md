@@ -37,6 +37,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 ## Supabase
 
 - SQL schema for required tables and RLS policies: `supabase/schema.sql`
+- After applying SQL, reload the PostgREST schema cache in Supabase: Settings → API → Reload schema
 
 ## Tests
 

@@ -76,9 +76,8 @@ export const useCurrencyStore = create<CurrencyState>((set, get) => ({
                         typeof json.exchangeRate === "number" &&
                         json.exchangeRate > 0
                     ) {
-                        const current = get().manualRate;
                         const next = {
-                            enabled: current.enabled,
+                            enabled: true,
                             rate: json.exchangeRate,
                         };
                         saveManualRate(next);

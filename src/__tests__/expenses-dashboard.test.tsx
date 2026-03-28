@@ -51,6 +51,18 @@ jest.mock("@/lib/supabase/client", () => {
             created_at: "2026-03-20T10:00:00.000Z",
         },
         {
+            id: "t_transfer",
+            user_id: "u1",
+            vault_id: "v1",
+            amount: -999,
+            type: "transfer",
+            category: null,
+            description: "Transfer out",
+            date: "2026-03-20",
+            original_currency: "EUR",
+            created_at: "2026-03-20T11:00:00.000Z",
+        },
+        {
             id: "t2",
             user_id: "u1",
             vault_id: "v2",

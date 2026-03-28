@@ -92,7 +92,13 @@ export default function PreferencesPage() {
                 throw new Error(json?.error || "Unable to save exchange rate.");
             }
         } catch (e) {
-            const msg = e instanceof Error ? e.message : "Unable to save exchange rate.";
+            const raw =
+                e instanceof Error ? e.message : "Unable to save exchange rate.";
+            const msg =
+                raw.includes("schema cache") ||
+                raw.includes("Could not find the table")
+                    ? "Falta crear la tabla user_exchange_rates en Supabase. Ejecuta supabase/schema.sql en el SQL Editor y luego recarga el schema de la API en Supabase (Settings → API → Reload schema)."
+                    : raw;
             setRateError(msg);
             addToast(msg, "error");
         } finally {
