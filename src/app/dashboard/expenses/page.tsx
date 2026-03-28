@@ -78,6 +78,10 @@ function formatMoney(value: number | string | undefined, symbol: string) {
     })}`;
 }
 
+function normalizeCurrency(value: string | null | undefined): "EUR" | "USD" {
+    return value === "EUR" || value === "USD" ? value : "USD";
+}
+
 export default function ExpensesPage() {
     const supabase = createClient();
     const { displayCurrency, convert, loadRate } = useCurrencyStore();
@@ -123,6 +127,8 @@ export default function ExpensesPage() {
 
         if (vaultError || txError) {
             setError("Unable to load expenses. Please try again.");
+            setIsLoading(false);
+            return;
         }
 
         setVaults((vaultRows || []) as VaultBasic[]);
@@ -168,7 +174,7 @@ export default function ExpensesPage() {
         filteredExpenses.forEach((t) => {
             const key = t.category || "Other";
             const value = Math.abs(
-                convert(t.amount, (t.original_currency || "USD") as "EUR" | "USD")
+                convert(t.amount, normalizeCurrency(t.original_currency))
             );
             map.set(key, (map.get(key) || 0) + value);
         });
@@ -199,7 +205,7 @@ export default function ExpensesPage() {
         } | null = null;
         filteredExpenses.forEach((t) => {
             const value = Math.abs(
-                convert(t.amount, (t.original_currency || "USD") as "EUR" | "USD")
+                convert(t.amount, normalizeCurrency(t.original_currency))
             );
             if (!best || value > best.amount) {
                 best = {
@@ -233,7 +239,7 @@ export default function ExpensesPage() {
                 return (
                     acc +
                     Math.abs(
-                        convert(t.amount, (t.original_currency || "USD") as "EUR" | "USD")
+                        convert(t.amount, normalizeCurrency(t.original_currency))
                     )
                 );
             }, 0);
@@ -265,7 +271,7 @@ export default function ExpensesPage() {
             const d = new Date(t.date || t.created_at);
             const key = byDay ? toISODate(d) : monthKey(d);
             const value = Math.abs(
-                convert(t.amount, (t.original_currency || "USD") as "EUR" | "USD")
+                convert(t.amount, normalizeCurrency(t.original_currency))
             );
             map.set(key, (map.get(key) || 0) + value);
         });
