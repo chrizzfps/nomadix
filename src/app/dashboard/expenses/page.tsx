@@ -22,6 +22,7 @@ import { createClient } from "@/lib/supabase/client";
 import { CurrencyToggle } from "@/components/shared/currency-toggle";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
+import { convertWithRate, getActiveUsdToEurRate } from "@/lib/currency";
 
 interface VaultBasic {
     id: string;
@@ -84,7 +85,10 @@ function normalizeCurrency(value: string | null | undefined): "EUR" | "USD" {
 
 export default function ExpensesPage() {
     const supabase = createClient();
-    const { displayCurrency, convert, loadRate } = useCurrencyStore();
+    const { displayCurrency, loadRate } = useCurrencyStore();
+    const activeUsdToEurRate = useCurrencyStore((s) =>
+        s.manualRate.enabled ? s.manualRate.rate : s.exchangeRate
+    );
     const symbol = CURRENCY_SYMBOLS[displayCurrency];
 
     const [vaults, setVaults] = useState<VaultBasic[]>([]);
@@ -152,6 +156,31 @@ export default function ExpensesPage() {
         return () => cancelAnimationFrame(id);
     }, [displayCurrency]);
 
+    const safeRate = useMemo(
+        () => getActiveUsdToEurRate(activeUsdToEurRate),
+        [activeUsdToEurRate]
+    );
+
+    useEffect(() => {
+        if (!Number.isFinite(activeUsdToEurRate) || activeUsdToEurRate <= 0) {
+            setError(
+                "No exchange rate available right now. Showing fallback values."
+            );
+        }
+    }, [activeUsdToEurRate]);
+
+    const convertNumber = useCallback(
+        (amount: number, from: string | null | undefined) => {
+            return convertWithRate(
+                amount,
+                normalizeCurrency(from),
+                displayCurrency,
+                safeRate
+            );
+        },
+        [displayCurrency, safeRate]
+    );
+
     const normalizedRange = useMemo(
         () => clampDateRange(dateFrom, dateTo),
         [dateFrom, dateTo]
@@ -180,9 +209,7 @@ export default function ExpensesPage() {
         const map = new Map<string, number>();
         filteredExpenses.forEach((t) => {
             const key = t.category || "Other";
-            const value = Math.abs(
-                convert(t.amount, normalizeCurrency(t.original_currency))
-            );
+            const value = Math.abs(convertNumber(t.amount, t.original_currency));
             map.set(key, (map.get(key) || 0) + value);
         });
         const items = Array.from(map.entries())
@@ -196,7 +223,7 @@ export default function ExpensesPage() {
             })),
             grandTotal,
         };
-    }, [convert, filteredExpenses]);
+    }, [convertNumber, filteredExpenses]);
 
     const largestExpense = useMemo<{
         amount: number;
@@ -211,9 +238,7 @@ export default function ExpensesPage() {
             vaultId: string;
         } | null = null;
         filteredExpenses.forEach((t) => {
-            const value = Math.abs(
-                convert(t.amount, normalizeCurrency(t.original_currency))
-            );
+            const value = Math.abs(convertNumber(t.amount, t.original_currency));
             if (!best || value > best.amount) {
                 best = {
                     amount: value,
@@ -224,7 +249,7 @@ export default function ExpensesPage() {
             }
         });
         return best;
-    }, [convert, filteredExpenses]);
+    }, [convertNumber, filteredExpenses]);
 
     const periodComparison = useMemo(() => {
         const { from, to } = rangeBounds;
@@ -246,7 +271,7 @@ export default function ExpensesPage() {
                 return (
                     acc +
                     Math.abs(
-                        convert(t.amount, normalizeCurrency(t.original_currency))
+                        convertNumber(t.amount, t.original_currency)
                     )
                 );
             }, 0);
@@ -256,7 +281,13 @@ export default function ExpensesPage() {
         const delta = current - previous;
         const pct = previous > 0 ? (delta / previous) * 100 : null;
         return { current, previous, delta, pct, days };
-    }, [convert, rangeBounds, totalsByCategory.grandTotal, transactions, vaultFilter]);
+    }, [
+        convertNumber,
+        rangeBounds,
+        totalsByCategory.grandTotal,
+        transactions,
+        vaultFilter,
+    ]);
 
     const monthlyAverage = useMemo(() => {
         const { from, to } = rangeBounds;
@@ -277,15 +308,13 @@ export default function ExpensesPage() {
         filteredExpenses.forEach((t) => {
             const d = new Date(t.date || t.created_at);
             const key = byDay ? toISODate(d) : monthKey(d);
-            const value = Math.abs(
-                convert(t.amount, normalizeCurrency(t.original_currency))
-            );
+            const value = Math.abs(convertNumber(t.amount, t.original_currency));
             map.set(key, (map.get(key) || 0) + value);
         });
 
         const keys = Array.from(map.keys()).sort((a, b) => a.localeCompare(b));
         return keys.map((k) => ({ name: k, expenses: Math.round(map.get(k) || 0) }));
-    }, [convert, filteredExpenses, rangeBounds]);
+    }, [convertNumber, filteredExpenses, rangeBounds]);
 
     const categoryBarData = useMemo(() => {
         return totalsByCategory.items.slice(0, 8).map((x) => ({

@@ -348,7 +348,7 @@ export function TransactionEditModal({
                             </button>
                         </div>
 
-                        <div className="space-y-4 px-6 py-5">
+                        <div className="max-h-[70vh] overflow-auto px-6 py-5 space-y-4">
                             {saveError && (
                                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
                                     {saveError}
@@ -462,7 +462,7 @@ export function TransactionEditModal({
                                 )}
                             </div>
 
-                            <div className="relative space-y-1.5">
+                            <div className="space-y-1.5">
                                 <label className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
                                     Category
                                 </label>
@@ -493,7 +493,7 @@ export function TransactionEditModal({
                                             initial={{ opacity: 0, y: -6 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0, y: -6 }}
-                                            className="absolute z-10 mt-2 w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl"
+                                            className="mt-2 w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl"
                                         >
                                             <div className="border-b border-zinc-100 p-3">
                                                 <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">

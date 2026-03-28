@@ -30,7 +30,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 ## Features
 
 - Vaults “Recent Activity” supports incremental pagination via “Ver más movimientos”.
-- Expenses dashboard is available at `/dashboard/expenses` with category aggregation, charts and filters.
+- Expenses dashboard is available at `/dashboard/expenses` with category aggregation, charts, filters and real USD↔EUR conversion.
 - Categories admin is available at `/dashboard/settings/categories`.
 - User exchange rate can be persisted via `/api/exchange-rate` (USD↔EUR) and managed in Preferences.
 
