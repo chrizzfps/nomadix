@@ -61,9 +61,15 @@ export default function VaultsPage() {
     const { displayCurrency, convert, loadRate } = useCurrencyStore();
     const symbol = CURRENCY_SYMBOLS[displayCurrency];
 
+    const ACTIVITY_PAGE_SIZE = 10;
+
     const [vaults, setVaults] = useState<VaultData[]>([]);
     const [transactions, setTransactions] = useState<TransactionData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [activityError, setActivityError] = useState<string | null>(null);
+    const [isLoadingMoreActivity, setIsLoadingMoreActivity] = useState(false);
+    const [activityVisibleCount, setActivityVisibleCount] =
+        useState(ACTIVITY_PAGE_SIZE);
     const [showCreateVault, setShowCreateVault] = useState(false);
     const [showNewTransaction, setShowNewTransaction] = useState(false);
     const [selectedTx, setSelectedTx] = useState<TransactionData | null>(null);
@@ -72,24 +78,38 @@ export default function VaultsPage() {
     >("all");
 
     const loadData = useCallback(async () => {
+        setActivityError(null);
         const {
             data: { user },
+            error: authError,
         } = await supabase.auth.getUser();
-        if (!user) return;
+        if (authError) {
+            setActivityError("Unable to load activity. Please try again.");
+            setIsLoading(false);
+            return;
+        }
+        if (!user) {
+            setIsLoading(false);
+            return;
+        }
 
         // Fetch vaults
-        const { data: vaultRows } = await supabase
+        const { data: vaultRows, error: vaultError } = await supabase
             .from("vaults")
             .select("*")
             .eq("user_id", user.id)
             .order("created_at", { ascending: true });
 
         // Fetch all transactions
-        const { data: txRows } = await supabase
+        const { data: txRows, error: txError } = await supabase
             .from("transactions")
             .select("*")
             .eq("user_id", user.id)
             .order("created_at", { ascending: false });
+
+        if (vaultError || txError) {
+            setActivityError("Unable to load activity. Please try again.");
+        }
 
         // Build vault name lookup
         const vaultMap = new Map<string, string>();
@@ -126,6 +146,10 @@ export default function VaultsPage() {
         loadRate().then(() => loadData());
     }, [loadData, loadRate]);
 
+    useEffect(() => {
+        setActivityVisibleCount(ACTIVITY_PAGE_SIZE);
+    }, [activityFilter]);
+
     const totalBalance = vaults.reduce(
         (sum, v) => sum + convert(v.balance, v.currency as "EUR" | "USD"),
         0
@@ -141,6 +165,21 @@ export default function VaultsPage() {
         return new Date(d).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
+        });
+    };
+
+    const hasMoreActivity = activityVisibleCount < filteredActivity.length;
+
+    const onLoadMoreActivity = () => {
+        if (!hasMoreActivity || isLoadingMoreActivity) return;
+        setIsLoadingMoreActivity(true);
+        const next = Math.min(
+            activityVisibleCount + ACTIVITY_PAGE_SIZE,
+            filteredActivity.length
+        );
+        requestAnimationFrame(() => {
+            setActivityVisibleCount(next);
+            setIsLoadingMoreActivity(false);
         });
     };
 
@@ -282,12 +321,18 @@ export default function VaultsPage() {
 
                     {/* Rows */}
                     <div className="divide-y divide-zinc-50">
-                        {filteredActivity.length === 0 ? (
+                        {activityError ? (
+                            <div className="px-5 py-8 text-center text-sm text-zinc-400">
+                                {activityError}
+                            </div>
+                        ) : filteredActivity.length === 0 ? (
                             <div className="px-5 py-8 text-center text-sm text-zinc-400">
                                 No transactions found.
                             </div>
                         ) : (
-                            filteredActivity.slice(0, 10).map((item) => {
+                            filteredActivity
+                                .slice(0, activityVisibleCount)
+                                .map((item) => {
                                 const isIncome = item.type === "income";
                                 const isTransfer = item.type === "transfer";
                                 const IconCmp =
@@ -368,6 +413,27 @@ export default function VaultsPage() {
                         )}
                     </div>
                 </div>
+
+                {!activityError && filteredActivity.length > 0 && (
+                    <div className="mt-4 flex justify-center">
+                        {hasMoreActivity ? (
+                            <button
+                                type="button"
+                                onClick={onLoadMoreActivity}
+                                disabled={isLoadingMoreActivity}
+                                className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {isLoadingMoreActivity
+                                    ? "Cargando..."
+                                    : "Ver más movimientos"}
+                            </button>
+                        ) : (
+                            <span className="text-sm text-zinc-400">
+                                No hay más movimientos.
+                            </span>
+                        )}
+                    </div>
+                )}
             </motion.div>
 
             {/* Modals */}

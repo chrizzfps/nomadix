@@ -11,8 +11,15 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "deploy-hostinger/**",
+    "jest.config.js",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

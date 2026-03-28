@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
     SquaresFour,
     Vault,
+    Receipt,
     IdentificationCard,
     Airplane,
     GearSix,
@@ -16,6 +17,7 @@ import { APP_NAME } from "@/lib/constants";
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: SquaresFour },
     { href: "/dashboard/vaults", label: "Vaults", icon: Vault },
+    { href: "/dashboard/expenses", label: "Expenses", icon: Receipt },
     { href: "/dashboard/identity", label: "Identity", icon: IdentificationCard },
     { href: "/dashboard/travel", label: "Travel", icon: Airplane },
 ];

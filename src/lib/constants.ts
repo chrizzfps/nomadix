@@ -52,6 +52,7 @@ export const DOCUMENT_TYPES = [
 export const NAV_ITEMS = [
     { href: "/dashboard", label: "Dashboard", icon: "SquaresFour" },
     { href: "/dashboard/vaults", label: "Vaults", icon: "Vault" },
+    { href: "/dashboard/expenses", label: "Expenses", icon: "Receipt" },
     { href: "/dashboard/identity", label: "Identity", icon: "IdentificationCard" },
     { href: "/dashboard/travel", label: "Travel", icon: "Airplane" },
 ] as const;
