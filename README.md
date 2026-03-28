@@ -31,6 +31,12 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 - Vaults “Recent Activity” supports incremental pagination via “Ver más movimientos”.
 - Expenses dashboard is available at `/dashboard/expenses` with category aggregation, charts and filters.
+- Categories admin is available at `/dashboard/settings/categories`.
+- User exchange rate can be persisted via `/api/exchange-rate` (USD↔EUR) and managed in Preferences.
+
+## Supabase
+
+- SQL schema for required tables and RLS policies: `supabase/schema.sql`
 
 ## Tests
 

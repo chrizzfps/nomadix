@@ -63,6 +63,31 @@ export const useCurrencyStore = create<CurrencyState>((set, get) => ({
     },
     loadRate: async () => {
         if (get().rateLoaded) return;
+        if (typeof window !== "undefined") {
+            try {
+                const res = await fetch(
+                    "/api/exchange-rate?baseCurrency=USD&targetCurrency=EUR"
+                );
+                if (res.ok) {
+                    const json = (await res.json()) as {
+                        exchangeRate?: number;
+                    };
+                    if (
+                        typeof json.exchangeRate === "number" &&
+                        json.exchangeRate > 0
+                    ) {
+                        const current = get().manualRate;
+                        const next = {
+                            enabled: current.enabled,
+                            rate: json.exchangeRate,
+                        };
+                        saveManualRate(next);
+                        set({ manualRate: next });
+                    }
+                }
+            } catch {
+            }
+        }
         const rate = await fetchExchangeRate();
         set({ exchangeRate: rate, rateLoaded: true });
     },

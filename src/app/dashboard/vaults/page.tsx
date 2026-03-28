@@ -7,6 +7,12 @@ import {
     ArrowUp,
     ArrowDown,
     ArrowsLeftRight,
+    Armchair,
+    Bag,
+    Book,
+    GameController,
+    Ticket,
+    TShirt,
     House,
     Airplane,
     Desktop,
@@ -18,7 +24,7 @@ import {
 import { VaultCard } from "@/components/vaults/vault-card";
 import { CreateVaultModal } from "@/components/vaults/create-vault-modal";
 import { NewTransactionModal } from "@/components/vaults/new-transaction-modal";
-import { TransactionDetailModal } from "@/components/vaults/transaction-detail-modal";
+import { TransactionEditModal } from "@/components/vaults/transaction-edit-modal";
 import { CurrencyToggle } from "@/components/shared/currency-toggle";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
@@ -48,11 +54,20 @@ interface TransactionData {
 
 const categoryIcons: Record<string, React.ElementType> = {
     Housing: House,
+    Home: Armchair,
     Travel: Airplane,
     Tech: Desktop,
+    Technology: Desktop,
     Shopping: ShoppingBag,
     Food: Coffee,
+    Snacks: Coffee,
+    Tickets: Ticket,
+    Clothing: TShirt,
+    "Video Games": GameController,
+    Accessories: Bag,
+    Books: Book,
     Health: Heart,
+    Wellness: Heart,
     Transport: Car,
 };
 
@@ -159,6 +174,61 @@ export default function VaultsPage() {
         activityFilter === "all"
             ? transactions
             : transactions.filter((a) => a.type === activityFilter);
+
+    const applyTransactionUpdate = (update: {
+        id: string;
+        amount?: number;
+        type?: string;
+        category?: string | null;
+        description?: string | null;
+        original_currency?: string;
+        date?: string | null;
+    }) => {
+        setTransactions((prev) => {
+            const existing = prev.find((t) => t.id === update.id);
+            if (!existing) return prev;
+            const next = prev.map((t) =>
+                t.id === update.id
+                    ? {
+                        ...t,
+                        ...update,
+                        amount:
+                            typeof update.amount === "number"
+                                ? update.amount
+                                : t.amount,
+                    }
+                    : t
+            );
+            const nextAmount =
+                typeof update.amount === "number" ? update.amount : existing.amount;
+            const delta = nextAmount - existing.amount;
+            if (delta !== 0) {
+                setVaults((vaultPrev) =>
+                    vaultPrev.map((v) =>
+                        v.id === existing.vault_id
+                            ? { ...v, balance: v.balance + delta }
+                            : v
+                    )
+                );
+            }
+            return next;
+        });
+    };
+
+    const applyTransactionDelete = (id: string) => {
+        setTransactions((prev) => {
+            const existing = prev.find((t) => t.id === id);
+            if (!existing) return prev;
+            setVaults((vaultPrev) =>
+                vaultPrev.map((v) =>
+                    v.id === existing.vault_id
+                        ? { ...v, balance: v.balance - existing.amount }
+                        : v
+                )
+            );
+            return prev.filter((t) => t.id !== id);
+        });
+    };
 
     const formatDate = (d: string | null) => {
         if (!d) return "—";
@@ -452,10 +522,17 @@ export default function VaultsPage() {
                     currency: v.currency,
                 }))}
             />
-            <TransactionDetailModal
+            <TransactionEditModal
                 isOpen={!!selectedTx}
                 onClose={() => setSelectedTx(null)}
-                onDeleted={loadData}
+                onUpdated={(tx) => {
+                    applyTransactionUpdate(tx);
+                    setSelectedTx((prev) => (prev && prev.id === tx.id ? { ...prev, ...tx } : prev));
+                }}
+                onDeleted={(id) => {
+                    applyTransactionDelete(id);
+                    setSelectedTx(null);
+                }}
                 transaction={selectedTx}
             />
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     X,
@@ -54,6 +54,7 @@ export function NewTransactionModal({
     const [category, setCategory] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [dbCategories, setDbCategories] = useState<string[]>([]);
 
     // Transfer state
     const [transferToVaultId, setTransferToVaultId] = useState(
@@ -73,18 +74,55 @@ export function NewTransactionModal({
         ? CURRENCY_SYMBOLS[selectedVault.currency] || "$"
         : "$";
 
-    const categories =
-        txType === "income"
-            ? ["Freelance", "Salary", "Investment", "Other"]
-            : [
-                "Housing",
-                "Food",
-                "Transport",
-                "Tech",
-                "Travel",
-                "Health",
-                "Other",
-            ];
+    useEffect(() => {
+        if (!isOpen) return;
+        let cancelled = false;
+        (async () => {
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data, error } = await supabase
+                .from("transaction_categories")
+                .select("name,is_active")
+                .eq("user_id", user.id)
+                .order("name", { ascending: true });
+            if (cancelled) return;
+            if (error || !data) return;
+            const next = (data as { name: string; is_active: boolean }[])
+                .filter((r) => r.is_active)
+                .map((r) => r.name);
+            setDbCategories(next);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [isOpen, supabase]);
+
+    const categories = useMemo(() => {
+        if (txType === "income")
+            return ["Freelance", "Salary", "Investment", "Other"];
+        if (dbCategories.length > 0) return dbCategories;
+        return [
+            "Housing",
+            "Food",
+            "Transport",
+            "Tech",
+            "Technology",
+            "Travel",
+            "Health",
+            "Wellness",
+            "Books",
+            "Tickets",
+            "Shopping",
+            "Clothing",
+            "Video Games",
+            "Snacks",
+            "Accessories",
+            "Home",
+            "Other",
+        ];
+    }, [dbCategories, txType]);
 
     // --- Currency conversion helper ---
     function convertBetween(

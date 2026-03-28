@@ -12,12 +12,14 @@ import {
     Headset,
     Sliders,
     Database,
+    Tag,
 } from "@phosphor-icons/react";
 
 const settingsNav = [
     { href: "/dashboard/settings", label: "Account", icon: User, exact: true },
     { href: "/dashboard/settings/profile", label: "Profile", icon: UserCircle },
     { href: "/dashboard/settings/preferences", label: "Preferences", icon: Sliders },
+    { href: "/dashboard/settings/categories", label: "Categories", icon: Tag },
     { href: "/dashboard/settings/data", label: "Data", icon: Database },
     { href: "/dashboard/settings/security", label: "Security", icon: ShieldCheck },
     { href: "/dashboard/settings/notifications", label: "Notifications", icon: Bell },

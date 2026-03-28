@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
     Sliders,
@@ -11,6 +11,7 @@ import {
     CurrencyDollar,
 } from "@phosphor-icons/react";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { useToastStore } from "@/stores/toast-store";
 
 interface ToggleItemProps {
     icon: React.ElementType;
@@ -56,20 +57,77 @@ export default function PreferencesPage() {
     const [autoSync, setAutoSync] = useState(true);
     const [darkMode, setDarkMode] = useState(false);
 
-    const { manualRate, setManualRate, exchangeRate } = useCurrencyStore();
+    const { manualRate, setManualRate, exchangeRate, loadRate } =
+        useCurrencyStore();
     const [rateInput, setRateInput] = useState(String(manualRate.rate));
+    const [rateError, setRateError] = useState<string | null>(null);
+    const [rateSaving, setRateSaving] = useState(false);
+    const addToast = useToastStore((s) => s.addToast);
+
+    useEffect(() => {
+        loadRate();
+    }, [loadRate]);
+
+    useEffect(() => {
+        setRateInput(String(manualRate.rate));
+    }, [manualRate.rate]);
+
+    const persistRate = async (rate: number) => {
+        setRateSaving(true);
+        setRateError(null);
+        try {
+            const res = await fetch("/api/exchange-rate", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    baseCurrency: "USD",
+                    targetCurrency: "EUR",
+                    exchangeRate: rate,
+                }),
+            });
+            if (!res.ok) {
+                const json = (await res.json().catch(() => null)) as
+                    | { error?: string }
+                    | null;
+                throw new Error(json?.error || "Unable to save exchange rate.");
+            }
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : "Unable to save exchange rate.";
+            setRateError(msg);
+            addToast(msg, "error");
+        } finally {
+            setRateSaving(false);
+        }
+    };
 
     const handleToggleManualRate = (enabled: boolean) => {
+        setRateError(null);
         setManualRate({
             enabled,
             rate: enabled ? (parseFloat(rateInput) || 1.08) : manualRate.rate,
         });
+        if (enabled) {
+            const parsed = parseFloat(rateInput);
+            if (parsed && parsed > 0) persistRate(parsed);
+        }
     };
 
     const handleRateSave = () => {
         const parsed = parseFloat(rateInput);
-        if (!parsed || parsed <= 0) return;
+        if (!parsed || parsed <= 0) {
+            setRateError("Enter a positive exchange rate.");
+            return;
+        }
         setManualRate({ enabled: true, rate: parsed });
+        persistRate(parsed);
+    };
+
+    const handleUseLiveRate = () => {
+        const rate = Number(exchangeRate);
+        if (!rate || rate <= 0) return;
+        setRateInput(String(rate));
+        setManualRate({ enabled: true, rate });
+        persistRate(rate);
     };
 
     return (
@@ -137,6 +195,11 @@ export default function PreferencesPage() {
                             animate={{ opacity: 1, height: "auto" }}
                             className="border-t border-zinc-100 px-4 py-4 space-y-3"
                         >
+                            {rateError && (
+                                <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+                                    {rateError}
+                                </div>
+                            )}
                             <div className="flex items-center gap-3">
                                 <div className="flex-1 space-y-1.5">
                                     <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
@@ -155,10 +218,24 @@ export default function PreferencesPage() {
                                 </div>
                                 <button
                                     onClick={handleRateSave}
+                                    disabled={rateSaving}
                                     className="mt-6 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-zinc-800 active:scale-[0.97]"
                                 >
-                                    Save
+                                    {rateSaving ? "Saving..." : "Save"}
                                 </button>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <button
+                                    type="button"
+                                    onClick={handleUseLiveRate}
+                                    disabled={rateSaving}
+                                    className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    Use live rate
+                                </button>
+                                <span className="text-[11px] text-zinc-400">
+                                    Saved for your account
+                                </span>
                             </div>
                             <p className="text-[11px] text-zinc-400">
                                 API rate:{" "}

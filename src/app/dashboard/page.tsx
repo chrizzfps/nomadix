@@ -5,11 +5,17 @@ import { motion } from "framer-motion";
 import {
     TrendUp,
     Plus,
+    Armchair,
+    Bag,
+    Book,
     House,
     Airplane,
     Desktop,
+    GameController,
     ShoppingBag,
     Coffee,
+    Ticket,
+    TShirt,
     Wallet,
     PiggyBank,
     ArrowUp,
@@ -21,7 +27,7 @@ import { useCurrencyStore } from "@/stores/currency-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { NewTransactionModal } from "@/components/vaults/new-transaction-modal";
-import { TransactionDetailModal } from "@/components/vaults/transaction-detail-modal";
+import { TransactionEditModal } from "@/components/vaults/transaction-edit-modal";
 import Link from "next/link";
 import {
     LineChart,
@@ -35,15 +41,24 @@ import {
 
 const categoryIcons: Record<string, React.ElementType> = {
     Housing: House,
+    Home: Armchair,
     Travel: Airplane,
     Tech: Desktop,
+    Technology: Desktop,
     Shopping: ShoppingBag,
     Food: Coffee,
+    Snacks: Coffee,
+    Tickets: Ticket,
+    Clothing: TShirt,
+    "Video Games": GameController,
+    Accessories: Bag,
+    Books: Book,
     Freelance: Desktop,
     Salary: Wallet,
     Investment: TrendUp,
     Other: Wallet,
     Health: PiggyBank,
+    Wellness: PiggyBank,
     Transport: Airplane,
 };
 
@@ -526,10 +541,32 @@ export default function DashboardPage() {
                     currency: v.currency,
                 }))}
             />
-            <TransactionDetailModal
+            <TransactionEditModal
                 isOpen={!!selectedTx}
                 onClose={() => setSelectedTx(null)}
-                onDeleted={loadData}
+                onUpdated={(tx) => {
+                    setRecentTx((prev) =>
+                        prev.map((t) =>
+                            t.id === tx.id
+                                ? {
+                                    ...t,
+                                    ...tx,
+                                    amount:
+                                        typeof tx.amount === "number"
+                                            ? tx.amount
+                                            : t.amount,
+                                }
+                                : t
+                        )
+                    );
+                    setSelectedTx((prev) =>
+                        prev && prev.id === tx.id ? { ...prev, ...tx } : prev
+                    );
+                }}
+                onDeleted={(id) => {
+                    setRecentTx((prev) => prev.filter((t) => t.id !== id));
+                    setSelectedTx(null);
+                }}
                 transaction={selectedTx}
             />
         </div>

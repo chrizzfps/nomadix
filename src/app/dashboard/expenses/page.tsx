@@ -90,6 +90,7 @@ export default function ExpensesPage() {
     const [vaults, setVaults] = useState<VaultBasic[]>([]);
     const [transactions, setTransactions] = useState<TransactionRow[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isConverting, setIsConverting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const [vaultFilter, setVaultFilter] = useState<string>("all");
@@ -144,6 +145,12 @@ export default function ExpensesPage() {
     useEffect(() => {
         loadRate().then(() => loadData());
     }, [loadData, loadRate]);
+
+    useEffect(() => {
+        setIsConverting(true);
+        const id = requestAnimationFrame(() => setIsConverting(false));
+        return () => cancelAnimationFrame(id);
+    }, [displayCurrency]);
 
     const normalizedRange = useMemo(
         () => clampDateRange(dateFrom, dateTo),
@@ -345,6 +352,11 @@ export default function ExpensesPage() {
                 </motion.div>
                 <div className="flex items-center gap-3">
                     <CurrencyToggle />
+                    {isConverting && (
+                        <span className="text-xs font-medium text-zinc-400">
+                            Convirtiendo…
+                        </span>
+                    )}
                 </div>
             </div>
 
