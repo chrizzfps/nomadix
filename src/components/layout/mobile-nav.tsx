@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
     SquaresFour,
@@ -14,7 +14,7 @@ import {
     GearSix,
     SignOut,
 } from "@phosphor-icons/react";
-import { createClient } from "@/lib/supabase/client";
+import { signOut } from "@/app/auth/actions";
 import { AnimatePresence, motion } from "framer-motion";
 
 const navItems = [
@@ -27,19 +27,11 @@ const navItems = [
 
 export function MobileNav() {
     const pathname = usePathname();
-    const router = useRouter();
-    const supabase = createClient();
     const [isOpen, setIsOpen] = useState(false);
 
     const isActive = (href: string) => {
         if (href === "/dashboard") return pathname === "/dashboard";
         return pathname.startsWith(href);
-    };
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        router.push("/login");
-        router.refresh();
     };
 
     return (
@@ -103,7 +95,7 @@ export function MobileNav() {
                                 <button
                                     onClick={() => {
                                         setIsOpen(false);
-                                        handleLogout();
+                                        signOut();
                                     }}
                                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-600 transition-all hover:bg-zinc-100"
                                 >

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
     SquaresFour,
     Vault,
@@ -11,7 +11,7 @@ import {
     GearSix,
     SignOut,
 } from "@phosphor-icons/react";
-import { createClient } from "@/lib/supabase/client";
+import { signOut } from "@/app/auth/actions";
 import { APP_NAME } from "@/lib/constants";
 
 const navItems = [
@@ -24,14 +24,6 @@ const navItems = [
 
 export function Sidebar() {
     const pathname = usePathname();
-    const router = useRouter();
-    const supabase = createClient();
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        router.push("/login");
-        router.refresh();
-    };
 
     const isActive = (href: string) => {
         if (href === "/dashboard") return pathname === "/dashboard";
@@ -101,7 +93,7 @@ export function Sidebar() {
                     Settings
                 </Link>
                 <button
-                    onClick={handleLogout}
+                    onClick={() => signOut()}
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-500 transition-all hover:bg-zinc-100 hover:text-zinc-900"
                 >
                     <SignOut size={18} />
