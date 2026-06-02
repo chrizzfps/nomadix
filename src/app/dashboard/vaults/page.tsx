@@ -52,6 +52,7 @@ interface TransactionData {
     original_currency: string;
     created_at: string;
     vault_name?: string;
+    fee?: number | null;
 }
 
 const categoryIcons: Record<string, React.ElementType> = {

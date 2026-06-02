@@ -30,10 +30,11 @@ type Tx = {
     date: string | null;
     created_at: string;
     vault_name?: string;
+    fee?: number | null;
 };
 
 type TxUpdate = Partial<
-    Pick<Tx, "amount" | "type" | "category" | "description" | "original_currency" | "date">
+    Pick<Tx, "amount" | "type" | "category" | "description" | "original_currency" | "date" | "fee">
 > & { id: string };
 
 interface TransactionEditModalProps {
@@ -85,6 +86,7 @@ export function TransactionEditModal({
     const [currency, setCurrency] = useState<"EUR" | "USD">("USD");
     const [amount, setAmount] = useState("");
     const [category, setCategory] = useState("");
+    const [fee, setFee] = useState("");
 
     const [categoryOpen, setCategoryOpen] = useState(false);
     const [categoryQuery, setCategoryQuery] = useState("");
@@ -111,7 +113,14 @@ export function TransactionEditModal({
                 : "expense"
         );
         setCurrency(normalizeCurrency(transaction.original_currency));
-        setAmount(String(Math.abs(transaction.amount)));
+        
+        const txFee = transaction.fee || 0;
+        const txBaseAmount = transaction.type === "transfer" && transaction.amount < 0
+            ? Math.abs(transaction.amount) - txFee
+            : Math.abs(transaction.amount);
+
+        setAmount(String(txBaseAmount));
+        setFee(String(txFee));
         setCategory(transaction.category || "");
         setCategoryQuery("");
         setCategoryOpen(false);
@@ -175,8 +184,15 @@ export function TransactionEditModal({
         if (parsed == null || parsed <= 0) errors.amount = "Enter a valid amount.";
         if (!currency) errors.currency = "Select a currency.";
         if (!type) errors.type = "Select a type.";
+
+        if (type === "transfer" && transaction?.amount && transaction.amount < 0) {
+            const parsedFee = parseAmount(fee);
+            if (fee && (parsedFee == null || parsedFee < 0)) {
+                errors.fee = "Enter a valid commission.";
+            }
+        }
         return errors;
-    }, [amount, currency, date, type]);
+    }, [amount, currency, date, type, fee, transaction]);
 
     const canSave = Object.keys(validation).length === 0 && !isSaving && !!transaction;
 
@@ -203,12 +219,15 @@ export function TransactionEditModal({
             return;
         }
 
+        const isSourceTransfer = type === "transfer" && transaction.amount < 0;
+        const parsedFee = isSourceTransfer ? (parseAmount(fee) || 0) : 0;
+
         const signedAmount =
             type === "income"
                 ? Math.abs(parsedAmount)
                 : type === "expense"
                     ? -Math.abs(parsedAmount)
-                    : initialTransferSign * Math.abs(parsedAmount);
+                    : initialTransferSign * (parsedAmount + parsedFee);
 
         const payload = {
             date: date || null,
@@ -217,13 +236,14 @@ export function TransactionEditModal({
             type,
             original_currency: currency,
             amount: signedAmount,
+            fee: type === "transfer" ? parsedFee : 0,
         };
 
         const { data: updated, error } = await supabase
             .from("transactions")
             .update(payload)
             .eq("id", transaction.id)
-            .select("id,amount,type,category,description,original_currency,date,created_at")
+            .select("id,amount,type,category,description,original_currency,date,created_at,fee")
             .single();
 
         if (error) {
@@ -241,6 +261,7 @@ export function TransactionEditModal({
             description: (updated as Tx).description,
             original_currency: (updated as Tx).original_currency,
             date: (updated as Tx).date,
+            fee: (updated as Tx).fee,
         });
 
         addToast("Transaction updated");
@@ -377,6 +398,34 @@ export function TransactionEditModal({
                                     </p>
                                 )}
                             </div>
+
+                            {isTransfer && transaction.amount < 0 && (
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                        Comisión (Fee)
+                                    </label>
+                                    <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5">
+                                        <span className="text-sm font-semibold text-zinc-500">
+                                            {symbol}
+                                        </span>
+                                        <input
+                                            inputMode="decimal"
+                                            value={fee}
+                                            onChange={(e) => setFee(e.target.value)}
+                                            className="w-full bg-transparent text-sm font-semibold text-zinc-900 outline-none"
+                                        />
+                                    </div>
+                                    {validation.fee ? (
+                                        <p className="text-xs text-red-500">
+                                            {validation.fee}
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-zinc-400">
+                                            Total a descontar del origen: {symbol}{((parseAmount(amount) || 0) + (parseAmount(fee) || 0)).toFixed(2)}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">

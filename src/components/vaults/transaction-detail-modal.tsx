@@ -32,6 +32,7 @@ interface TransactionDetailModalProps {
         date: string | null;
         created_at: string;
         vault_name?: string;
+        fee?: number | null;
     } | null;
 }
 
@@ -180,13 +181,19 @@ export function TransactionDetailModal({
                             >
                                 {isIncome ? "+" : isTransfer ? "" : "-"}
                                 {symbol}
-                                {Math.abs(transaction.amount).toLocaleString(
-                                    "en-US",
-                                    {
-                                        minimumFractionDigits: 2,
-                                    }
-                                )}
+                                {Math.abs(
+                                    isTransfer && transaction.fee && transaction.amount < 0
+                                        ? Math.abs(transaction.amount) - transaction.fee
+                                        : transaction.amount
+                                ).toLocaleString("en-US", {
+                                    minimumFractionDigits: 2,
+                                })}
                             </p>
+                            {isTransfer && transaction.fee && transaction.amount < 0 ? (
+                                <p className="mt-1 text-xs text-zinc-400">
+                                    + {symbol}{transaction.fee.toFixed(2)} comisión ({symbol}{Math.abs(transaction.amount).toFixed(2)} total debitado)
+                                </p>
+                            ) : null}
                             <p className="mt-1 text-sm text-zinc-500">
                                 {transaction.description || "No description"}
                             </p>
@@ -229,17 +236,64 @@ export function TransactionDetailModal({
                                 </div>
                             )}
 
-                            <div className="flex items-center gap-3 py-3.5">
-                                <Tag size={16} className="text-zinc-400" />
-                                <div className="flex-1">
-                                    <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
-                                        Category
-                                    </p>
-                                    <p className="text-sm font-medium text-zinc-700">
-                                        {transaction.category || "—"}
-                                    </p>
+                            {isTransfer && transaction.fee && transaction.amount < 0 ? (
+                                <>
+                                    <div className="flex items-center gap-3 py-3.5">
+                                        <CurrencyCircleDollar
+                                            size={16}
+                                            className="text-zinc-400"
+                                        />
+                                        <div className="flex-1">
+                                            <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                                Monto Transferido
+                                            </p>
+                                            <p className="text-sm font-medium text-zinc-700">
+                                                {symbol}{(Math.abs(transaction.amount) - transaction.fee).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 py-3.5">
+                                        <Warning
+                                            size={16}
+                                            className="text-zinc-400"
+                                        />
+                                        <div className="flex-1">
+                                            <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                                Comisión Bancaria
+                                            </p>
+                                            <p className="text-sm font-medium text-zinc-700">
+                                                {symbol}{transaction.fee.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 py-3.5">
+                                        <CurrencyCircleDollar
+                                            size={16}
+                                            className="text-zinc-400"
+                                        />
+                                        <div className="flex-1">
+                                            <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                                Total Debitado
+                                            </p>
+                                            <p className="text-sm font-medium text-zinc-700">
+                                                {symbol}{Math.abs(transaction.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex items-center gap-3 py-3.5">
+                                    <Tag size={16} className="text-zinc-400" />
+                                    <div className="flex-1">
+                                        <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                            Category
+                                        </p>
+                                        <p className="text-sm font-medium text-zinc-700">
+                                            {transaction.category || "—"}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             <div className="flex items-center gap-3 py-3.5">
                                 <CurrencyCircleDollar

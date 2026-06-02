@@ -83,3 +83,7 @@ begin
         check (type <> 'transfer' or category is null);
     end if;
 end $$;
+
+-- Migration: Add fee column to transactions table for vault transfer commissions
+alter table public.transactions add column if not exists fee numeric not null default 0;
+

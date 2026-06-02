@@ -60,6 +60,8 @@ export function NewTransactionModal({
     const [transferToVaultId, setTransferToVaultId] = useState(
         vaults[1]?.id || vaults[0]?.id || ""
     );
+    const [includeFee, setIncludeFee] = useState(false);
+    const [fee, setFee] = useState("");
 
     // Mixed transaction state
     const [mixedCurrency, setMixedCurrency] = useState<Currency>("EUR");
@@ -262,6 +264,13 @@ export function NewTransactionModal({
         const toVault = vaults.find((v) => v.id === transferToVaultId);
         if (!fromVault || !toVault) return;
 
+        const transferFee = includeFee ? (parseFloat(fee) || 0) : 0;
+        if (includeFee && transferFee < 0) {
+            setError("Enter a valid commission amount.");
+            setIsLoading(false);
+            return;
+        }
+
         const receivedAmount = convertBetween(
             transferAmount,
             fromVault.currency,
@@ -281,11 +290,12 @@ export function NewTransactionModal({
                 {
                     user_id: user.id,
                     vault_id: vaultId,
-                    amount: -transferAmount,
+                    amount: -(transferAmount + transferFee),
                     type: "transfer",
                     original_currency: fromVault.currency,
                     category: null,
                     description: `[Transfer → ${toVault.name}] ${descText}`,
+                    fee: transferFee,
                 },
                 {
                     user_id: user.id,
@@ -295,6 +305,7 @@ export function NewTransactionModal({
                     original_currency: toVault.currency,
                     category: null,
                     description: `[Transfer ← ${fromVault.name}] ${descText}`,
+                    fee: 0,
                 },
             ]);
 
@@ -310,8 +321,10 @@ export function NewTransactionModal({
                 ? ` (${fromSymbol}${transferAmount.toFixed(2)} → ${toSymbol}${receivedAmount.toFixed(2)})`
                 : "";
 
+        const feeNote = transferFee > 0 ? ` (Commission: ${fromSymbol}${transferFee.toFixed(2)})` : "";
+
         resetForm();
-        addToast(`Transfer completed${conversionNote}`);
+        addToast(`Transfer completed${feeNote}${conversionNote}`);
         onCreated();
         onClose();
     };
@@ -374,6 +387,8 @@ export function NewTransactionModal({
         setDescription("");
         setCategory("");
         setIsLoading(false);
+        setIncludeFee(false);
+        setFee("");
         setMixedEntries([
             { vaultId: vaults[0]?.id || "", amount: "" },
             { vaultId: vaults[1]?.id || vaults[0]?.id || "", amount: "" },
@@ -558,6 +573,79 @@ export function NewTransactionModal({
                                             />
                                         </div>
                                     </div>
+
+                                    {/* Commission/Fee Toggle & Input */}
+                                    <div className="space-y-3 pt-1">
+                                        <label className="flex items-center gap-3 cursor-pointer select-none">
+                                            <div className="relative">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={includeFee}
+                                                    onChange={(e) => setIncludeFee(e.target.checked)}
+                                                    className="peer sr-only"
+                                                />
+                                                <div className="h-5 w-9 rounded-full bg-zinc-200 peer-checked:bg-zinc-900 transition-colors" />
+                                                <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+                                            </div>
+                                            <span className="text-xs font-semibold text-zinc-600">
+                                                Incluir comisión / tarifa bancaria
+                                            </span>
+                                        </label>
+
+                                        {includeFee && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: "auto" }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                transition={{ duration: 0.15 }}
+                                                className="space-y-2 overflow-hidden"
+                                            >
+                                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                                    Monto de comisión
+                                                </label>
+                                                <div className="relative">
+                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-zinc-400">
+                                                        {symbol}
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        placeholder="0.00"
+                                                        value={fee}
+                                                        onChange={(e) => setFee(e.target.value)}
+                                                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-8 pr-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                    />
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </div>
+
+                                    {/* Debit Summary Preview */}
+                                    {((transferAmount > 0) || (includeFee && parseFloat(fee) > 0)) && (
+                                        <div className="rounded-xl bg-zinc-50 border border-zinc-150 px-4 py-3.5 space-y-2 text-xs">
+                                            <div className="flex justify-between">
+                                                <span className="text-zinc-400">Monto a enviar:</span>
+                                                <span className="font-semibold text-zinc-900">
+                                                    {symbol}{transferAmount.toFixed(2)}
+                                                </span>
+                                            </div>
+                                            {includeFee && parseFloat(fee) > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-zinc-400">Comisión:</span>
+                                                    <span className="font-semibold text-zinc-900">
+                                                        {symbol}{(parseFloat(fee) || 0).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between border-t border-zinc-200 pt-2 font-bold text-sm">
+                                                <span className="text-zinc-600">Total a descontar de {selectedVault?.name || 'origen'}:</span>
+                                                <span className="text-zinc-900">
+                                                    {symbol}{(transferAmount + (includeFee ? (parseFloat(fee) || 0) : 0)).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Conversion preview */}
                                     {transferAmount > 0 &&

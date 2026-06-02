@@ -61,6 +61,7 @@ export interface Transaction {
     date: string;
     status: TransactionStatus;
     created_at: string;
+    fee: number | null;
 }
 
 export interface Document {

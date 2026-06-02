@@ -37,6 +37,9 @@ jest.mock("@/lib/supabase/client", () => {
         { id: "v2", name: "Cash", currency: "EUR" },
     ];
 
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayIso = new Date().toISOString();
+
     const txRows = [
         {
             id: "t1",
@@ -46,9 +49,9 @@ jest.mock("@/lib/supabase/client", () => {
             type: "expense",
             category: "Food",
             description: "Lunch",
-            date: "2026-03-20",
+            date: todayStr,
             original_currency: "EUR",
-            created_at: "2026-03-20T10:00:00.000Z",
+            created_at: todayIso,
         },
         {
             id: "t_transfer",
@@ -58,9 +61,9 @@ jest.mock("@/lib/supabase/client", () => {
             type: "transfer",
             category: null,
             description: "Transfer out",
-            date: "2026-03-20",
+            date: todayStr,
             original_currency: "EUR",
-            created_at: "2026-03-20T11:00:00.000Z",
+            created_at: todayIso,
         },
         {
             id: "t2",
@@ -70,9 +73,9 @@ jest.mock("@/lib/supabase/client", () => {
             type: "expense",
             category: "Tech",
             description: "Cable",
-            date: "2026-03-21",
+            date: todayStr,
             original_currency: "EUR",
-            created_at: "2026-03-21T10:00:00.000Z",
+            created_at: todayIso,
         },
         {
             id: "t3",
@@ -82,9 +85,9 @@ jest.mock("@/lib/supabase/client", () => {
             type: "income",
             category: "Salary",
             description: "Paycheck",
-            date: "2026-03-21",
+            date: todayStr,
             original_currency: "EUR",
-            created_at: "2026-03-21T10:00:00.000Z",
+            created_at: todayIso,
         },
     ];
 

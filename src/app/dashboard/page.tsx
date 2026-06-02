@@ -95,6 +95,7 @@ interface Transaction {
     date: string | null;
     vault_id: string;
     vault_name?: string;
+    fee?: number | null;
 }
 
 interface VaultBasic {
