@@ -40,6 +40,7 @@ interface TransactionRow {
     created_at: string;
     date: string | null;
     vault_id: string;
+    exchange_rate_at_time?: number | null;
 }
 
 function toISODate(d: Date) {
@@ -170,13 +171,11 @@ export default function ExpensesPage() {
     }, [activeUsdToEurRate]);
 
     const convertNumber = useCallback(
-        (amount: number, from: string | null | undefined) => {
-            return convertWithRate(
-                amount,
-                normalizeCurrency(from),
-                displayCurrency,
-                safeRate
-            );
+        (amount: number, from: string | null | undefined, customRate?: number | null) => {
+            const fromCurr = normalizeCurrency(from);
+            if (fromCurr === displayCurrency) return amount;
+            const rate = (customRate && customRate > 0) ? customRate : safeRate;
+            return fromCurr === "USD" ? amount * rate : amount / rate;
         },
         [displayCurrency, safeRate]
     );
@@ -209,7 +208,7 @@ export default function ExpensesPage() {
         const map = new Map<string, number>();
         filteredExpenses.forEach((t) => {
             const key = t.category || "Other";
-            const value = Math.abs(convertNumber(t.amount, t.original_currency));
+            const value = Math.abs(convertNumber(t.amount, t.original_currency, t.exchange_rate_at_time));
             map.set(key, (map.get(key) || 0) + value);
         });
         const items = Array.from(map.entries())
@@ -238,7 +237,7 @@ export default function ExpensesPage() {
             vaultId: string;
         } | null = null;
         filteredExpenses.forEach((t) => {
-            const value = Math.abs(convertNumber(t.amount, t.original_currency));
+            const value = Math.abs(convertNumber(t.amount, t.original_currency, t.exchange_rate_at_time));
             if (!best || value > best.amount) {
                 best = {
                     amount: value,
@@ -271,7 +270,7 @@ export default function ExpensesPage() {
                 return (
                     acc +
                     Math.abs(
-                        convertNumber(t.amount, t.original_currency)
+                        convertNumber(t.amount, t.original_currency, t.exchange_rate_at_time)
                     )
                 );
             }, 0);
@@ -308,7 +307,7 @@ export default function ExpensesPage() {
         filteredExpenses.forEach((t) => {
             const d = new Date(t.date || t.created_at);
             const key = byDay ? toISODate(d) : monthKey(d);
-            const value = Math.abs(convertNumber(t.amount, t.original_currency));
+            const value = Math.abs(convertNumber(t.amount, t.original_currency, t.exchange_rate_at_time));
             map.set(key, (map.get(key) || 0) + value);
         });
 

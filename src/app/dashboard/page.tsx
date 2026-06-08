@@ -26,6 +26,7 @@ import { CurrencyToggle } from "@/components/shared/currency-toggle";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
+import { convertTransactionAmount } from "@/lib/currency-helpers";
 import { NewTransactionModal } from "@/components/vaults/new-transaction-modal";
 import { TransactionEditModal } from "@/components/vaults/transaction-edit-modal";
 import Link from "next/link";
@@ -96,6 +97,7 @@ interface Transaction {
     vault_id: string;
     vault_name?: string;
     fee?: number | null;
+    exchange_rate_at_time?: number | null;
 }
 
 interface VaultBasic {
@@ -107,7 +109,7 @@ interface VaultBasic {
 
 export default function DashboardPage() {
     const supabase = createClient();
-    const { displayCurrency, convert, loadRate } = useCurrencyStore();
+    const { displayCurrency, convert, loadRate, getActiveRate } = useCurrencyStore();
 
     const [userName, setUserName] = useState("");
     const [recentTx, setRecentTx] = useState<Transaction[]>([]);
@@ -506,9 +508,12 @@ export default function DashboardPage() {
                                             {isIncome ? "+" : "-"}
                                             {symbol}
                                             {Math.abs(
-                                                convert(
+                                                convertTransactionAmount(
                                                     tx.amount,
-                                                    (tx.original_currency || "USD") as "EUR" | "USD"
+                                                    (tx.original_currency || "USD") as "EUR" | "USD",
+                                                    displayCurrency,
+                                                    tx.exchange_rate_at_time,
+                                                    getActiveRate()
                                                 )
                                             ).toLocaleString("en-US", {
                                                 minimumFractionDigits: 2,

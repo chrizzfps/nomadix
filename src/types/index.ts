@@ -55,7 +55,7 @@ export interface Transaction {
     amount: number;
     type: TransactionType;
     original_currency: Currency;
-    exchange_rate_at_time: number;
+    exchange_rate_at_time: number | null;
     category: string | null;
     description: string | null;
     date: string;

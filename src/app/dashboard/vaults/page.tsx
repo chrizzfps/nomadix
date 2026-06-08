@@ -31,6 +31,7 @@ import { CurrencyToggle } from "@/components/shared/currency-toggle";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { CURRENCY_SYMBOLS, TRANSACTION_CATEGORIES } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
+import { convertTransactionAmount } from "@/lib/currency-helpers";
 
 interface VaultData {
     id: string;
@@ -53,6 +54,7 @@ interface TransactionData {
     created_at: string;
     vault_name?: string;
     fee?: number | null;
+    exchange_rate_at_time?: number | null;
 }
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -78,7 +80,7 @@ const categoryIcons: Record<string, React.ElementType> = {
 
 export default function VaultsPage() {
     const supabase = createClient();
-    const { displayCurrency, convert, loadRate } = useCurrencyStore();
+    const { displayCurrency, convert, loadRate, getActiveRate } = useCurrencyStore();
     const symbol = CURRENCY_SYMBOLS[displayCurrency];
 
     const ACTIVITY_PAGE_SIZE = 10;
@@ -609,9 +611,12 @@ export default function VaultsPage() {
                                             {item.amount > 0 ? "+" : ""}
                                             {symbol}
                                             {Math.abs(
-                                                convert(
+                                                convertTransactionAmount(
                                                     item.amount,
-                                                    (item.original_currency || "USD") as "EUR" | "USD"
+                                                    (item.original_currency || "USD") as "EUR" | "USD",
+                                                    displayCurrency,
+                                                    item.exchange_rate_at_time,
+                                                    getActiveRate()
                                                 )
                                             ).toLocaleString("en-US", {
                                                 minimumFractionDigits: 2,

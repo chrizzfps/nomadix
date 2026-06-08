@@ -33,6 +33,7 @@ interface TransactionDetailModalProps {
         created_at: string;
         vault_name?: string;
         fee?: number | null;
+        exchange_rate_at_time?: number | null;
     } | null;
 }
 
@@ -309,6 +310,33 @@ export function TransactionDetailModal({
                                     </p>
                                 </div>
                             </div>
+
+                            {transaction.exchange_rate_at_time && transaction.exchange_rate_at_time > 0 ? (
+                                <div className="py-3.5 space-y-2">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                                        Exchange Rate
+                                    </p>
+                                    <div className="rounded-xl border border-zinc-150 bg-zinc-50 p-3.5 space-y-2 text-xs text-zinc-600">
+                                        <div className="flex justify-between">
+                                            <span>Moneda origen:</span>
+                                            <span className="font-semibold text-zinc-800">{transaction.original_currency}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Tasa aplicada:</span>
+                                            <span className="font-bold text-zinc-900">
+                                                {transaction.original_currency === "EUR"
+                                                    ? `1 EUR = ${(1 / transaction.exchange_rate_at_time).toFixed(4)} USD`
+                                                    : `1 USD = ${transaction.exchange_rate_at_time.toFixed(4)} EUR`
+                                                }
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between border-t border-zinc-200 pt-2 font-medium text-zinc-500">
+                                            <span>Tasa interna (USD → EUR):</span>
+                                            <span>{transaction.exchange_rate_at_time.toFixed(4)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
                         </div>
 
                         {/* Delete Section */}

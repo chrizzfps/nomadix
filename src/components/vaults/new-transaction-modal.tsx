@@ -62,6 +62,13 @@ export function NewTransactionModal({
     );
     const [includeFee, setIncludeFee] = useState(false);
     const [fee, setFee] = useState("");
+    
+    // Custom Rate state
+    const [useCustomRate, setUseCustomRate] = useState(false);
+    const [customRateMode, setCustomRateMode] = useState<"auto" | "manual">("auto");
+    const [customRateVal, setCustomRateVal] = useState("");
+    const [customRateDirection, setCustomRateDirection] = useState<"from_to" | "to_from">("from_to");
+    const [equivalentAmount, setEquivalentAmount] = useState("");
 
     // Mixed transaction state
     const [mixedCurrency, setMixedCurrency] = useState<Currency>("EUR");
@@ -161,6 +168,192 @@ export function NewTransactionModal({
             )
             : 0;
 
+    const officialRate = getActiveRate();
+
+    const transferBreakdown = useMemo(() => {
+        if (!selectedVault || !transferToVault || selectedVault.currency === transferToVault.currency || !amount) return null;
+        const sVal = parseFloat(amount) || 0;
+        if (sVal <= 0) return null;
+
+        const offRate = officialRate; // USD -> EUR
+
+        // Calculate received amount using official rate
+        const officialReceived = convertBetween(sVal, selectedVault.currency, transferToVault.currency);
+
+        let finalRate = offRate;
+        let finalReceived = officialReceived;
+
+        if (useCustomRate) {
+            if (customRateMode === "auto") {
+                const rVal = parseFloat(equivalentAmount) || 0;
+                if (rVal > 0) {
+                    finalReceived = rVal;
+                    // rate USD -> EUR
+                    if (selectedVault.currency === "EUR" && transferToVault.currency === "USD") {
+                        // S (EUR) / R (USD)
+                        finalRate = sVal / rVal;
+                    } else {
+                        // R (EUR) / S (USD)
+                        finalRate = rVal / sVal;
+                    }
+                }
+            } else {
+                const manualVal = parseFloat(customRateVal) || 0;
+                if (manualVal > 0) {
+                    if (selectedVault.currency === "EUR" && transferToVault.currency === "USD") {
+                        if (customRateDirection === "from_to") {
+                            // 1 EUR = X USD => R = S * X
+                            finalReceived = sVal * manualVal;
+                            finalRate = 1 / manualVal;
+                        } else {
+                            // 1 USD = Y EUR => R = S / Y
+                            finalReceived = sVal / manualVal;
+                            finalRate = manualVal;
+                        }
+                    } else {
+                        // From USD to EUR
+                        if (customRateDirection === "from_to") {
+                            // 1 USD = X EUR => R = S * X
+                            finalReceived = sVal * manualVal;
+                            finalRate = manualVal;
+                        } else {
+                            // 1 EUR = Y USD => R = S / Y
+                            finalReceived = sVal / manualVal;
+                            finalRate = 1 / manualVal;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Compare received amounts
+        const diffDest = finalReceived - officialReceived;
+        // Convert difference to source currency at official rate
+        let diffSource = 0;
+        if (selectedVault.currency === "EUR" && transferToVault.currency === "USD") {
+            // diffDest is in USD. USD -> EUR: multiply by offRate
+            diffSource = diffDest * offRate;
+        } else {
+            // diffDest is in EUR. EUR -> USD: divide by offRate
+            diffSource = diffDest / offRate;
+        }
+
+        const tFee = includeFee ? (parseFloat(fee) || 0) : 0;
+        const lossInSource = diffSource < 0 ? -diffSource : 0;
+        const totalCost = tFee + lossInSource;
+
+        return {
+            officialRate: offRate,
+            appliedRate: finalRate,
+            officialReceived,
+            appliedReceived: finalReceived,
+            differenceDest: diffDest,
+            differenceSource: diffSource,
+            fee: tFee,
+            totalCost,
+            lossInSource,
+        };
+    }, [
+        selectedVault,
+        transferToVault,
+        amount,
+        useCustomRate,
+        customRateMode,
+        equivalentAmount,
+        customRateVal,
+        customRateDirection,
+        includeFee,
+        fee,
+        officialRate
+    ]);
+
+    const txBreakdown = useMemo(() => {
+        if (txType === "transfer" || txType === "mixed" || !selectedVault || !amount) return null;
+        const amountVal = parseFloat(amount) || 0;
+        if (amountVal <= 0) return null;
+
+        const offRate = officialRate; // USD -> EUR
+        const oppositeCurrency = selectedVault.currency === "EUR" ? "USD" : "EUR";
+        const officialEquivalent = convertBetween(amountVal, selectedVault.currency, oppositeCurrency);
+
+        let finalRate = offRate;
+        let finalEquivalent = officialEquivalent;
+
+        if (useCustomRate) {
+            if (customRateMode === "auto") {
+                const eqVal = parseFloat(equivalentAmount) || 0;
+                if (eqVal > 0) {
+                    finalEquivalent = eqVal;
+                    if (selectedVault.currency === "EUR") {
+                        // EUR -> USD. amountVal / finalEquivalent
+                        finalRate = amountVal / eqVal;
+                    } else {
+                        // USD -> EUR. finalEquivalent / amountVal
+                        finalRate = eqVal / amountVal;
+                    }
+                }
+            } else {
+                const manualVal = parseFloat(customRateVal) || 0;
+                if (manualVal > 0) {
+                    if (selectedVault.currency === "EUR") {
+                        if (customRateDirection === "from_to") {
+                            // 1 EUR = X USD
+                            finalEquivalent = amountVal * manualVal;
+                            finalRate = 1 / manualVal;
+                        } else {
+                            // 1 USD = Y EUR
+                            finalEquivalent = amountVal / manualVal;
+                            finalRate = manualVal;
+                        }
+                    } else {
+                        // Vault is USD
+                        if (customRateDirection === "from_to") {
+                            // 1 USD = X EUR
+                            finalEquivalent = amountVal * manualVal;
+                            finalRate = manualVal;
+                        } else {
+                            // 1 EUR = Y USD
+                            finalEquivalent = amountVal / manualVal;
+                            finalRate = 1 / manualVal;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Compare equivalents
+        const diffOpposite = finalEquivalent - officialEquivalent;
+        // Convert difference to vault's currency using official rate
+        let diffVault = 0;
+        if (selectedVault.currency === "EUR") {
+            // diffOpposite is in USD. USD -> EUR: multiply by offRate
+            diffVault = diffOpposite * offRate;
+        } else {
+            // diffOpposite is in EUR. EUR -> USD: divide by offRate
+            diffVault = diffOpposite / offRate;
+        }
+
+        return {
+            officialRate: offRate,
+            appliedRate: finalRate,
+            officialEquivalent,
+            appliedEquivalent: finalEquivalent,
+            differenceOpposite: diffOpposite,
+            differenceVault: diffVault,
+            oppositeCurrency,
+        };
+    }, [
+        txType,
+        selectedVault,
+        amount,
+        useCustomRate,
+        customRateMode,
+        equivalentAmount,
+        customRateVal,
+        customRateDirection,
+        officialRate
+    ]);
+
     const addMixedEntry = () => {
         const usedIds = mixedEntries.map((e) => e.vaultId);
         const available = vaults.find((v) => !usedIds.includes(v.id));
@@ -210,6 +403,10 @@ export function NewTransactionModal({
         } = await supabase.auth.getUser();
         if (!user) return;
 
+        const storedExchangeRate = useCustomRate && txBreakdown
+            ? txBreakdown.appliedRate
+            : null;
+
         const { error: insertError } = await supabase
             .from("transactions")
             .insert({
@@ -223,6 +420,7 @@ export function NewTransactionModal({
                 original_currency: selectedVault?.currency || "EUR",
                 category: category || null,
                 description: description || null,
+                exchange_rate_at_time: storedExchangeRate,
             });
 
         if (insertError) {
@@ -271,11 +469,17 @@ export function NewTransactionModal({
             return;
         }
 
-        const receivedAmount = convertBetween(
-            transferAmount,
-            fromVault.currency,
-            toVault.currency
-        );
+        const receivedAmount = useCustomRate && transferBreakdown
+            ? transferBreakdown.appliedReceived
+            : convertBetween(
+                transferAmount,
+                fromVault.currency,
+                toVault.currency
+            );
+
+        const storedExchangeRate = useCustomRate && transferBreakdown
+            ? transferBreakdown.appliedRate
+            : null;
 
         const fromSymbol = CURRENCY_SYMBOLS[fromVault.currency] || "$";
         const toSymbol = CURRENCY_SYMBOLS[toVault.currency] || "$";
@@ -296,6 +500,7 @@ export function NewTransactionModal({
                     category: null,
                     description: `[Transfer → ${toVault.name}] ${descText}`,
                     fee: transferFee,
+                    exchange_rate_at_time: storedExchangeRate,
                 },
                 {
                     user_id: user.id,
@@ -306,6 +511,7 @@ export function NewTransactionModal({
                     category: null,
                     description: `[Transfer ← ${fromVault.name}] ${descText}`,
                     fee: 0,
+                    exchange_rate_at_time: storedExchangeRate,
                 },
             ]);
 
@@ -389,6 +595,11 @@ export function NewTransactionModal({
         setIsLoading(false);
         setIncludeFee(false);
         setFee("");
+        setUseCustomRate(false);
+        setCustomRateMode("auto");
+        setCustomRateVal("");
+        setCustomRateDirection("from_to");
+        setEquivalentAmount("");
         setMixedEntries([
             { vaultId: vaults[0]?.id || "", amount: "" },
             { vaultId: vaults[1]?.id || vaults[0]?.id || "", amount: "" },
@@ -647,8 +858,176 @@ export function NewTransactionModal({
                                         </div>
                                     )}
 
+                                    {/* Custom Rate Toggle */}
+                                    {selectedVault &&
+                                        transferToVault &&
+                                        selectedVault.currency !== transferToVault.currency && (
+                                            <div className="space-y-3 pt-1 border-t border-zinc-100 mt-2">
+                                                <label className="flex items-center gap-3 cursor-pointer select-none">
+                                                    <div className="relative">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={useCustomRate}
+                                                            onChange={(e) => setUseCustomRate(e.target.checked)}
+                                                            className="peer sr-only"
+                                                        />
+                                                        <div className="h-5 w-9 rounded-full bg-zinc-200 peer-checked:bg-zinc-900 transition-colors" />
+                                                        <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+                                                    </div>
+                                                    <span className="text-xs font-semibold text-zinc-600">
+                                                        Usar tasa de cambio personalizada
+                                                    </span>
+                                                </label>
+
+                                                {useCustomRate && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: "auto" }}
+                                                        exit={{ opacity: 0, height: 0 }}
+                                                        transition={{ duration: 0.15 }}
+                                                        className="space-y-3 overflow-hidden pl-1"
+                                                    >
+                                                        {/* Calculation Mode Tabs */}
+                                                        <div className="flex rounded-lg border border-zinc-200 p-0.5 bg-zinc-50 w-full">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setCustomRateMode("auto")}
+                                                                className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-all ${customRateMode === "auto"
+                                                                        ? "bg-white text-zinc-900 shadow-sm border border-zinc-200"
+                                                                        : "text-zinc-500 hover:text-zinc-700"
+                                                                    }`}
+                                                            >
+                                                                Calcular automático
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setCustomRateMode("manual")}
+                                                                className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-all ${customRateMode === "manual"
+                                                                        ? "bg-white text-zinc-900 shadow-sm border border-zinc-200"
+                                                                        : "text-zinc-500 hover:text-zinc-700"
+                                                                    }`}
+                                                            >
+                                                                Tasa manual
+                                                            </button>
+                                                        </div>
+
+                                                        {customRateMode === "auto" ? (
+                                                            <div className="space-y-1">
+                                                                <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                                                    Monto recibido en {transferToVault.name}
+                                                                </label>
+                                                                <div className="relative">
+                                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-zinc-400">
+                                                                        {CURRENCY_SYMBOLS[transferToVault.currency]}
+                                                                    </span>
+                                                                    <input
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        min="0"
+                                                                        placeholder="0.00"
+                                                                        value={equivalentAmount}
+                                                                        onChange={(e) => setEquivalentAmount(e.target.value)}
+                                                                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-8 pr-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-2">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                                                        Tasa de cambio aplicada
+                                                                    </span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setCustomRateDirection(customRateDirection === "from_to" ? "to_from" : "from_to")}
+                                                                        className="text-[10px] font-semibold text-zinc-500 hover:text-zinc-900 underline underline-offset-2 decoration-dotted"
+                                                                    >
+                                                                        Cambiar dirección
+                                                                    </button>
+                                                                </div>
+
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs font-bold text-zinc-500 whitespace-nowrap bg-zinc-100 px-2.5 py-2 rounded-lg border border-zinc-200">
+                                                                        {customRateDirection === "from_to"
+                                                                            ? `1 ${selectedVault.currency} =`
+                                                                            : `1 ${transferToVault.currency} =`
+                                                                        }
+                                                                    </span>
+                                                                    <div className="relative flex-1">
+                                                                        <input
+                                                                            type="number"
+                                                                            step="0.0001"
+                                                                            min="0"
+                                                                            placeholder="0.0000"
+                                                                            value={customRateVal}
+                                                                            onChange={(e) => setCustomRateVal(e.target.value)}
+                                                                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                                        />
+                                                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-zinc-400">
+                                                                            {customRateDirection === "from_to" ? transferToVault.currency : selectedVault.currency}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Breakdown Box */}
+                                                        {transferBreakdown && (
+                                                            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 space-y-2.5 text-xs text-zinc-600 transition-all">
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-zinc-400 font-medium">Tasa oficial:</span>
+                                                                    <span className="font-semibold text-zinc-800">
+                                                                        1 {selectedVault.currency} = {convertBetween(1, selectedVault.currency, transferToVault.currency).toFixed(4)} {transferToVault.currency}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-zinc-400 font-medium">Tasa aplicada:</span>
+                                                                    <span className="font-bold text-zinc-900">
+                                                                        1 {selectedVault.currency} = {(transferBreakdown.appliedReceived / (parseFloat(amount) || 1)).toFixed(4)} {transferToVault.currency}
+                                                                    </span>
+                                                                </div>
+                                                                {transferBreakdown.differenceDest !== 0 && (
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className="text-zinc-400 font-medium">Diferencia vs oficial:</span>
+                                                                        <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${transferBreakdown.differenceDest < 0 ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
+                                                                            {transferBreakdown.differenceDest < 0 ? '-' : '+'}
+                                                                            {CURRENCY_SYMBOLS[transferToVault.currency]}{Math.abs(transferBreakdown.differenceDest).toFixed(2)}
+                                                                            {transferBreakdown.differenceDest < 0 ? ' (Pérdida)' : ' (Ganancia)'}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                                {includeFee && (parseFloat(fee) || 0) > 0 && (
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-zinc-400 font-medium">Comisión:</span>
+                                                                        <span className="font-semibold text-zinc-800">
+                                                                            {CURRENCY_SYMBOLS[selectedVault.currency]}{(parseFloat(fee) || 0).toFixed(2)}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                                {transferBreakdown.lossInSource > 0 && (
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-zinc-400 font-medium">Pérdida por tipo de cambio:</span>
+                                                                        <span className="font-semibold text-amber-600">
+                                                                            {CURRENCY_SYMBOLS[selectedVault.currency]}{transferBreakdown.lossInSource.toFixed(2)}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex justify-between border-t border-zinc-200 pt-2 font-bold text-sm">
+                                                                    <span className="text-zinc-700">Costo total operación:</span>
+                                                                    <span className="text-zinc-900">
+                                                                        {CURRENCY_SYMBOLS[selectedVault.currency]}{transferBreakdown.totalCost.toFixed(2)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </motion.div>
+                                                )}
+                                            </div>
+                                        )}
+
                                     {/* Conversion preview */}
-                                    {transferAmount > 0 &&
+                                    {!useCustomRate &&
+                                        transferAmount > 0 &&
                                         selectedVault &&
                                         transferToVault &&
                                         selectedVault.currency !==
@@ -917,6 +1296,151 @@ export function NewTransactionModal({
                                             />
                                         </div>
                                     </div>
+                                    {/* Custom Rate Toggle for Income/Expense */}
+                                    {selectedVault && (
+                                        <div className="space-y-3 pt-1">
+                                            <label className="flex items-center gap-3 cursor-pointer select-none">
+                                                <div className="relative">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={useCustomRate}
+                                                        onChange={(e) => setUseCustomRate(e.target.checked)}
+                                                        className="peer sr-only"
+                                                    />
+                                                    <div className="h-5 w-9 rounded-full bg-zinc-200 peer-checked:bg-zinc-900 transition-colors" />
+                                                    <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+                                                </div>
+                                                <span className="text-xs font-semibold text-zinc-600">
+                                                    Usar tasa de cambio personalizada
+                                                </span>
+                                            </label>
+
+                                            {useCustomRate && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: "auto" }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    transition={{ duration: 0.15 }}
+                                                    className="space-y-3 overflow-hidden pl-1"
+                                                >
+                                                    {/* Calculation Mode Tabs */}
+                                                    <div className="flex rounded-lg border border-zinc-200 p-0.5 bg-zinc-50 w-full">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setCustomRateMode("auto")}
+                                                            className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-all ${customRateMode === "auto"
+                                                                    ? "bg-white text-zinc-900 shadow-sm border border-zinc-200"
+                                                                    : "text-zinc-500 hover:text-zinc-700"
+                                                                }`}
+                                                        >
+                                                            Monto equivalente
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setCustomRateMode("manual")}
+                                                            className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-all ${customRateMode === "manual"
+                                                                    ? "bg-white text-zinc-900 shadow-sm border border-zinc-200"
+                                                                    : "text-zinc-500 hover:text-zinc-700"
+                                                                }`}
+                                                        >
+                                                            Tasa manual
+                                                        </button>
+                                                    </div>
+
+                                                    {customRateMode === "auto" ? (
+                                                        <div className="space-y-1">
+                                                            <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                                                Monto equivalente en {selectedVault.currency === "EUR" ? "USD" : "EUR"}
+                                                            </label>
+                                                            <div className="relative">
+                                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-zinc-400">
+                                                                    {CURRENCY_SYMBOLS[selectedVault.currency === "EUR" ? "USD" : "EUR"]}
+                                                                </span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    min="0"
+                                                                    placeholder="0.00"
+                                                                    value={equivalentAmount}
+                                                                    onChange={(e) => setEquivalentAmount(e.target.value)}
+                                                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-8 pr-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-2">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                                                    Tasa de cambio aplicada
+                                                                </span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setCustomRateDirection(customRateDirection === "from_to" ? "to_from" : "from_to")}
+                                                                    className="text-[10px] font-semibold text-zinc-500 hover:text-zinc-900 underline underline-offset-2 decoration-dotted"
+                                                                >
+                                                                    Cambiar dirección
+                                                                </button>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-xs font-bold text-zinc-500 whitespace-nowrap bg-zinc-100 px-2.5 py-2 rounded-lg border border-zinc-200">
+                                                                    {customRateDirection === "from_to"
+                                                                        ? `1 ${selectedVault.currency} =`
+                                                                        : `1 ${selectedVault.currency === "EUR" ? "USD" : "EUR"} =`
+                                                                    }
+                                                                </span>
+                                                                <div className="relative flex-1">
+                                                                    <input
+                                                                        type="number"
+                                                                        step="0.0001"
+                                                                        min="0"
+                                                                        placeholder="0.0000"
+                                                                        value={customRateVal}
+                                                                        onChange={(e) => setCustomRateVal(e.target.value)}
+                                                                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                                    />
+                                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-zinc-400">
+                                                                        {customRateDirection === "from_to"
+                                                                            ? (selectedVault.currency === "EUR" ? "USD" : "EUR")
+                                                                            : selectedVault.currency
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Comparison Breakdown Box */}
+                                                    {txBreakdown && (
+                                                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 space-y-2.5 text-xs text-zinc-600 transition-all">
+                                                            <div className="flex justify-between">
+                                                                <span className="text-zinc-400 font-medium">Tasa oficial:</span>
+                                                                <span className="font-semibold text-zinc-800">
+                                                                    1 {selectedVault.currency} = {convertBetween(1, selectedVault.currency, txBreakdown.oppositeCurrency).toFixed(4)} {txBreakdown.oppositeCurrency}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-zinc-400 font-medium">Tasa aplicada:</span>
+                                                                <span className="font-bold text-zinc-900">
+                                                                    1 {selectedVault.currency} = {(txBreakdown.appliedEquivalent / (parseFloat(amount) || 1)).toFixed(4)} {txBreakdown.oppositeCurrency}
+                                                                </span>
+                                                            </div>
+                                                            {txBreakdown.differenceOpposite !== 0 && (
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-zinc-400 font-medium">Diferencia vs oficial:</span>
+                                                                    <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${txBreakdown.differenceOpposite < 0 ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
+                                                                        {txBreakdown.differenceOpposite < 0 ? '-' : '+'}
+                                                                        {CURRENCY_SYMBOLS[txBreakdown.oppositeCurrency]}{Math.abs(txBreakdown.differenceOpposite).toFixed(2)}
+                                                                        {txBreakdown.differenceOpposite < 0 ? ' (Pérdida)' : ' (Ganancia)'}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </motion.div>
+                                            )}
+                                        </div>
+                                    )}
                                 </>
                             )}
 
