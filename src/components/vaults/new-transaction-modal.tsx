@@ -333,6 +333,8 @@ export function NewTransactionModal({
             diffVault = diffOpposite / offRate;
         }
 
+        const isGain = txType === "expense" ? diffOpposite < 0 : diffOpposite > 0;
+
         return {
             officialRate: offRate,
             appliedRate: finalRate,
@@ -341,6 +343,7 @@ export function NewTransactionModal({
             differenceOpposite: diffOpposite,
             differenceVault: diffVault,
             oppositeCurrency,
+            isGain,
         };
     }, [
         txType,
@@ -1428,10 +1431,10 @@ export function NewTransactionModal({
                                                             {txBreakdown.differenceOpposite !== 0 && (
                                                                 <div className="flex justify-between items-center">
                                                                     <span className="text-zinc-400 font-medium">Diferencia vs oficial:</span>
-                                                                    <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${txBreakdown.differenceOpposite < 0 ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
-                                                                        {txBreakdown.differenceOpposite < 0 ? '-' : '+'}
+                                                                    <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${txBreakdown.isGain ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
+                                                                        {txBreakdown.isGain ? '+' : '-'}
                                                                         {CURRENCY_SYMBOLS[txBreakdown.oppositeCurrency]}{Math.abs(txBreakdown.differenceOpposite).toFixed(2)}
-                                                                        {txBreakdown.differenceOpposite < 0 ? ' (Pérdida)' : ' (Ganancia)'}
+                                                                        {txBreakdown.isGain ? ' (Ganancia)' : ' (Pérdida)'}
                                                                     </span>
                                                                 </div>
                                                             )}

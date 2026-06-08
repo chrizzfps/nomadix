@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     X,
@@ -17,6 +17,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
+import { useCurrencyStore } from "@/stores/currency-store";
 
 interface TransactionDetailModalProps {
     isOpen: boolean;
@@ -47,6 +48,64 @@ export function TransactionDetailModal({
     const addToast = useToastStore((s) => s.addToast);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    const { getActiveRate } = useCurrencyStore();
+    const offRate = getActiveRate();
+
+    const customRateDetail = useMemo(() => {
+        if (!transaction || !transaction.exchange_rate_at_time || transaction.exchange_rate_at_time <= 0) return null;
+        
+        const amountVal = Math.abs(
+            transaction.type === "transfer" && transaction.fee && transaction.amount < 0
+                ? Math.abs(transaction.amount) - transaction.fee
+                : transaction.amount
+        );
+        const currency = transaction.original_currency;
+        const oppositeCurrency = currency === "EUR" ? "USD" : "EUR";
+        const appliedRate = transaction.exchange_rate_at_time;
+        
+        // Calculate equivalents
+        let appliedEquivalent = 0;
+        if (currency === "EUR") {
+            appliedEquivalent = amountVal / appliedRate;
+        } else {
+            appliedEquivalent = amountVal * appliedRate;
+        }
+
+        const officialEquivalent = currency === "EUR" ? amountVal / offRate : amountVal * offRate;
+
+        if (transaction.type === "transfer") {
+            const isSource = transaction.amount < 0;
+            const cSent = isSource ? currency : oppositeCurrency;
+            const cReceived = isSource ? oppositeCurrency : currency;
+
+            const sVal = isSource ? amountVal : appliedEquivalent;
+            const rVal = isSource ? appliedEquivalent : amountVal;
+
+            const officialReceived = cSent === "USD" ? sVal * offRate : sVal / offRate;
+            const diffReceived = rVal - officialReceived;
+            const isGain = diffReceived > 0;
+
+            return {
+                isTransfer: true,
+                isGain,
+                differenceDest: diffReceived,
+                oppositeCurrency,
+                appliedEquivalent,
+            };
+        } else {
+            const diffOpposite = appliedEquivalent - officialEquivalent;
+            const isGain = transaction.amount < 0 ? diffOpposite < 0 : diffOpposite > 0;
+
+            return {
+                isTransfer: false,
+                isGain,
+                differenceOpposite: diffOpposite,
+                oppositeCurrency,
+                appliedEquivalent,
+            };
+        }
+    }, [transaction, offRate]);
 
     if (!transaction) return null;
 
@@ -311,7 +370,7 @@ export function TransactionDetailModal({
                                 </div>
                             </div>
 
-                            {transaction.exchange_rate_at_time && transaction.exchange_rate_at_time > 0 ? (
+                            {transaction.exchange_rate_at_time && transaction.exchange_rate_at_time > 0 && customRateDetail ? (
                                 <div className="py-3.5 space-y-2">
                                     <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                                         Exchange Rate
@@ -330,6 +389,31 @@ export function TransactionDetailModal({
                                                 }
                                             </span>
                                         </div>
+                                        {customRateDetail.isTransfer ? (
+                                            customRateDetail.differenceDest !== 0 && (
+                                                <div className="flex justify-between items-center">
+                                                    <span>Diferencia vs oficial:</span>
+                                                    <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${customRateDetail.isGain ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
+                                                        {customRateDetail.isGain ? '+' : '-'}
+                                                        {CURRENCY_SYMBOLS[transaction.amount < 0 ? customRateDetail.oppositeCurrency : transaction.original_currency]}
+                                                        {Math.abs(customRateDetail.differenceDest).toFixed(2)}
+                                                        {customRateDetail.isGain ? ' (Ganancia)' : ' (Pérdida)'}
+                                                    </span>
+                                                </div>
+                                            )
+                                        ) : (
+                                            customRateDetail.differenceOpposite !== 0 && (
+                                                <div className="flex justify-between items-center">
+                                                    <span>Diferencia vs oficial:</span>
+                                                    <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${customRateDetail.isGain ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
+                                                        {customRateDetail.isGain ? '+' : '-'}
+                                                        {CURRENCY_SYMBOLS[customRateDetail.oppositeCurrency]}
+                                                        {Math.abs(customRateDetail.differenceOpposite).toFixed(2)}
+                                                        {customRateDetail.isGain ? ' (Ganancia)' : ' (Pérdida)'}
+                                                    </span>
+                                                </div>
+                                            )
+                                        )}
                                         <div className="flex justify-between border-t border-zinc-200 pt-2 font-medium text-zinc-500">
                                             <span>Tasa interna (USD → EUR):</span>
                                             <span>{transaction.exchange_rate_at_time.toFixed(4)}</span>

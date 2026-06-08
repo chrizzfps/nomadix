@@ -129,12 +129,9 @@ export function TransactionEditModal({
 
         const offRate = getActiveRate(); // USD -> EUR
         const oppositeCurrency = currency === "EUR" ? "USD" : "EUR";
-        
-        // Calculate official equivalent amount
-        const officialEquivalent = currency === "EUR" ? amountVal / offRate : amountVal * offRate;
 
         let finalRate = offRate;
-        let finalEquivalent = officialEquivalent;
+        let finalEquivalent = 0; // equivalent in opposite currency
 
         if (useCustomRate) {
             if (customRateMode === "auto") {
@@ -159,7 +156,6 @@ export function TransactionEditModal({
                             finalRate = manualVal;
                         }
                     } else {
-                        // USD
                         if (customRateDirection === "from_to") {
                             finalEquivalent = amountVal * manualVal;
                             finalRate = manualVal;
@@ -170,22 +166,56 @@ export function TransactionEditModal({
                     }
                 }
             }
+        } else {
+            finalEquivalent = currency === "EUR" ? amountVal / offRate : amountVal * offRate;
         }
 
-        const diffOpposite = finalEquivalent - officialEquivalent;
-        return {
-            officialRate: offRate,
-            appliedRate: finalRate,
-            officialEquivalent,
-            appliedEquivalent: finalEquivalent,
-            differenceOpposite: diffOpposite,
-            oppositeCurrency,
-        };
+        if (type === "transfer") {
+            const isSource = transaction.amount < 0;
+            const cSent = isSource ? currency : oppositeCurrency;
+            const cReceived = isSource ? oppositeCurrency : currency;
+
+            const sVal = isSource ? amountVal : finalEquivalent;
+            const rVal = isSource ? finalEquivalent : amountVal;
+
+            const officialReceived = cSent === "USD" ? sVal * offRate : sVal / offRate;
+            const diffReceived = rVal - officialReceived;
+            const isGain = diffReceived > 0;
+
+            const differenceDest = diffReceived;
+            const differenceSource = cReceived === "USD" ? diffReceived * offRate : diffReceived / offRate;
+
+            return {
+                officialRate: offRate,
+                appliedRate: finalRate,
+                isTransfer: true,
+                isGain,
+                differenceDest,
+                differenceSource,
+                oppositeCurrency,
+                appliedEquivalent: finalEquivalent,
+            };
+        } else {
+            const officialEquivalent = currency === "EUR" ? amountVal / offRate : amountVal * offRate;
+            const diffOpposite = finalEquivalent - officialEquivalent;
+            const isGain = type === "expense" ? diffOpposite < 0 : diffOpposite > 0;
+
+            return {
+                officialRate: offRate,
+                appliedRate: finalRate,
+                isTransfer: false,
+                isGain,
+                differenceOpposite: diffOpposite,
+                oppositeCurrency,
+                appliedEquivalent: finalEquivalent,
+            };
+        }
     }, [
         isOpen,
         transaction,
         amount,
         currency,
+        type,
         useCustomRate,
         customRateMode,
         equivalentAmount,
@@ -725,15 +755,29 @@ export function TransactionEditModal({
                                                         1 {currency} = {(editBreakdown.appliedEquivalent / (parseAmount(amount) || 1)).toFixed(4)} {editBreakdown.oppositeCurrency}
                                                     </span>
                                                 </div>
-                                                {editBreakdown.differenceOpposite !== 0 && (
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-zinc-400 font-medium">Diferencia vs oficial:</span>
-                                                        <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${editBreakdown.differenceOpposite < 0 ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
-                                                            {editBreakdown.differenceOpposite < 0 ? '-' : '+'}
-                                                            {CURRENCY_SYMBOLS[editBreakdown.oppositeCurrency]}{Math.abs(editBreakdown.differenceOpposite).toFixed(2)}
-                                                            {editBreakdown.differenceOpposite < 0 ? ' (Pérdida)' : ' (Ganancia)'}
-                                                        </span>
-                                                    </div>
+                                                {editBreakdown.isTransfer ? (
+                                                    editBreakdown.differenceDest !== 0 && (
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-zinc-400 font-medium">Diferencia vs oficial:</span>
+                                                            <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${editBreakdown.isGain ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
+                                                                {editBreakdown.isGain ? '+' : '-'}
+                                                                {CURRENCY_SYMBOLS[transaction.amount < 0 ? editBreakdown.oppositeCurrency : currency]}
+                                                                {Math.abs(editBreakdown.differenceDest).toFixed(2)}
+                                                                {editBreakdown.isGain ? ' (Ganancia)' : ' (Pérdida)'}
+                                                            </span>
+                                                        </div>
+                                                    )
+                                                ) : (
+                                                    editBreakdown.differenceOpposite !== 0 && (
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-zinc-400 font-medium">Diferencia vs oficial:</span>
+                                                            <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${editBreakdown.isGain ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
+                                                                {editBreakdown.isGain ? '+' : '-'}
+                                                                {CURRENCY_SYMBOLS[editBreakdown.oppositeCurrency]}{Math.abs(editBreakdown.differenceOpposite).toFixed(2)}
+                                                                {editBreakdown.isGain ? ' (Ganancia)' : ' (Pérdida)'}
+                                                            </span>
+                                                        </div>
+                                                    )
                                                 )}
                                             </div>
                                         )}
