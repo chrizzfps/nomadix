@@ -188,7 +188,7 @@ export function TransactionEditModal({
             return {
                 officialRate: offRate,
                 appliedRate: finalRate,
-                isTransfer: true,
+                isTransfer: true as const,
                 isGain,
                 differenceDest,
                 differenceSource,
@@ -203,7 +203,7 @@ export function TransactionEditModal({
             return {
                 officialRate: offRate,
                 appliedRate: finalRate,
-                isTransfer: false,
+                isTransfer: false as const,
                 isGain,
                 differenceOpposite: diffOpposite,
                 oppositeCurrency,

@@ -87,7 +87,7 @@ export function TransactionDetailModal({
             const isGain = diffReceived > 0;
 
             return {
-                isTransfer: true,
+                isTransfer: true as const,
                 isGain,
                 differenceDest: diffReceived,
                 oppositeCurrency,
@@ -98,7 +98,7 @@ export function TransactionDetailModal({
             const isGain = transaction.amount < 0 ? diffOpposite < 0 : diffOpposite > 0;
 
             return {
-                isTransfer: false,
+                isTransfer: false as const,
                 isGain,
                 differenceOpposite: diffOpposite,
                 oppositeCurrency,
