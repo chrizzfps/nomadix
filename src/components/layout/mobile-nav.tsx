@@ -7,6 +7,7 @@ import {
     SquaresFour,
     Vault,
     Receipt,
+    ArrowsClockwise,
     IdentificationCard,
     Airplane,
     List,
@@ -16,13 +17,18 @@ import {
 } from "@phosphor-icons/react";
 import { signOut } from "@/app/auth/actions";
 import { AnimatePresence, motion } from "framer-motion";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: SquaresFour },
     { href: "/dashboard/vaults", label: "Vaults", icon: Vault },
     { href: "/dashboard/expenses", label: "Expenses", icon: Receipt },
-    { href: "/dashboard/identity", label: "Identity", icon: IdentificationCard },
+    { href: "/dashboard/subscriptions", label: "Subs", icon: ArrowsClockwise },
     { href: "/dashboard/travel", label: "Travel", icon: Airplane },
+];
+
+const moreNavItems = [
+    { href: "/dashboard/identity", label: "Identity", icon: IdentificationCard },
 ];
 
 export function MobileNav() {
@@ -57,12 +63,15 @@ export function MobileNav() {
                     </div>
                     <span className="text-sm font-semibold">Nomadix</span>
                 </div>
-                <button
-                    onClick={() => setIsOpen(!isOpen)}
-                    className="rounded-lg p-1.5 hover:bg-zinc-100 transition-colors"
-                >
-                    {isOpen ? <X size={20} /> : <List size={20} />}
-                </button>
+                <div className="flex items-center gap-1">
+                    <NotificationBell />
+                    <button
+                        onClick={() => setIsOpen(!isOpen)}
+                        className="rounded-lg p-1.5 hover:bg-zinc-100 transition-colors"
+                    >
+                        {isOpen ? <X size={20} /> : <List size={20} />}
+                    </button>
+                </div>
             </div>
 
             {/* Hamburger Menu Panel */}
@@ -84,6 +93,25 @@ export function MobileNav() {
                             className="fixed top-[57px] left-0 right-0 z-50 border-b border-zinc-200 bg-white px-4 py-3 shadow-lg lg:hidden"
                         >
                             <div className="space-y-1">
+                                {moreNavItems.map((item) => {
+                                    const Icon = item.icon;
+                                    const active = isActive(item.href);
+                                    return (
+                                        <Link
+                                            key={item.href}
+                                            href={item.href}
+                                            onClick={() => setIsOpen(false)}
+                                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                                                active
+                                                    ? "bg-zinc-900 text-white"
+                                                    : "text-zinc-600 hover:bg-zinc-100"
+                                            }`}
+                                        >
+                                            <Icon size={18} weight={active ? "fill" : "regular"} />
+                                            {item.label}
+                                        </Link>
+                                    );
+                                })}
                                 <Link
                                     href="/dashboard/settings"
                                     onClick={() => setIsOpen(false)}

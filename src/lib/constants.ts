@@ -64,6 +64,31 @@ export const NAV_ITEMS = [
     { href: "/dashboard", label: "Dashboard", icon: "SquaresFour" },
     { href: "/dashboard/vaults", label: "Vaults", icon: "Vault" },
     { href: "/dashboard/expenses", label: "Expenses", icon: "Receipt" },
+    { href: "/dashboard/subscriptions", label: "Subscriptions", icon: "ArrowsClockwise" },
     { href: "/dashboard/identity", label: "Identity", icon: "IdentificationCard" },
     { href: "/dashboard/travel", label: "Travel", icon: "Airplane" },
+] as const;
+
+// Subscriptions & recurring payments
+export const BILLING_CYCLES = [
+    { value: "weekly", label: "Weekly" },
+    { value: "biweekly", label: "Every 2 weeks" },
+    { value: "monthly", label: "Monthly" },
+    { value: "quarterly", label: "Quarterly" },
+    { value: "semiannual", label: "Every 6 months" },
+    { value: "yearly", label: "Yearly" },
+    { value: "custom_days", label: "Custom (N days)" },
+] as const;
+
+export const SUBSCRIPTION_STATUSES = [
+    { value: "active", label: "Active" },
+    { value: "paused", label: "Paused" },
+    { value: "canceled", label: "Canceled" },
+    { value: "ended", label: "Ended" },
+] as const;
+
+export const SUBSCRIPTION_FEE_MODES = [
+    { value: "none", label: "No fee" },
+    { value: "fixed", label: "Fixed amount" },
+    { value: "percent", label: "Percentage" },
 ] as const;

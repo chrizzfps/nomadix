@@ -29,6 +29,7 @@ import { createClient } from "@/lib/supabase/client";
 import { convertTransactionAmount } from "@/lib/currency-helpers";
 import { NewTransactionModal } from "@/components/vaults/new-transaction-modal";
 import { TransactionEditModal } from "@/components/vaults/transaction-edit-modal";
+import { UpcomingChargesWidget } from "@/components/subscriptions/upcoming-charges-widget";
 import Link from "next/link";
 import {
     LineChart,
@@ -437,6 +438,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Right Column — Transactions */}
+                <div className="space-y-6">
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -536,6 +538,9 @@ export default function DashboardPage() {
                         </Link>
                     </div>
                 </motion.div>
+
+                <UpcomingChargesWidget />
+                </div>
             </div>
 
             {/* New Transaction Modal */}

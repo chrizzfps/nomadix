@@ -6,6 +6,7 @@ import {
     SquaresFour,
     Vault,
     Receipt,
+    ArrowsClockwise,
     IdentificationCard,
     Airplane,
     GearSix,
@@ -13,11 +14,13 @@ import {
 } from "@phosphor-icons/react";
 import { signOut } from "@/app/auth/actions";
 import { APP_NAME } from "@/lib/constants";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: SquaresFour },
     { href: "/dashboard/vaults", label: "Vaults", icon: Vault },
     { href: "/dashboard/expenses", label: "Expenses", icon: Receipt },
+    { href: "/dashboard/subscriptions", label: "Subscriptions", icon: ArrowsClockwise },
     { href: "/dashboard/identity", label: "Identity", icon: IdentificationCard },
     { href: "/dashboard/travel", label: "Travel", icon: Airplane },
 ];
@@ -33,27 +36,30 @@ export function Sidebar() {
     return (
         <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[220px] flex-col border-r border-zinc-200 bg-white lg:flex">
             {/* Logo */}
-            <div className="flex items-center gap-3 px-6 py-6">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-900">
-                    <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M2 12h20" />
-                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                    </svg>
+            <div className="flex items-center justify-between gap-3 px-6 py-6">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-900">
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M2 12h20" />
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-zinc-900">{APP_NAME}</p>
+                        <p className="text-[10px] text-zinc-400">Premium Plan</p>
+                    </div>
                 </div>
-                <div>
-                    <p className="text-sm font-semibold text-zinc-900">{APP_NAME}</p>
-                    <p className="text-[10px] text-zinc-400">Premium Plan</p>
-                </div>
+                <NotificationBell />
             </div>
 
             {/* Navigation */}

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Currency } from "@/types";
 import { fetchExchangeRate, convertAmount } from "@/lib/exchange-rates";
+import { createClient } from "@/lib/supabase/client";
 
 const MANUAL_RATE_KEY = "nomadix_manual_rate";
 
@@ -89,5 +90,35 @@ export const useCurrencyStore = create<CurrencyState>((set, get) => ({
         }
         const rate = await fetchExchangeRate();
         set({ exchangeRate: rate, rateLoaded: true });
+
+        // Persist the active USD->EUR rate into user_exchange_rates so the
+        // server-side subscriptions charger (which has no access to this
+        // browser-only machinery) has something fresher than its 0.92
+        // fallback. Fire-and-forget: never blocks the UI on this.
+        void persistActiveRate(get().getActiveRate());
     },
 }));
+
+async function persistActiveRate(rate: number) {
+    if (!rate || rate <= 0) return;
+    try {
+        const supabase = createClient();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        await supabase.from("user_exchange_rates").upsert(
+            {
+                user_id: user.id,
+                base_currency: "USD",
+                target_currency: "EUR",
+                exchange_rate: rate,
+                last_updated: new Date().toISOString(),
+            },
+            { onConflict: "user_id,base_currency,target_currency" }
+        );
+    } catch {
+        // best-effort only
+    }
+}
