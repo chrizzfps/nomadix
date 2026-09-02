@@ -858,43 +858,54 @@ select cron.schedule(
 );
 
 -- ============================================================================
--- AI: OpenAI API key storage (Supabase Vault) + report support
+-- AI: multi-provider API key storage (Supabase Vault) + report support
 -- ----------------------------------------------------------------------------
 -- The raw key is never stored in a plain column and never returned to the
--- client after being saved. `public.user_openai_key` only holds a pointer
--- (secret_id) into vault.secrets plus a last4 for display. All writes go
--- through the SECURITY DEFINER RPCs below -- there is deliberately no
--- insert/update RLS policy on the table, so a client cannot repoint
--- secret_id at an arbitrary (possibly another user's) vault secret.
--- nomadix_get_openai_api_key() must only ever be called server-side (a
--- Route Handler / Server Action) -- never from client-side JS -- or the
--- decrypted key would reach the browser.
+-- client after being saved. `public.user_ai_keys` only holds a pointer
+-- (secret_id) into vault.secrets plus a last4 for display, keyed by
+-- (user_id, provider) so a user can hold one key per provider (openai,
+-- gemini, ...). All writes go through the SECURITY DEFINER RPCs below --
+-- there is deliberately no insert/update RLS policy on the table, so a
+-- client cannot repoint secret_id at an arbitrary (possibly another user's)
+-- vault secret. nomadix_get_ai_api_key() must only ever be called
+-- server-side (a Route Handler / Server Action) -- never from client-side
+-- JS -- or the decrypted key would reach the browser.
 -- ============================================================================
 
-create table if not exists public.user_openai_key (
-    user_id uuid primary key references auth.users(id) on delete cascade,
+create table if not exists public.user_ai_keys (
+    user_id uuid not null references auth.users(id) on delete cascade,
+    provider text not null check (provider in ('openai', 'gemini')),
     secret_id uuid not null,
     key_last4 text not null,
     created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now()
+    updated_at timestamptz not null default now(),
+    primary key (user_id, provider)
 );
 
-alter table public.user_openai_key enable row level security;
+alter table public.user_ai_keys enable row level security;
 
 do $$
 begin
     begin
-        create policy "user_openai_key_select_own" on public.user_openai_key
+        create policy "user_ai_keys_select_own" on public.user_ai_keys
         for select using (auth.uid() = user_id);
     exception when duplicate_object then null; end;
 end $$;
 
-drop trigger if exists user_openai_key_touch_trg on public.user_openai_key;
-create trigger user_openai_key_touch_trg
-    before update on public.user_openai_key
+drop trigger if exists user_ai_keys_touch_trg on public.user_ai_keys;
+create trigger user_ai_keys_touch_trg
+    before update on public.user_ai_keys
     for each row execute function public.nomadix_touch_updated_at();
 
-create or replace function public.nomadix_set_openai_api_key(p_key text)
+-- One-time forward migration from the OpenAI-only table this replaces.
+-- The vault secret itself is untouched -- only the pointer row moves -- so
+-- keys saved before this migration keep working with no re-entry needed.
+insert into public.user_ai_keys (user_id, provider, secret_id, key_last4, created_at, updated_at)
+select user_id, 'openai', secret_id, key_last4, created_at, updated_at
+  from public.user_openai_key
+on conflict (user_id, provider) do nothing;
+
+create or replace function public.nomadix_set_ai_api_key(p_provider text, p_key text)
 returns void
 language plpgsql
 security definer
@@ -908,28 +919,34 @@ begin
     if v_uid is null then
         raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
     end if;
+    if p_provider not in ('openai', 'gemini') then
+        raise exception 'Unknown provider' using errcode = 'invalid_parameter_value';
+    end if;
     if p_key is null or length(trim(p_key)) < 10 then
         raise exception 'Invalid API key' using errcode = 'invalid_parameter_value';
     end if;
 
-    select secret_id into v_existing from public.user_openai_key where user_id = v_uid;
+    select secret_id into v_existing from public.user_ai_keys
+     where user_id = v_uid and provider = p_provider;
 
     if v_existing is not null then
         perform vault.update_secret(v_existing, p_key);
-        update public.user_openai_key
+        update public.user_ai_keys
            set key_last4 = right(p_key, 4), updated_at = now()
-         where user_id = v_uid;
+         where user_id = v_uid and provider = p_provider;
     else
-        v_new := vault.create_secret(p_key, 'openai_key_' || v_uid::text, 'Nomadix OpenAI API key');
-        insert into public.user_openai_key (user_id, secret_id, key_last4)
-        values (v_uid, v_new, right(p_key, 4));
+        v_new := vault.create_secret(
+            p_key, p_provider || '_key_' || v_uid::text, 'Nomadix ' || p_provider || ' API key'
+        );
+        insert into public.user_ai_keys (user_id, provider, secret_id, key_last4)
+        values (v_uid, p_provider, v_new, right(p_key, 4));
     end if;
 end $$;
 
-revoke all on function public.nomadix_set_openai_api_key(text) from public, anon;
-grant execute on function public.nomadix_set_openai_api_key(text) to authenticated;
+revoke all on function public.nomadix_set_ai_api_key(text, text) from public, anon;
+grant execute on function public.nomadix_set_ai_api_key(text, text) to authenticated;
 
-create or replace function public.nomadix_get_openai_api_key()
+create or replace function public.nomadix_get_ai_api_key(p_provider text)
 returns text
 language plpgsql
 security definer
@@ -944,17 +961,17 @@ begin
     end if;
 
     select vs.decrypted_secret into v_key
-      from public.user_openai_key k
+      from public.user_ai_keys k
       join vault.decrypted_secrets vs on vs.id = k.secret_id
-     where k.user_id = v_uid;
+     where k.user_id = v_uid and k.provider = p_provider;
 
     return v_key;
 end $$;
 
-revoke all on function public.nomadix_get_openai_api_key() from public, anon;
-grant execute on function public.nomadix_get_openai_api_key() to authenticated;
+revoke all on function public.nomadix_get_ai_api_key(text) from public, anon;
+grant execute on function public.nomadix_get_ai_api_key(text) to authenticated;
 
-create or replace function public.nomadix_delete_openai_api_key()
+create or replace function public.nomadix_delete_ai_api_key(p_provider text)
 returns void
 language plpgsql
 security definer
@@ -968,15 +985,28 @@ begin
         raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
     end if;
 
-    select secret_id into v_secret from public.user_openai_key where user_id = v_uid;
+    select secret_id into v_secret from public.user_ai_keys
+     where user_id = v_uid and provider = p_provider;
     if v_secret is not null then
         delete from vault.secrets where id = v_secret;
-        delete from public.user_openai_key where user_id = v_uid;
+        delete from public.user_ai_keys where user_id = v_uid and provider = p_provider;
     end if;
 end $$;
 
-revoke all on function public.nomadix_delete_openai_api_key() from public, anon;
-grant execute on function public.nomadix_delete_openai_api_key() to authenticated;
+revoke all on function public.nomadix_delete_ai_api_key(text) from public, anon;
+grant execute on function public.nomadix_delete_ai_api_key(text) to authenticated;
+
+-- Retired now that the generalized (provider, key) versions above exist.
+drop function if exists public.nomadix_set_openai_api_key(text);
+drop function if exists public.nomadix_get_openai_api_key();
+drop function if exists public.nomadix_delete_openai_api_key();
+drop table if exists public.user_openai_key;
+
+-- Which provider/model the report generator uses by default.
+alter table public.users_profile
+    add column if not exists preferred_ai_provider text not null default 'openai'
+        check (preferred_ai_provider in ('openai', 'gemini')),
+    add column if not exists preferred_ai_model text not null default 'gpt-4.1-mini';
 
 -- ============================================================================
 -- MANUAL VERIFICATION (run once after applying, keep for future reference)
@@ -1007,10 +1037,10 @@ grant execute on function public.nomadix_delete_openai_api_key() to authenticate
 --  where jobname = 'nomadix-subscriptions-daily'
 --  order by start_time desc limit 20;
 --
--- 5) OpenAI key round-trip -- run as the authenticated user (not postgres):
--- select public.nomadix_set_openai_api_key('sk-test-0000000000000000');
--- select key_last4 from public.user_openai_key; -- expect '0000'
--- select public.nomadix_get_openai_api_key();    -- expect the same key back
--- select public.nomadix_delete_openai_api_key();
--- select count(*) from public.user_openai_key;    -- expect 0
+-- 5) AI key round-trip -- run as the authenticated user (not postgres):
+-- select public.nomadix_set_ai_api_key('gemini', 'test-0000000000000000');
+-- select key_last4 from public.user_ai_keys where provider = 'gemini'; -- expect '0000'
+-- select public.nomadix_get_ai_api_key('gemini');    -- expect the same key back
+-- select public.nomadix_delete_ai_api_key('gemini');
+-- select count(*) from public.user_ai_keys where provider = 'gemini'; -- expect 0
 -- ============================================================================

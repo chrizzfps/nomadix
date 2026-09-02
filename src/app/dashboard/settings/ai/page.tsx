@@ -2,87 +2,83 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkle, Key, Check, Trash, ArrowSquareOut, Robot } from "@phosphor-icons/react";
+import { Sparkle, Check, FloppyDisk, Robot } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
-
-interface KeyStatus {
-    keyLast4: string;
-    updatedAt: string;
-}
+import { ApiKeyCard } from "@/components/settings/api-key-card";
+import { AI_PROVIDERS, DEFAULT_MODEL, providerInfo, type AiProvider } from "@/lib/ai-providers";
 
 export default function AiSettingsPage() {
     const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
 
-    const [status, setStatus] = useState<KeyStatus | null>(null);
+    const [provider, setProvider] = useState<AiProvider>("openai");
+    const [model, setModel] = useState(DEFAULT_MODEL.openai);
+    const [hasKey, setHasKey] = useState<Record<AiProvider, boolean>>({
+        openai: false,
+        gemini: false,
+    });
     const [isLoading, setIsLoading] = useState(true);
-    const [inputValue, setInputValue] = useState("");
     const [isSaving, setIsSaving] = useState(false);
     const [saved, setSaved] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [confirmRemove, setConfirmRemove] = useState(false);
-    const [isRemoving, setIsRemoving] = useState(false);
-
-    const loadStatus = async () => {
-        const { data } = await supabase
-            .from("user_openai_key")
-            .select("key_last4, updated_at")
-            .maybeSingle();
-        setStatus(data ? { keyLast4: data.key_last4, updatedAt: data.updated_at } : null);
-        setIsLoading(false);
-    };
 
     useEffect(() => {
-        loadStatus();
+        async function loadPreference() {
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data } = await supabase
+                .from("users_profile")
+                .select("preferred_ai_provider, preferred_ai_model")
+                .eq("id", user.id)
+                .single();
+
+            if (data?.preferred_ai_provider) {
+                const p = data.preferred_ai_provider as AiProvider;
+                setProvider(p);
+                setModel(data.preferred_ai_model || DEFAULT_MODEL[p]);
+            }
+            setIsLoading(false);
+        }
+        loadPreference();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const handleSave = async () => {
-        const key = inputValue.trim();
-        if (key.length < 10) {
-            setError("That doesn't look like a valid API key.");
-            return;
-        }
+    const handleProviderChange = (p: AiProvider) => {
+        setProvider(p);
+        setModel(DEFAULT_MODEL[p]);
+    };
+
+    const handleSavePreference = async () => {
         setIsSaving(true);
-        setError(null);
         setSaved(false);
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
 
-        const { error: rpcError } = await supabase.rpc("nomadix_set_openai_api_key", {
-            p_key: key,
-        });
+        const { error } = await supabase
+            .from("users_profile")
+            .update({ preferred_ai_provider: provider, preferred_ai_model: model })
+            .eq("id", user.id);
 
-        if (rpcError) {
-            setError(rpcError.message);
-            addToast(rpcError.message, "error");
+        if (error) {
+            addToast(error.message, "error");
         } else {
-            setInputValue("");
             setSaved(true);
-            addToast("OpenAI API key saved");
-            await loadStatus();
+            addToast("Default model saved");
             setTimeout(() => setSaved(false), 2000);
         }
         setIsSaving(false);
     };
 
-    const handleRemove = async () => {
-        setIsRemoving(true);
-        const { error: rpcError } = await supabase.rpc("nomadix_delete_openai_api_key");
-        if (rpcError) {
-            addToast(rpcError.message, "error");
-        } else {
-            addToast("OpenAI API key removed");
-            setStatus(null);
-            setConfirmRemove(false);
-        }
-        setIsRemoving(false);
-    };
-
     if (isLoading) {
         return (
             <div className="space-y-4">
-                {[1, 2].map((i) => (
-                    <div key={i} className="h-16 animate-pulse rounded-xl bg-zinc-100" />
+                {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-24 animate-pulse rounded-2xl bg-zinc-100" />
                 ))}
             </div>
         );
@@ -101,112 +97,92 @@ export default function AiSettingsPage() {
                 <div>
                     <h2 className="text-lg font-semibold text-zinc-900">AI Assistant</h2>
                     <p className="text-xs text-zinc-400">
-                        Connect your own OpenAI API key to unlock AI features
+                        Connect an API key and pick the model used for AI features
                     </p>
                 </div>
             </div>
 
             <div className="rounded-2xl border border-zinc-200 bg-white p-6">
-                <div className="flex items-center gap-2">
-                    <Key size={15} className="text-zinc-400" />
-                    <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
-                        OpenAI API key
-                    </label>
+                <h3 className="text-sm font-semibold text-zinc-900">Default for reports</h3>
+                <p className="mt-1 text-xs text-zinc-400">
+                    Which provider and model generate your monthly report.
+                </p>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {AI_PROVIDERS.map((p) => (
+                        <button
+                            key={p.id}
+                            onClick={() => handleProviderChange(p.id)}
+                            className={`flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                                provider === p.id
+                                    ? "border-zinc-900 bg-zinc-900 text-white"
+                                    : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300"
+                            }`}
+                        >
+                            {p.label}
+                            {!hasKey[p.id] && (
+                                <span
+                                    className={`text-[10px] font-medium normal-case ${
+                                        provider === p.id ? "text-zinc-300" : "text-amber-500"
+                                    }`}
+                                >
+                                    no key
+                                </span>
+                            )}
+                        </button>
+                    ))}
                 </div>
 
-                {status ? (
-                    <div className="mt-3 flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-                        <div>
-                            <p className="font-mono text-sm font-semibold text-zinc-900">
-                                sk-••••{status.keyLast4}
-                            </p>
-                            <p className="mt-0.5 text-[11px] text-zinc-400">
-                                Updated{" "}
-                                {new Date(status.updatedAt).toLocaleDateString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                })}
-                            </p>
-                        </div>
-                        {confirmRemove ? (
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setConfirmRemove(false)}
-                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-zinc-500 hover:bg-zinc-100"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleRemove}
-                                    disabled={isRemoving}
-                                    className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 disabled:opacity-50"
-                                >
-                                    {isRemoving ? "Removing…" : "Confirm"}
-                                </button>
+                <div className="mt-3 space-y-2">
+                    {providerInfo(provider).models.map((m) => (
+                        <button
+                            key={m.id}
+                            onClick={() => setModel(m.id)}
+                            className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all ${
+                                model === m.id
+                                    ? "border-zinc-900 bg-zinc-50"
+                                    : "border-zinc-200 bg-white hover:border-zinc-300"
+                            }`}
+                        >
+                            <div>
+                                <p className="text-sm font-semibold text-zinc-900">{m.label}</p>
+                                <p className="text-xs text-zinc-400">{m.description}</p>
                             </div>
-                        ) : (
-                            <button
-                                onClick={() => setConfirmRemove(true)}
-                                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50"
-                            >
-                                <Trash size={13} />
-                                Remove
-                            </button>
-                        )}
-                    </div>
-                ) : (
-                    <p className="mt-2 text-xs text-zinc-400">
-                        No key connected yet. Paste one below to enable AI features.
-                    </p>
-                )}
+                            {model === m.id && <Check size={16} weight="bold" className="text-zinc-900" />}
+                        </button>
+                    ))}
+                </div>
 
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                    <input
-                        type="password"
-                        value={inputValue}
-                        onChange={(e) => {
-                            setInputValue(e.target.value);
-                            setError(null);
-                        }}
-                        placeholder={status ? "Paste a new key to replace it…" : "sk-…"}
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 font-mono text-sm text-zinc-900 placeholder:font-sans placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
-                    />
+                <div className="mt-4 flex justify-end">
                     <button
-                        onClick={handleSave}
-                        disabled={isSaving || !inputValue.trim()}
-                        className={`flex shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
+                        onClick={handleSavePreference}
+                        disabled={isSaving}
+                        className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 ${
                             saved ? "bg-emerald-600 text-white" : "bg-zinc-900 text-white hover:bg-zinc-800"
                         }`}
                     >
                         {saved ? (
                             <>
-                                <Check size={16} weight="bold" />
+                                <Check size={15} weight="bold" />
                                 Saved
                             </>
                         ) : (
-                            <>{isSaving ? "Saving…" : status ? "Replace key" : "Save key"}</>
+                            <>
+                                <FloppyDisk size={15} />
+                                {isSaving ? "Saving…" : "Save default"}
+                            </>
                         )}
                     </button>
                 </div>
-
-                {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
-
-                <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">
-                    Your key is encrypted at rest (Supabase Vault) and never shown again after
-                    saving — only the last 4 characters are kept for display. It's used
-                    server-side only, never sent to your browser.{" "}
-                    <a
-                        href="https://platform.openai.com/api-keys"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 font-medium text-zinc-600 underline hover:text-zinc-900"
-                    >
-                        Get an API key
-                        <ArrowSquareOut size={11} />
-                    </a>
-                </p>
             </div>
+
+            {AI_PROVIDERS.map((p) => (
+                <ApiKeyCard
+                    key={p.id}
+                    provider={p}
+                    onStatusChange={(has) => setHasKey((prev) => ({ ...prev, [p.id]: has }))}
+                />
+            ))}
 
             <div className="rounded-2xl border border-zinc-200 bg-white p-6">
                 <div className="flex items-center gap-2">
@@ -227,9 +203,10 @@ export default function AiSettingsPage() {
                         coming soon.
                     </li>
                 </ul>
-                <p className="mt-3 text-[11px] text-zinc-400">
-                    Usage is billed by OpenAI directly to your account. A monthly report costs a
-                    fraction of a cent on gpt-4.1-mini.
+                <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">
+                    Keys are encrypted at rest (Supabase Vault) and never shown again after saving —
+                    only the last 4 characters are kept for display. Used server-side only, never
+                    sent to your browser. Usage is billed by the provider directly to your account.
                 </p>
             </div>
         </motion.div>

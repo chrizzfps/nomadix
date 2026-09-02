@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { buildMonthlyReportContext, buildReportPrompt } from "@/lib/ai-report";
+import { callChatModel } from "@/lib/ai-chat";
+import { DEFAULT_MODEL, isKnownModel, type AiProvider } from "@/lib/ai-providers";
 import { todayISO } from "@/lib/subscriptions";
 import type { Currency, Subscription, Transaction, Vault } from "@/types";
 
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 const MONTH_RE = /^\d{4}-\d{2}$/;
 
 async function resolveUsdEurRate(
@@ -47,26 +48,40 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    const { data: apiKey, error: keyError } = await supabase.rpc(
-        "nomadix_get_openai_api_key"
-    );
+    const { data: profile } = await supabase
+        .from("users_profile")
+        .select("base_currency, preferred_ai_provider, preferred_ai_model")
+        .eq("id", user.id)
+        .single();
+
+    const provider: AiProvider = profile?.preferred_ai_provider === "gemini" ? "gemini" : "openai";
+    const model =
+        profile?.preferred_ai_model && isKnownModel(provider, profile.preferred_ai_model)
+            ? profile.preferred_ai_model
+            : DEFAULT_MODEL[provider];
+
+    const { data: apiKey, error: keyError } = await supabase.rpc("nomadix_get_ai_api_key", {
+        p_provider: provider,
+    });
     if (keyError) {
         return NextResponse.json({ error: keyError.message }, { status: 500 });
     }
     if (!apiKey) {
         return NextResponse.json(
-            { error: "No OpenAI API key configured.", code: "no_api_key" },
+            {
+                error: `No ${provider === "openai" ? "OpenAI" : "Gemini"} API key configured.`,
+                code: "no_api_key",
+                provider,
+            },
             { status: 400 }
         );
     }
 
-    const [{ data: profile }, { data: transactions }, { data: subscriptions }, { data: vaults }] =
-        await Promise.all([
-            supabase.from("users_profile").select("base_currency").eq("id", user.id).single(),
-            supabase.from("transactions").select("*").eq("user_id", user.id),
-            supabase.from("subscriptions").select("*").eq("user_id", user.id).eq("status", "active"),
-            supabase.from("vaults").select("*").eq("user_id", user.id),
-        ]);
+    const [{ data: transactions }, { data: subscriptions }, { data: vaults }] = await Promise.all([
+        supabase.from("transactions").select("*").eq("user_id", user.id),
+        supabase.from("subscriptions").select("*").eq("user_id", user.id).eq("status", "active"),
+        supabase.from("vaults").select("*").eq("user_id", user.id),
+    ]);
 
     const reportCurrency: Currency = profile?.base_currency || "EUR";
     const usdEurRate = await resolveUsdEurRate(supabase, user.id);
@@ -82,42 +97,11 @@ export async function POST(request: Request) {
 
     const { system, user: userPrompt } = buildReportPrompt(context);
 
-    let openaiRes: Response;
-    try {
-        openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-                model: OPENAI_MODEL,
-                temperature: 0.4,
-                messages: [
-                    { role: "system", content: system },
-                    { role: "user", content: userPrompt },
-                ],
-            }),
-        });
-    } catch {
-        return NextResponse.json(
-            { error: "Could not reach OpenAI. Check your connection and try again." },
-            { status: 502 }
-        );
+    const result = await callChatModel({ provider, model, apiKey, system, user: userPrompt });
+
+    if (!result.ok) {
+        return NextResponse.json({ error: result.error, provider }, { status: result.status || 502 });
     }
 
-    if (!openaiRes.ok) {
-        const status = openaiRes.status;
-        const detail = await openaiRes.json().catch(() => null);
-        const message =
-            status === 401
-                ? "Invalid OpenAI API key. Update it in Settings → AI Assistant."
-                : detail?.error?.message || `OpenAI request failed (${status}).`;
-        return NextResponse.json({ error: message }, { status: status === 401 ? 401 : 502 });
-    }
-
-    const payload = await openaiRes.json();
-    const narrative: string = payload?.choices?.[0]?.message?.content?.trim() || "";
-
-    return NextResponse.json({ context, narrative });
+    return NextResponse.json({ context, narrative: result.text, provider, model });
 }

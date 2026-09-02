@@ -14,11 +14,19 @@ import {
 import { usePrivacyStore } from "@/stores/privacy-store";
 import { formatMoney } from "@/lib/currency";
 import { todayISO } from "@/lib/subscriptions";
+import { AI_PROVIDERS, type AiProvider } from "@/lib/ai-providers";
 import type { MonthlyReportContext } from "@/lib/ai-report";
 
 interface ReportResult {
     context: MonthlyReportContext;
     narrative: string;
+    provider: AiProvider;
+    model: string;
+}
+
+function modelLabel(provider: AiProvider, model: string): string {
+    const info = AI_PROVIDERS.find((p) => p.id === provider);
+    return info?.models.find((m) => m.id === model)?.label || model;
 }
 
 function parseNarrative(text: string): { paragraphs: string[]; bullets: string[][] } {
@@ -49,7 +57,11 @@ export default function ReportsPage() {
     const [month, setMonth] = useState(todayISO().slice(0, 7));
     const [result, setResult] = useState<ReportResult | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<{ message: string; code?: string } | null>(null);
+    const [error, setError] = useState<{
+        message: string;
+        code?: string;
+        provider?: AiProvider;
+    } | null>(null);
 
     const generate = async () => {
         setIsLoading(true);
@@ -62,7 +74,7 @@ export default function ReportsPage() {
             });
             const json = await res.json();
             if (!res.ok) {
-                setError({ message: json.error || "Something went wrong.", code: json.code });
+                setError({ message: json.error || "Something went wrong.", code: json.code, provider: json.provider });
                 setResult(null);
             } else {
                 setResult(json);
@@ -229,11 +241,16 @@ export default function ReportsPage() {
 
                     <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
                         <div className="rounded-2xl border border-zinc-200 bg-white p-6">
-                            <div className="flex items-center gap-2">
-                                <Sparkle size={16} className="text-zinc-400" />
-                                <h3 className="text-sm font-semibold text-zinc-900">
-                                    {ctx.monthLabel} summary
-                                </h3>
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <Sparkle size={16} className="text-zinc-400" />
+                                    <h3 className="text-sm font-semibold text-zinc-900">
+                                        {ctx.monthLabel} summary
+                                    </h3>
+                                </div>
+                                <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+                                    {modelLabel(result.provider, result.model)}
+                                </span>
                             </div>
                             <div className="mt-3 space-y-3 text-sm leading-relaxed text-zinc-600">
                                 {narrative.paragraphs.length > 0 && <p>{narrative.paragraphs[0]}</p>}
