@@ -15,6 +15,7 @@ import {
     initialNextDueDate,
     monthlyEquivalent,
     annualEquivalent,
+    costPerCycle,
     todayISO,
     formatDueDateShort,
     type SubscriptionFormValues,
@@ -180,13 +181,14 @@ export function SubscriptionFormModal({
         };
         const monthly = monthlyEquivalent(partial);
         const annual = annualEquivalent(partial);
+        const perCharge = costPerCycle(partial);
         const symbol = values.currency === "EUR" ? "€" : "$";
 
         return {
             dates: dates.map(formatDueDateShort).join(" · "),
             monthly: `${symbol}${monthly.toFixed(2)}/mo`,
             annual: `${symbol}${annual.toFixed(2)}/yr`,
-            each: `${symbol}${amount.toFixed(2)} each`,
+            each: `${symbol}${perCharge.toFixed(2)} each`,
         };
     }, [values]);
 
@@ -572,18 +574,41 @@ export function SubscriptionFormModal({
                                             </div>
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className={labelClass}>Value</label>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                value={values.feeValue}
-                                                onChange={(e) => set("feeValue", e.target.value)}
-                                                disabled={values.feeMode === "none"}
-                                                className={`${inputClass} disabled:opacity-50`}
-                                            />
+                                            <label className={labelClass}>
+                                                Value
+                                                {values.feeMode === "fixed" && (
+                                                    <span className="ml-1 normal-case text-zinc-300">
+                                                        ({values.currency === "EUR" ? "€" : "$"})
+                                                    </span>
+                                                )}
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={values.feeValue}
+                                                    onChange={(e) => set("feeValue", e.target.value)}
+                                                    disabled={values.feeMode === "none"}
+                                                    className={`${inputClass} disabled:opacity-50 ${values.feeMode !== "none" ? "pr-7" : ""}`}
+                                                />
+                                                {values.feeMode !== "none" && (
+                                                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-zinc-400">
+                                                        {values.feeMode === "percent"
+                                                            ? "%"
+                                                            : values.currency === "EUR"
+                                                                ? "€"
+                                                                : "$"}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
+                                    {values.feeMode !== "none" && (
+                                        <p className="-mt-2 text-[11px] text-zinc-400">
+                                            Fee is charged in the subscription&apos;s currency ({values.currency}), same as the amount.
+                                        </p>
+                                    )}
 
                                     <div className="space-y-1.5">
                                         <label className={labelClass}>Cancellation URL</label>

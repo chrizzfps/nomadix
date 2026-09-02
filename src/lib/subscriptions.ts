@@ -265,6 +265,12 @@ export function feeFor(base: number, mode: SubscriptionFeeMode, value: number): 
     return 0;
 }
 
+/** Steady-state amount per cycle including the fee (expense adds, income subtracts). */
+export function costPerCycle(sub: Subscription): number {
+    const fee = feeFor(sub.amount, sub.fee_mode, sub.fee_value);
+    return sub.direction === "expense" ? sub.amount + fee : sub.amount - fee;
+}
+
 /** Trial-aware unsigned base amount for a given due date (no fee). */
 export function effectiveAmount(sub: Subscription, dueISO: string): number {
     const isTrial = !!sub.trial_end_date && dueISO <= sub.trial_end_date;
@@ -282,18 +288,18 @@ export function chargeBreakdown(
     return { base, fee, total, isTrial };
 }
 
-/** In sub.currency. */
+/** In sub.currency. Includes the fee (§costPerCycle). */
 export function monthlyEquivalent(sub: Subscription): number {
     const days = cycleDays(sub.billing_cycle, sub.interval_count, sub.custom_interval_days);
     if (days <= 0) return 0;
-    return round2((sub.amount / days) * AVG_MONTH_DAYS);
+    return round2((costPerCycle(sub) / days) * AVG_MONTH_DAYS);
 }
 
-/** In sub.currency. */
+/** In sub.currency. Includes the fee (§costPerCycle). */
 export function annualEquivalent(sub: Subscription): number {
     const days = cycleDays(sub.billing_cycle, sub.interval_count, sub.custom_interval_days);
     if (days <= 0) return 0;
-    return round2((sub.amount / days) * AVG_YEAR_DAYS);
+    return round2((costPerCycle(sub) / days) * AVG_YEAR_DAYS);
 }
 
 export function totalsByDisplayCurrency(

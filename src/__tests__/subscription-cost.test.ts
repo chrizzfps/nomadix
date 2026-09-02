@@ -86,6 +86,28 @@ describe("monthlyEquivalent / annualEquivalent", () => {
         const sub = makeSub({ billing_cycle: "weekly", amount: 10 });
         expect(annualEquivalent(sub)).toBeCloseTo(monthlyEquivalent(sub) * 12, 1);
     });
+
+    it("expense: fee is added on top of the base amount", () => {
+        const sub = makeSub({
+            billing_cycle: "monthly",
+            amount: 100,
+            fee_mode: "percent",
+            fee_value: 2.9,
+        });
+        expect(monthlyEquivalent(sub)).toBeCloseTo(102.9, 2);
+        expect(annualEquivalent(sub)).toBeCloseTo(102.9 * 12, 1);
+    });
+
+    it("income: fee is subtracted from the base amount", () => {
+        const sub = makeSub({
+            billing_cycle: "monthly",
+            amount: 100,
+            direction: "income",
+            fee_mode: "fixed",
+            fee_value: 5,
+        });
+        expect(monthlyEquivalent(sub)).toBeCloseTo(95, 2);
+    });
 });
 
 describe("feeFor", () => {
