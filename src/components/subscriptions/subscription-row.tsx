@@ -3,7 +3,7 @@
 import { PauseCircle, Repeat } from "@phosphor-icons/react";
 import { usePrivacyStore } from "@/stores/privacy-store";
 import { CATEGORY_ICON_MAP } from "@/lib/transaction-categories";
-import { cycleLabel } from "@/lib/subscriptions";
+import { cycleLabel, feeFor, costPerCycle } from "@/lib/subscriptions";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import { DueBadge } from "./due-badge";
 import type { Subscription } from "@/types";
@@ -29,6 +29,7 @@ export function SubscriptionRow({
     const nativeSymbol = CURRENCY_SYMBOLS[s.currency] || "$";
     const displaySymbol = CURRENCY_SYMBOLS[displayCurrency] || "$";
     const showNative = s.currency !== displayCurrency;
+    const fee = feeFor(s.amount, s.fee_mode, s.fee_value);
 
     return (
         <div
@@ -85,10 +86,16 @@ export function SubscriptionRow({
                 {showNative && (
                     <p className="text-[10px] text-zinc-400">
                         ≈ {nativeSymbol}
-                        {s.amount.toLocaleString("en-US", {
+                        {costPerCycle(s).toLocaleString("en-US", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                         })}
+                    </p>
+                )}
+                {fee > 0 && (
+                    <p className={`text-[10px] text-zinc-400 ${isPrivacyMode ? "blur-sm select-none" : ""}`}>
+                        + {nativeSymbol}
+                        {fee.toFixed(2)} fee
                     </p>
                 )}
             </div>

@@ -24,6 +24,8 @@ import {
     cycleLabel,
     monthlyEquivalent,
     annualEquivalent,
+    costPerCycle,
+    feeFor,
     formatDueDate,
 } from "@/lib/subscriptions";
 import { DueBadge } from "./due-badge";
@@ -213,6 +215,20 @@ export function SubscriptionDetailModal({
                                         label: "Amount",
                                         value: `${symbol}${s.amount.toFixed(2)} · ${cycleLabel(s.billing_cycle, s.interval_count, s.custom_interval_days)}`,
                                     },
+                                    ...(s.fee_mode !== "none"
+                                        ? [
+                                            {
+                                                label: "Fee",
+                                                value: `${symbol}${feeFor(s.amount, s.fee_mode, s.fee_value).toFixed(2)}${
+                                                    s.fee_mode === "percent" ? ` (${s.fee_value}%)` : ""
+                                                }`,
+                                            },
+                                            {
+                                                label: "Total charged",
+                                                value: `${symbol}${costPerCycle(s).toFixed(2)}`,
+                                            },
+                                        ]
+                                        : []),
                                     { label: "Vault", value: vaultName },
                                     { label: "Category", value: s.category || "—" },
                                     { label: "Next charge", value: formatDueDate(s.next_due_date) },
@@ -326,14 +342,24 @@ export function SubscriptionDetailModal({
                                                             <Clock size={13} className="text-amber-500" />
                                                         )}
                                                     </div>
-                                                    <span
-                                                        className={`font-semibold tabular-nums ${
-                                                            isSkipped ? "text-zinc-300 line-through" : "text-zinc-900"
-                                                        }`}
-                                                    >
-                                                        {symbol}
-                                                        {(occ.actual_amount ?? occ.expected_amount).toFixed(2)}
-                                                    </span>
+                                                    <div className="flex flex-col items-end">
+                                                        <span
+                                                            className={`font-semibold tabular-nums ${
+                                                                isSkipped ? "text-zinc-300 line-through" : "text-zinc-900"
+                                                            }`}
+                                                        >
+                                                            {symbol}
+                                                            {(
+                                                                (occ.actual_amount ?? occ.expected_amount) +
+                                                                (occ.fee_amount || 0)
+                                                            ).toFixed(2)}
+                                                        </span>
+                                                        {occ.fee_amount > 0 && (
+                                                            <span className="text-[10px] text-zinc-400">
+                                                                incl. {symbol}{occ.fee_amount.toFixed(2)} fee
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             );
                                         })}

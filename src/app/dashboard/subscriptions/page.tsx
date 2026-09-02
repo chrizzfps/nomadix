@@ -11,6 +11,7 @@ import {
     totalsByDisplayCurrency,
     projectCashflow,
     firstShortfall,
+    costPerCycle,
     todayISO,
 } from "@/lib/subscriptions";
 import { SubscriptionStats } from "@/components/subscriptions/subscription-stats";
@@ -284,7 +285,7 @@ export default function SubscriptionsPage() {
                             ) : (
                                 filtered.map((s) => {
                                     const vault = vaultById.get(s.vault_id);
-                                    const displayAmount = convert(s.amount, s.currency);
+                                    const displayAmount = convert(costPerCycle(s), s.currency);
                                     return (
                                         <SubscriptionRow
                                             key={s.id}
