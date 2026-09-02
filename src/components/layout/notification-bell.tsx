@@ -8,6 +8,7 @@ import { useRemindersStore } from "@/stores/reminders-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import { formatDueDate } from "@/lib/subscriptions";
 import type { ReminderItem } from "@/lib/subscriptions";
+import { cn } from "@/lib/utils";
 
 const GROUP_LABEL: Record<ReminderItem["kind"], string> = {
     overdue: "Needs attention",
@@ -19,7 +20,12 @@ const GROUP_LABEL: Record<ReminderItem["kind"], string> = {
 
 const GROUP_ORDER = ["Needs attention", "Trial ending", "Upcoming"];
 
-export function NotificationBell() {
+interface NotificationBellProps {
+    align?: "left" | "right";
+    className?: string;
+}
+
+export function NotificationBell({ align = "left", className }: NotificationBellProps = {}) {
     const router = useRouter();
     const { items, unreadCount, load, markAllSeen } = useRemindersStore();
     const [isOpen, setIsOpen] = useState(false);
@@ -54,10 +60,15 @@ export function NotificationBell() {
     };
 
     return (
-        <div className="relative" ref={menuRef}>
+        <div className={cn("relative", className)} ref={menuRef}>
             <button
                 onClick={() => setIsOpen((v) => !v)}
-                className="relative rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+                className={cn(
+                    "relative rounded-lg p-2 transition-colors",
+                    isOpen
+                        ? "bg-zinc-100 text-zinc-900"
+                        : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                )}
                 aria-label="Notifications"
             >
                 {unreadCount > 0 ? (
@@ -83,7 +94,12 @@ export function NotificationBell() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -8, scale: 0.98 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute right-0 top-full z-50 mt-2 w-[340px] overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl"
+                        className={cn(
+                            "absolute top-full z-50 mt-2 w-[calc(100vw-2rem)] sm:w-[340px] max-w-[340px] overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl",
+                            align === "left"
+                                ? "left-0 origin-top-left"
+                                : "right-0 max-sm:-right-12 origin-top-right"
+                        )}
                     >
                         <div className="max-h-[380px] overflow-y-auto">
                             {items.length === 0 ? (

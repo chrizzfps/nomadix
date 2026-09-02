@@ -858,6 +858,127 @@ select cron.schedule(
 );
 
 -- ============================================================================
+-- AI: OpenAI API key storage (Supabase Vault) + report support
+-- ----------------------------------------------------------------------------
+-- The raw key is never stored in a plain column and never returned to the
+-- client after being saved. `public.user_openai_key` only holds a pointer
+-- (secret_id) into vault.secrets plus a last4 for display. All writes go
+-- through the SECURITY DEFINER RPCs below -- there is deliberately no
+-- insert/update RLS policy on the table, so a client cannot repoint
+-- secret_id at an arbitrary (possibly another user's) vault secret.
+-- nomadix_get_openai_api_key() must only ever be called server-side (a
+-- Route Handler / Server Action) -- never from client-side JS -- or the
+-- decrypted key would reach the browser.
+-- ============================================================================
+
+create table if not exists public.user_openai_key (
+    user_id uuid primary key references auth.users(id) on delete cascade,
+    secret_id uuid not null,
+    key_last4 text not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+alter table public.user_openai_key enable row level security;
+
+do $$
+begin
+    begin
+        create policy "user_openai_key_select_own" on public.user_openai_key
+        for select using (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+end $$;
+
+drop trigger if exists user_openai_key_touch_trg on public.user_openai_key;
+create trigger user_openai_key_touch_trg
+    before update on public.user_openai_key
+    for each row execute function public.nomadix_touch_updated_at();
+
+create or replace function public.nomadix_set_openai_api_key(p_key text)
+returns void
+language plpgsql
+security definer
+set search_path = public, vault, pg_temp
+as $$
+declare
+    v_uid      uuid := auth.uid();
+    v_existing uuid;
+    v_new      uuid;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+    if p_key is null or length(trim(p_key)) < 10 then
+        raise exception 'Invalid API key' using errcode = 'invalid_parameter_value';
+    end if;
+
+    select secret_id into v_existing from public.user_openai_key where user_id = v_uid;
+
+    if v_existing is not null then
+        perform vault.update_secret(v_existing, p_key);
+        update public.user_openai_key
+           set key_last4 = right(p_key, 4), updated_at = now()
+         where user_id = v_uid;
+    else
+        v_new := vault.create_secret(p_key, 'openai_key_' || v_uid::text, 'Nomadix OpenAI API key');
+        insert into public.user_openai_key (user_id, secret_id, key_last4)
+        values (v_uid, v_new, right(p_key, 4));
+    end if;
+end $$;
+
+revoke all on function public.nomadix_set_openai_api_key(text) from public, anon;
+grant execute on function public.nomadix_set_openai_api_key(text) to authenticated;
+
+create or replace function public.nomadix_get_openai_api_key()
+returns text
+language plpgsql
+security definer
+set search_path = public, vault, pg_temp
+as $$
+declare
+    v_uid uuid := auth.uid();
+    v_key text;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+
+    select vs.decrypted_secret into v_key
+      from public.user_openai_key k
+      join vault.decrypted_secrets vs on vs.id = k.secret_id
+     where k.user_id = v_uid;
+
+    return v_key;
+end $$;
+
+revoke all on function public.nomadix_get_openai_api_key() from public, anon;
+grant execute on function public.nomadix_get_openai_api_key() to authenticated;
+
+create or replace function public.nomadix_delete_openai_api_key()
+returns void
+language plpgsql
+security definer
+set search_path = public, vault, pg_temp
+as $$
+declare
+    v_uid    uuid := auth.uid();
+    v_secret uuid;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+
+    select secret_id into v_secret from public.user_openai_key where user_id = v_uid;
+    if v_secret is not null then
+        delete from vault.secrets where id = v_secret;
+        delete from public.user_openai_key where user_id = v_uid;
+    end if;
+end $$;
+
+revoke all on function public.nomadix_delete_openai_api_key() from public, anon;
+grant execute on function public.nomadix_delete_openai_api_key() to authenticated;
+
+-- ============================================================================
 -- MANUAL VERIFICATION (run once after applying, keep for future reference)
 -- ============================================================================
 --
@@ -885,4 +1006,11 @@ select cron.schedule(
 -- select * from cron.job_run_details
 --  where jobname = 'nomadix-subscriptions-daily'
 --  order by start_time desc limit 20;
+--
+-- 5) OpenAI key round-trip -- run as the authenticated user (not postgres):
+-- select public.nomadix_set_openai_api_key('sk-test-0000000000000000');
+-- select key_last4 from public.user_openai_key; -- expect '0000'
+-- select public.nomadix_get_openai_api_key();    -- expect the same key back
+-- select public.nomadix_delete_openai_api_key();
+-- select count(*) from public.user_openai_key;    -- expect 0
 -- ============================================================================

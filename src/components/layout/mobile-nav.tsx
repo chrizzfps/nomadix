@@ -10,6 +10,7 @@ import {
     ArrowsClockwise,
     IdentificationCard,
     Airplane,
+    Sparkle,
     List,
     X,
     GearSix,
@@ -28,6 +29,7 @@ const navItems = [
 ];
 
 const moreNavItems = [
+    { href: "/dashboard/reports", label: "Reports", icon: Sparkle },
     { href: "/dashboard/identity", label: "Identity", icon: IdentificationCard },
 ];
 
@@ -64,7 +66,7 @@ export function MobileNav() {
                     <span className="text-sm font-semibold">Nomadix</span>
                 </div>
                 <div className="flex items-center gap-1">
-                    <NotificationBell />
+                    <NotificationBell align="right" />
                     <button
                         onClick={() => setIsOpen(!isOpen)}
                         className="rounded-lg p-1.5 hover:bg-zinc-100 transition-colors"
