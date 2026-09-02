@@ -215,20 +215,6 @@ export function SubscriptionDetailModal({
                                         label: "Amount",
                                         value: `${symbol}${s.amount.toFixed(2)} · ${cycleLabel(s.billing_cycle, s.interval_count, s.custom_interval_days)}`,
                                     },
-                                    ...(s.fee_mode !== "none"
-                                        ? [
-                                            {
-                                                label: "Fee",
-                                                value: `${symbol}${feeFor(s.amount, s.fee_mode, s.fee_value).toFixed(2)}${
-                                                    s.fee_mode === "percent" ? ` (${s.fee_value}%)` : ""
-                                                }`,
-                                            },
-                                            {
-                                                label: "Total charged",
-                                                value: `${symbol}${costPerCycle(s).toFixed(2)}`,
-                                            },
-                                        ]
-                                        : []),
                                     { label: "Vault", value: vaultName },
                                     { label: "Category", value: s.category || "—" },
                                     { label: "Next charge", value: formatDueDate(s.next_due_date) },
@@ -245,6 +231,29 @@ export function SubscriptionDetailModal({
                                     </div>
                                 ))}
                             </div>
+
+                            {s.fee_mode !== "none" && (
+                                <div className="mt-4 grid grid-cols-3 divide-x divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50/60">
+                                    {[
+                                        { label: "Subtotal", value: s.amount },
+                                        {
+                                            label: s.fee_mode === "percent" ? `Fee (${s.fee_value}%)` : "Fee",
+                                            value: feeFor(s.amount, s.fee_mode, s.fee_value),
+                                        },
+                                        { label: "Total", value: costPerCycle(s) },
+                                    ].map((col) => (
+                                        <div key={col.label} className="px-3 py-2.5 text-center">
+                                            <p className="truncate text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+                                                {col.label}
+                                            </p>
+                                            <p className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-900">
+                                                {symbol}
+                                                {col.value.toFixed(2)}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
 
                             <div className="mt-5 flex flex-wrap gap-2">
                                 <button

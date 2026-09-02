@@ -3,7 +3,7 @@
 import { PauseCircle, Repeat } from "@phosphor-icons/react";
 import { usePrivacyStore } from "@/stores/privacy-store";
 import { CATEGORY_ICON_MAP } from "@/lib/transaction-categories";
-import { cycleLabel, feeFor, costPerCycle } from "@/lib/subscriptions";
+import { cycleLabel, costPerCycle } from "@/lib/subscriptions";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import { DueBadge } from "./due-badge";
 import type { Subscription } from "@/types";
@@ -29,7 +29,7 @@ export function SubscriptionRow({
     const nativeSymbol = CURRENCY_SYMBOLS[s.currency] || "$";
     const displaySymbol = CURRENCY_SYMBOLS[displayCurrency] || "$";
     const showNative = s.currency !== displayCurrency;
-    const fee = feeFor(s.amount, s.fee_mode, s.fee_value);
+    const hasFee = s.fee_mode !== "none";
 
     return (
         <div
@@ -72,7 +72,7 @@ export function SubscriptionRow({
 
             <div className="text-right">
                 <p
-                    className={`font-semibold tabular-nums ${isPrivacyMode ? "blur-sm select-none" : ""} ${
+                    className={`flex items-center justify-end gap-1 font-semibold tabular-nums ${isPrivacyMode ? "blur-sm select-none" : ""} ${
                         isIncome ? "text-emerald-600" : "text-zinc-900"
                     }`}
                 >
@@ -82,6 +82,12 @@ export function SubscriptionRow({
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                     })}
+                    {hasFee && (
+                        <span
+                            title="Includes fee — see details"
+                            className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
+                        />
+                    )}
                 </p>
                 {showNative && (
                     <p className="text-[10px] text-zinc-400">
@@ -90,12 +96,6 @@ export function SubscriptionRow({
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                         })}
-                    </p>
-                )}
-                {fee > 0 && (
-                    <p className={`text-[10px] text-zinc-400 ${isPrivacyMode ? "blur-sm select-none" : ""}`}>
-                        + {nativeSymbol}
-                        {fee.toFixed(2)} fee
                     </p>
                 )}
             </div>
