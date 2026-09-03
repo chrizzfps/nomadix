@@ -8,6 +8,7 @@ import {
     Vault,
     Receipt,
     ArrowsClockwise,
+    Sparkle,
     IdentificationCard,
     Airplane,
     List,
@@ -18,21 +19,24 @@ import {
 import { signOut } from "@/app/auth/actions";
 import { AnimatePresence, motion } from "framer-motion";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { useLanguageStore } from "@/stores/language-store";
 
 const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: SquaresFour },
-    { href: "/dashboard/vaults", label: "Vaults", icon: Vault },
-    { href: "/dashboard/expenses", label: "Expenses", icon: Receipt },
-    { href: "/dashboard/subscriptions", label: "Subs", icon: ArrowsClockwise },
-    { href: "/dashboard/travel", label: "Travel", icon: Airplane },
+    { href: "/dashboard", key: "nav.dashboard", defaultLabel: "Dashboard", icon: SquaresFour },
+    { href: "/dashboard/vaults", key: "nav.vaults", defaultLabel: "Vaults", icon: Vault },
+    { href: "/dashboard/expenses", key: "nav.expenses", defaultLabel: "Expenses", icon: Receipt },
+    { href: "/dashboard/subscriptions", key: "nav.subscriptions", defaultLabel: "Subs", icon: ArrowsClockwise },
+    { href: "/dashboard/travel", key: "nav.travel", defaultLabel: "Travel", icon: Airplane },
 ];
 
 const moreNavItems = [
-    { href: "/dashboard/identity", label: "Identity", icon: IdentificationCard },
+    { href: "/dashboard/reports", key: "nav.reports", defaultLabel: "Reports", icon: Sparkle },
+    { href: "/dashboard/identity", key: "nav.identity", defaultLabel: "Identity", icon: IdentificationCard },
 ];
 
 export function MobileNav() {
     const pathname = usePathname();
+    const t = useLanguageStore((s) => s.t);
     const [isOpen, setIsOpen] = useState(false);
 
     const isActive = (href: string) => {
@@ -96,6 +100,7 @@ export function MobileNav() {
                                 {moreNavItems.map((item) => {
                                     const Icon = item.icon;
                                     const active = isActive(item.href);
+                                    const label = t(item.key) || item.defaultLabel;
                                     return (
                                         <Link
                                             key={item.href}
@@ -108,7 +113,7 @@ export function MobileNav() {
                                             }`}
                                         >
                                             <Icon size={18} weight={active ? "fill" : "regular"} />
-                                            {item.label}
+                                            {label}
                                         </Link>
                                     );
                                 })}
@@ -118,7 +123,7 @@ export function MobileNav() {
                                     className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-600 transition-all hover:bg-zinc-100"
                                 >
                                     <GearSix size={18} />
-                                    Settings
+                                    {t("nav.settings")}
                                 </Link>
                                 <button
                                     onClick={() => {
@@ -128,7 +133,7 @@ export function MobileNav() {
                                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-600 transition-all hover:bg-zinc-100"
                                 >
                                     <SignOut size={18} />
-                                    Log Out
+                                    {t("nav.signOut")}
                                 </button>
                             </div>
                         </motion.div>
@@ -142,15 +147,17 @@ export function MobileNav() {
                     {navItems.map((item) => {
                         const Icon = item.icon;
                         const active = isActive(item.href);
+                        const label = t(item.key) || item.defaultLabel;
                         return (
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`flex flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-medium transition-colors ${active ? "text-zinc-900" : "text-zinc-400"
-                                    }`}
+                                className={`flex flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-medium transition-colors ${
+                                    active ? "text-zinc-900" : "text-zinc-400"
+                                }`}
                             >
                                 <Icon size={20} weight={active ? "fill" : "regular"} />
-                                {item.label}
+                                {label}
                             </Link>
                         );
                     })}

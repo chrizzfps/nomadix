@@ -7,6 +7,7 @@ import {
     Vault,
     Receipt,
     ArrowsClockwise,
+    Sparkle,
     IdentificationCard,
     Airplane,
     GearSix,
@@ -15,18 +16,21 @@ import {
 import { signOut } from "@/app/auth/actions";
 import { APP_NAME } from "@/lib/constants";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { useLanguageStore } from "@/stores/language-store";
 
 const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: SquaresFour },
-    { href: "/dashboard/vaults", label: "Vaults", icon: Vault },
-    { href: "/dashboard/expenses", label: "Expenses", icon: Receipt },
-    { href: "/dashboard/subscriptions", label: "Subscriptions", icon: ArrowsClockwise },
-    { href: "/dashboard/identity", label: "Identity", icon: IdentificationCard },
-    { href: "/dashboard/travel", label: "Travel", icon: Airplane },
+    { href: "/dashboard", key: "nav.dashboard", defaultLabel: "Dashboard", icon: SquaresFour },
+    { href: "/dashboard/vaults", key: "nav.vaults", defaultLabel: "Vaults", icon: Vault },
+    { href: "/dashboard/expenses", key: "nav.expenses", defaultLabel: "Expenses", icon: Receipt },
+    { href: "/dashboard/subscriptions", key: "nav.subscriptions", defaultLabel: "Subscriptions", icon: ArrowsClockwise },
+    { href: "/dashboard/reports", key: "nav.reports", defaultLabel: "Reports", icon: Sparkle },
+    { href: "/dashboard/identity", key: "nav.identity", defaultLabel: "Identity", icon: IdentificationCard },
+    { href: "/dashboard/travel", key: "nav.travel", defaultLabel: "Travel", icon: Airplane },
 ];
 
 export function Sidebar() {
     const pathname = usePathname();
+    const t = useLanguageStore((s) => s.t);
 
     const isActive = (href: string) => {
         if (href === "/dashboard") return pathname === "/dashboard";
@@ -68,20 +72,22 @@ export function Sidebar() {
                     {navItems.map((item) => {
                         const Icon = item.icon;
                         const active = isActive(item.href);
+                        const label = t(item.key) || item.defaultLabel;
                         return (
                             <li key={item.href}>
                                 <Link
                                     href={item.href}
-                                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${active
+                                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                                        active
                                             ? "bg-zinc-900 text-white"
                                             : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-                                        }`}
+                                    }`}
                                 >
                                     <Icon
                                         size={18}
                                         weight={active ? "fill" : "regular"}
                                     />
-                                    {item.label}
+                                    {label}
                                 </Link>
                             </li>
                         );
@@ -96,14 +102,14 @@ export function Sidebar() {
                     className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-500 transition-all hover:bg-zinc-100 hover:text-zinc-900"
                 >
                     <GearSix size={18} />
-                    Settings
+                    {t("nav.settings")}
                 </Link>
                 <button
                     onClick={() => signOut()}
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-500 transition-all hover:bg-zinc-100 hover:text-zinc-900"
                 >
                     <SignOut size={18} />
-                    Log Out
+                    {t("nav.signOut")}
                 </button>
             </div>
         </aside>

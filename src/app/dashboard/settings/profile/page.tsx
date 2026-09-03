@@ -16,6 +16,7 @@ import {
 } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
+import { useLanguageStore } from "@/stores/language-store";
 
 interface ExtendedNomadProfile {
     bio: string;
@@ -47,6 +48,7 @@ function loadExtendedProfile(): ExtendedNomadProfile {
 export default function ProfilePage() {
     const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
+    const t = useLanguageStore((s) => s.t);
 
     const [profile, setProfile] = useState<{
         full_name: string;
@@ -188,9 +190,9 @@ export default function ProfilePage() {
                         <UserCircle size={20} className="text-zinc-600" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-semibold text-zinc-900">Nomad Profile</h2>
+                        <h2 className="text-lg font-semibold text-zinc-900">{t("profile.title")}</h2>
                         <p className="text-xs text-zinc-400">
-                            Public profile, fiscal status, and account stats
+                            {t("profile.subtitle")}
                         </p>
                     </div>
                 </div>
@@ -201,7 +203,7 @@ export default function ProfilePage() {
                     className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 active:scale-[0.98] transition-all shadow-sm"
                 >
                     <PencilSimple size={14} />
-                    {isEditing ? "Cancel" : "Edit Profile"}
+                    {isEditing ? t("profile.cancel") : t("profile.edit")}
                 </button>
             </div>
 
@@ -348,7 +350,7 @@ export default function ProfilePage() {
                     </div>
                     <p className="text-2xl font-bold text-zinc-900">{stats.vaults}</p>
                     <p className="text-[10px] font-semibold tracking-wider uppercase text-zinc-400">
-                        Active Vaults
+                        {t("profile.activeVaults")}
                     </p>
                 </div>
 
@@ -358,7 +360,7 @@ export default function ProfilePage() {
                     </div>
                     <p className="text-2xl font-bold text-zinc-900">{stats.documents}</p>
                     <p className="text-[10px] font-semibold tracking-wider uppercase text-zinc-400">
-                        Vault Documents
+                        {t("profile.documents")}
                     </p>
                 </div>
 
@@ -368,7 +370,7 @@ export default function ProfilePage() {
                     </div>
                     <p className="text-2xl font-bold text-zinc-900">{memberSince}</p>
                     <p className="text-[10px] font-semibold tracking-wider uppercase text-zinc-400">
-                        Member Since
+                        {t("profile.memberSince")}
                     </p>
                 </div>
 
@@ -378,7 +380,7 @@ export default function ProfilePage() {
                     </div>
                     <p className="text-2xl font-bold text-zinc-900">Premium</p>
                     <p className="text-[10px] font-semibold tracking-wider uppercase text-zinc-400">
-                        Tier Status
+                        {t("profile.plan")}
                     </p>
                 </div>
             </div>

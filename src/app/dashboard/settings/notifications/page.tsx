@@ -4,15 +4,16 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
     Bell,
+    Receipt,
     EnvelopeSimple,
     DeviceMobile,
     WarningCircle,
     CalendarCheck,
-    Receipt,
     Vault,
-    Check,
 } from "@phosphor-icons/react";
 import { useToastStore } from "@/stores/toast-store";
+import { useLanguageStore } from "@/stores/language-store";
+import { useRemindersStore } from "@/stores/reminders-store";
 
 interface NotificationConfig {
     subReminder1d: boolean;
@@ -51,6 +52,7 @@ function loadConfig(): NotificationConfig {
 
 export default function NotificationsPage() {
     const addToast = useToastStore((s) => s.addToast);
+    const t = useLanguageStore((s) => s.t);
     const [config, setConfig] = useState<NotificationConfig>(loadConfig);
     const [pushPermission, setPushPermission] = useState<NotificationPermission>("default");
 
@@ -68,7 +70,8 @@ export default function NotificationsPage() {
             }
             return next;
         });
-        addToast("Notification preferences updated", "info");
+        useRemindersStore.getState().load(true);
+        addToast(t("prefs.savedToast"), "info");
     };
 
     const handleRequestPush = async () => {
@@ -82,16 +85,16 @@ export default function NotificationsPage() {
             setPushPermission(res);
             if (res === "granted") {
                 toggle("browserPushEnabled");
-                addToast("Browser notifications enabled", "success");
+                addToast("Notificaciones push activadas", "success");
                 new Notification("Nomadix Notifications", {
-                    body: "You will receive financial alerts and subscription reminders.",
+                    body: "Alertas y avisos activados en tu navegador.",
                     icon: "/favicon.ico",
                 });
             } else {
-                addToast("Push notifications permission was denied", "error");
+                addToast("Permiso de notificaciones denegado", "error");
             }
         } catch {
-            addToast("Could not request notification permission", "error");
+            addToast("No se pudo solicitar el permiso", "error");
         }
     };
 
@@ -107,10 +110,8 @@ export default function NotificationsPage() {
                     <Bell size={20} className="text-zinc-600" />
                 </div>
                 <div>
-                    <h2 className="text-lg font-semibold text-zinc-900">Notifications & Alerts</h2>
-                    <p className="text-xs text-zinc-400">
-                        Choose how and when you want to be reminded about bills, vault balances, and reports
-                    </p>
+                    <h2 className="text-lg font-semibold text-zinc-900">{t("notif.title")}</h2>
+                    <p className="text-xs text-zinc-400">{t("notif.subtitle")}</p>
                 </div>
             </div>
 
@@ -122,7 +123,7 @@ export default function NotificationsPage() {
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-semibold text-zinc-900">Desktop & Browser Push</h3>
+                            <h3 className="text-sm font-semibold text-zinc-900">{t("notif.push")}</h3>
                             <span
                                 className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                                     pushPermission === "granted"
@@ -130,12 +131,10 @@ export default function NotificationsPage() {
                                         : "bg-zinc-100 text-zinc-600"
                                 }`}
                             >
-                                {pushPermission === "granted" ? "Allowed" : "Not enabled"}
+                                {pushPermission === "granted" ? "Activo" : "Inactivo"}
                             </span>
                         </div>
-                        <p className="text-xs text-zinc-400">
-                            Receive real-time alerts even when Nomadix is running in the background
-                        </p>
+                        <p className="text-xs text-zinc-400">{t("notif.pushDesc")}</p>
                     </div>
                 </div>
                 <button
@@ -144,14 +143,14 @@ export default function NotificationsPage() {
                     className="flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-zinc-800 active:scale-[0.98]"
                 >
                     <Bell size={14} />
-                    {pushPermission === "granted" ? "Re-check Permission" : "Enable Push Alerts"}
+                    {pushPermission === "granted" ? "Re-check" : t("notif.enablePush")}
                 </button>
             </div>
 
             {/* Subscriptions & Bills */}
             <div className="space-y-3">
                 <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-zinc-400">
-                    Subscriptions & Due Dates
+                    {t("notif.subsSection")}
                 </h3>
                 <div className="divide-y divide-zinc-100 rounded-2xl border border-zinc-200 bg-white shadow-sm">
                     <div className="flex items-center justify-between p-4">
@@ -160,8 +159,8 @@ export default function NotificationsPage() {
                                 <CalendarCheck size={18} />
                             </div>
                             <div>
-                                <p className="text-sm font-medium text-zinc-900">1-Day Due Date Alert</p>
-                                <p className="text-xs text-zinc-400">Alert 24 hours before a subscription renews</p>
+                                <p className="text-sm font-medium text-zinc-900">{t("notif.sub1d")}</p>
+                                <p className="text-xs text-zinc-400">24 horas antes del cargo</p>
                             </div>
                         </div>
                         <label className="relative cursor-pointer shrink-0">
@@ -182,8 +181,8 @@ export default function NotificationsPage() {
                                 <Receipt size={18} />
                             </div>
                             <div>
-                                <p className="text-sm font-medium text-zinc-900">3-Day Warning</p>
-                                <p className="text-xs text-zinc-400">Early reminder to check vault balances</p>
+                                <p className="text-sm font-medium text-zinc-900">{t("notif.sub3d")}</p>
+                                <p className="text-xs text-zinc-400">Aviso preventivo para revisar fondos</p>
                             </div>
                         </div>
                         <label className="relative cursor-pointer shrink-0">
@@ -204,8 +203,8 @@ export default function NotificationsPage() {
                                 <WarningCircle size={18} />
                             </div>
                             <div>
-                                <p className="text-sm font-medium text-zinc-900">Price Changes & Trial Expirations</p>
-                                <p className="text-xs text-zinc-400">Notify immediately when a free trial ends or price increases</p>
+                                <p className="text-sm font-medium text-zinc-900">{t("notif.subPrice")}</p>
+                                <p className="text-xs text-zinc-400">Aviso de fin de prueba o subida de tarifa</p>
                             </div>
                         </div>
                         <label className="relative cursor-pointer shrink-0">
@@ -225,7 +224,7 @@ export default function NotificationsPage() {
             {/* Financial & Vault Alerts */}
             <div className="space-y-3">
                 <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-zinc-400">
-                    Vault Balances & Alerts
+                    {t("notif.vaultsSection")}
                 </h3>
                 <div className="divide-y divide-zinc-100 rounded-2xl border border-zinc-200 bg-white shadow-sm">
                     <div className="flex items-center justify-between p-4">
@@ -234,8 +233,8 @@ export default function NotificationsPage() {
                                 <Vault size={18} />
                             </div>
                             <div>
-                                <p className="text-sm font-medium text-zinc-900">Low Balance Warnings</p>
-                                <p className="text-xs text-zinc-400">Notify when a multi-currency vault has insufficient funds for upcoming charges</p>
+                                <p className="text-sm font-medium text-zinc-900">{t("notif.vaultLow")}</p>
+                                <p className="text-xs text-zinc-400">{t("notif.vaultLowDesc")}</p>
                             </div>
                         </div>
                         <label className="relative cursor-pointer shrink-0">
@@ -255,7 +254,7 @@ export default function NotificationsPage() {
             {/* Email Digests */}
             <div className="space-y-3">
                 <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-zinc-400">
-                    Email Delivery
+                    {t("notif.emailSection")}
                 </h3>
                 <div className="divide-y divide-zinc-100 rounded-2xl border border-zinc-200 bg-white shadow-sm">
                     <div className="flex items-center justify-between p-4">
@@ -264,8 +263,8 @@ export default function NotificationsPage() {
                                 <EnvelopeSimple size={18} />
                             </div>
                             <div>
-                                <p className="text-sm font-medium text-zinc-900">Weekly Spending Summary</p>
-                                <p className="text-xs text-zinc-400">Weekly digest of currency conversions and category breakdown</p>
+                                <p className="text-sm font-medium text-zinc-900">{t("notif.emailWeekly")}</p>
+                                <p className="text-xs text-zinc-400">Reporte de balance y cambio de divisas</p>
                             </div>
                         </div>
                         <label className="relative cursor-pointer shrink-0">

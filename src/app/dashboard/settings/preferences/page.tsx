@@ -12,6 +12,8 @@ import {
 } from "@phosphor-icons/react";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { useToastStore } from "@/stores/toast-store";
+import { useThemeStore } from "@/stores/theme-store";
+import { useLanguageStore } from "@/stores/language-store";
 
 interface ToggleItemProps {
     icon: React.ElementType;
@@ -79,7 +81,12 @@ function saveGeneralPrefs(prefs: GeneralPrefs) {
 }
 
 export default function PreferencesPage() {
-    const [prefs, setPrefs] = useState<GeneralPrefs>(loadGeneralPrefs);
+    const t = useLanguageStore((s) => s.t);
+    const { isDark, setDarkMode } = useThemeStore();
+    const [prefs, setPrefs] = useState<GeneralPrefs>(() => ({
+        ...loadGeneralPrefs(),
+        darkMode: isDark,
+    }));
     const [isRefreshingRate, setIsRefreshingRate] = useState(false);
 
     const {
@@ -110,7 +117,10 @@ export default function PreferencesPage() {
             saveGeneralPrefs(next);
             return next;
         });
-        addToast("Preferences updated", "info");
+        if (key === "darkMode") {
+            setDarkMode(Boolean(value));
+        }
+        addToast(t("prefs.savedToast"), "info");
     };
 
     const handleRefreshLiveRate = async () => {
@@ -202,10 +212,10 @@ export default function PreferencesPage() {
                 </div>
                 <div>
                     <h2 className="text-lg font-semibold text-zinc-900">
-                        Preferences
+                        {t("prefs.title")}
                     </h2>
                     <p className="text-xs text-zinc-400">
-                        Customize your Nomadix experience
+                        {t("prefs.subtitle")}
                     </p>
                 </div>
             </div>
@@ -214,7 +224,7 @@ export default function PreferencesPage() {
             <div className="space-y-3">
                 <div className="flex items-center justify-between">
                     <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-zinc-400">
-                        Exchange Rate & Currency
+                        {t("prefs.rateTitle")}
                     </h3>
                     <button
                         type="button"
@@ -227,7 +237,7 @@ export default function PreferencesPage() {
                             size={14}
                             className={isRefreshingRate ? "animate-spin text-zinc-900" : ""}
                         />
-                        {isRefreshingRate ? "Updating..." : "Refresh live rate"}
+                        {isRefreshingRate ? t("prefs.refreshing") : t("prefs.refreshRate")}
                     </button>
                 </div>
 
@@ -379,33 +389,33 @@ export default function PreferencesPage() {
             {/* Other Toggles */}
             <div className="space-y-3">
                 <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-zinc-400">
-                    General Preferences
+                    {t("prefs.generalPrefs")}
                 </h3>
                 <ToggleItem
                     icon={Globe}
-                    label="Public Profile"
-                    description="Allow other Nomadix users to view your public profile card"
+                    label={t("prefs.publicProfile")}
+                    description={t("prefs.publicProfileDesc")}
                     checked={prefs.publicProfile}
                     onChange={(val) => updatePref("publicProfile", val)}
                 />
                 <ToggleItem
                     icon={Receipt}
-                    label="Tax & Fiscal Alerts"
-                    description="Get notified when nearing residency duration thresholds"
+                    label={t("prefs.taxAlerts")}
+                    description={t("prefs.taxAlertsDesc")}
                     checked={prefs.taxAlerts}
                     onChange={(val) => updatePref("taxAlerts", val)}
                 />
                 <ToggleItem
                     icon={ArrowsClockwise}
-                    label="Auto Expense Sync"
-                    description="Automatically sync recurring charges and foreign fee calculations"
+                    label={t("prefs.autoSync")}
+                    description={t("prefs.autoSyncDesc")}
                     checked={prefs.autoSync}
                     onChange={(val) => updatePref("autoSync", val)}
                 />
                 <ToggleItem
                     icon={Moon}
-                    label="Dark Mode"
-                    description="Optimize contrast and reduce eye strain in low-light environments"
+                    label={t("prefs.darkMode")}
+                    description={t("prefs.darkModeDesc")}
                     checked={prefs.darkMode}
                     onChange={(val) => updatePref("darkMode", val)}
                 />

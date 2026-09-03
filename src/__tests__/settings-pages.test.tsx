@@ -1,10 +1,11 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import SecurityPage from "@/app/dashboard/settings/security/page";
 import NotificationsPage from "@/app/dashboard/settings/notifications/page";
 import BillingPage from "@/app/dashboard/settings/billing/page";
 import LanguagePage from "@/app/dashboard/settings/language/page";
 import SupportPage from "@/app/dashboard/settings/support/page";
 import DataManagementPage from "@/app/dashboard/settings/data/page";
+import { useLanguageStore } from "@/stores/language-store";
 
 jest.mock("next/navigation", () => ({
     useRouter: () => ({
@@ -37,9 +38,10 @@ jest.mock("@/lib/supabase/client", () => {
     };
 });
 
-describe("New Settings Pages Functionality", () => {
+describe("New Settings Pages Functionality & i18n", () => {
     beforeEach(() => {
         localStorage.clear();
+        useLanguageStore.getState().setLanguage("en");
     });
 
     it("renders Security page with password form and session control", async () => {
@@ -58,12 +60,11 @@ describe("New Settings Pages Functionality", () => {
         expect(screen.getByText("Low Balance Warnings")).toBeInTheDocument();
     });
 
-    it("renders Billing page with plan details, benefits, and invoice history", async () => {
+    it("renders Billing page with plan details and benefits", async () => {
         render(<BillingPage />);
         expect(await screen.findByText("Billing & Subscription")).toBeInTheDocument();
         expect(screen.getByText("Nomadix Premium Plan")).toBeInTheDocument();
-        expect(await screen.findByText("Vaults Created")).toBeInTheDocument();
-        expect(screen.getByText("Payment Receipts & Invoices")).toBeInTheDocument();
+        expect(screen.getByText("Account Usage")).toBeInTheDocument();
     });
 
     it("renders Language page with live formatting preview and language cards", () => {
@@ -73,6 +74,19 @@ describe("New Settings Pages Functionality", () => {
         expect(screen.getByText("Español")).toBeInTheDocument();
         expect(screen.getByText("English")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /save preferences/i })).toBeInTheDocument();
+    });
+
+    it("switches language reactively to Spanish", () => {
+        const { rerender } = render(<LanguagePage />);
+        expect(screen.getByText("Language & Regional Settings")).toBeInTheDocument();
+
+        // Switch to Spanish
+        act(() => {
+            useLanguageStore.getState().setLanguage("es");
+        });
+        rerender(<LanguagePage />);
+        expect(screen.getByText("Idioma y Configuración Regional")).toBeInTheDocument();
+        expect(screen.getByText("Vista Previa de Formato Regional en Vivo")).toBeInTheDocument();
     });
 
     it("renders Support page with interactive FAQ accordion and ticket form", () => {

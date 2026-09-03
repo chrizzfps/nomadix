@@ -50,7 +50,22 @@ export const useRemindersStore = create<RemindersState>((set, get) => ({
 
         const subscriptions = (subs || []) as Subscription[];
         const occurrences = (occs || []) as SubscriptionOccurrence[];
-        const items = buildReminders(subscriptions, occurrences);
+        let items = buildReminders(subscriptions, occurrences);
+
+        if (typeof window !== "undefined") {
+            try {
+                const raw = localStorage.getItem("nomadix_notification_settings");
+                if (raw) {
+                    const cfg = JSON.parse(raw);
+                    items = items.filter((it) => {
+                        if (it.kind === "trial_ending" && cfg.subPriceChange === false) return false;
+                        return true;
+                    });
+                }
+            } catch {
+                // ignore
+            }
+        }
 
         const today = todayISO();
         const unreadCount = items.filter((it) => {

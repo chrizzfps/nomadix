@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { User, FloppyDisk, Check, ShieldCheck, UserCircle, Bell } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
+import { useLanguageStore } from "@/stores/language-store";
 
 const TIMEZONES = [
     "Europe/Madrid",
@@ -25,6 +26,7 @@ const TIMEZONES = [
 export default function AccountSettingsPage() {
     const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
+    const t = useLanguageStore((s) => s.t);
 
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
@@ -118,10 +120,10 @@ export default function AccountSettingsPage() {
                 </div>
                 <div>
                     <h2 className="text-lg font-semibold text-zinc-900">
-                        Account Settings
+                        {t("account.title")}
                     </h2>
                     <p className="text-xs text-zinc-400">
-                        Manage your personal information
+                        {t("account.subtitle")}
                     </p>
                 </div>
             </div>
@@ -150,7 +152,7 @@ export default function AccountSettingsPage() {
                     {/* Full Name */}
                     <div className="space-y-2">
                         <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
-                            Full Name
+                            {t("account.fullName")}
                         </label>
                         <input
                             type="text"
@@ -163,7 +165,7 @@ export default function AccountSettingsPage() {
                     {/* Email (read-only) */}
                     <div className="space-y-2">
                         <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
-                            Email
+                            {t("account.email")}
                         </label>
                         <input
                             type="email"
@@ -176,7 +178,7 @@ export default function AccountSettingsPage() {
                     {/* Timezone */}
                     <div className="space-y-2">
                         <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
-                            Timezone
+                            {t("account.timezone")}
                         </label>
                         <select
                             value={timezone}
@@ -194,7 +196,7 @@ export default function AccountSettingsPage() {
                     {/* Base Currency */}
                     <div className="space-y-2">
                         <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
-                            Base Currency
+                            {t("account.baseCurrency")}
                         </label>
                         <div className="grid grid-cols-2 gap-2">
                             {(["EUR", "USD"] as const).map((c) => (
@@ -231,12 +233,12 @@ export default function AccountSettingsPage() {
                         {saved ? (
                             <>
                                 <Check size={16} weight="bold" />
-                                Saved
+                                {t("account.saved")}
                             </>
                         ) : (
                             <>
                                 <FloppyDisk size={16} />
-                                {isSaving ? "Saving..." : "Save Changes"}
+                                {isSaving ? t("account.saving") : t("account.saveChanges")}
                             </>
                         )}
                     </button>

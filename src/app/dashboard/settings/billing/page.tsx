@@ -14,6 +14,7 @@ import {
 } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
+import { useLanguageStore } from "@/stores/language-store";
 
 interface UsageStats {
     vaults: number;
@@ -24,6 +25,7 @@ interface UsageStats {
 export default function BillingPage() {
     const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
+    const t = useLanguageStore((s) => s.t);
 
     const [billingCycle, setBillingCycle] = useState<"annual" | "monthly">("annual");
     const [usage, setUsage] = useState<UsageStats>({ vaults: 0, documents: 0, transactions: 0 });
@@ -75,9 +77,9 @@ export default function BillingPage() {
                     <CreditCard size={20} className="text-zinc-600" />
                 </div>
                 <div>
-                    <h2 className="text-lg font-semibold text-zinc-900">Billing & Subscription</h2>
+                    <h2 className="text-lg font-semibold text-zinc-900">{t("billing.title")}</h2>
                     <p className="text-xs text-zinc-400">
-                        Manage your Nomadix Pro membership, payment cycle, and invoices
+                        {t("billing.subtitle")}
                     </p>
                 </div>
             </div>
@@ -91,13 +93,13 @@ export default function BillingPage() {
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h3 className="text-base font-bold text-zinc-900">Nomadix Premium Plan</h3>
+                                <h3 className="text-base font-bold text-zinc-900">{t("billing.planName")}</h3>
                                 <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700">
-                                    Active
+                                    {t("billing.active")}
                                 </span>
                             </div>
                             <p className="text-xs text-zinc-400">
-                                Full access to global multi-currency tools, encrypted document vaults, and AI reports
+                                Multi-currency vaults, encrypted storage, and real-time exchange rate sync
                             </p>
                         </div>
                     </div>
@@ -111,7 +113,7 @@ export default function BillingPage() {
                                     : "text-zinc-500 hover:bg-zinc-100"
                             }`}
                         >
-                            Monthly
+                            {t("billing.monthly")}
                         </button>
                         <button
                             type="button"
@@ -122,9 +124,9 @@ export default function BillingPage() {
                                     : "text-zinc-500 hover:bg-zinc-100"
                             }`}
                         >
-                            Annual
+                            {t("billing.annual")}
                             <span className="rounded-full bg-emerald-100 px-1.5 py-0.2 text-[9px] font-bold text-emerald-700">
-                                Save 25%
+                                {t("billing.saveBadge")}
                             </span>
                         </button>
                     </div>
@@ -152,14 +154,14 @@ export default function BillingPage() {
                                 onClick={handleManageSubscription}
                                 className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
                             >
-                                Manage Plan
+                                {t("billing.manage")}
                             </button>
                         </div>
                     </div>
 
                     <div className="space-y-2.5">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
-                            Included in your plan
+                            {t("billing.included")}
                         </p>
                         <ul className="space-y-2 text-xs text-zinc-600">
                             <li className="flex items-center gap-2">
@@ -187,10 +189,10 @@ export default function BillingPage() {
                 </div>
             </div>
 
-            {/* Account Usage Metrics */}
+            {/* Account Limits & Metered Usage */}
             <div className="space-y-3">
                 <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-zinc-400">
-                    Account Usage
+                    {t("billing.usage")}
                 </h3>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div className="rounded-2xl border border-zinc-200 bg-white p-4">
