@@ -9,7 +9,6 @@ import {
     ArrowsClockwise,
     IdentificationCard,
     Airplane,
-    Sparkle,
     GearSix,
     SignOut,
 } from "@phosphor-icons/react";
@@ -22,7 +21,6 @@ const navItems = [
     { href: "/dashboard/vaults", label: "Vaults", icon: Vault },
     { href: "/dashboard/expenses", label: "Expenses", icon: Receipt },
     { href: "/dashboard/subscriptions", label: "Subscriptions", icon: ArrowsClockwise },
-    { href: "/dashboard/reports", label: "Reports", icon: Sparkle },
     { href: "/dashboard/identity", label: "Identity", icon: IdentificationCard },
     { href: "/dashboard/travel", label: "Travel", icon: Airplane },
 ];

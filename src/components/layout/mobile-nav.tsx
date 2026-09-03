@@ -10,7 +10,6 @@ import {
     ArrowsClockwise,
     IdentificationCard,
     Airplane,
-    Sparkle,
     List,
     X,
     GearSix,
@@ -29,7 +28,6 @@ const navItems = [
 ];
 
 const moreNavItems = [
-    { href: "/dashboard/reports", label: "Reports", icon: Sparkle },
     { href: "/dashboard/identity", label: "Identity", icon: IdentificationCard },
 ];
 

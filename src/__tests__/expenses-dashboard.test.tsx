@@ -24,11 +24,17 @@ jest.mock("recharts", () => {
 });
 
 jest.mock("@/stores/currency-store", () => ({
-    useCurrencyStore: () => ({
-        displayCurrency: "EUR",
-        convert: (amount: number) => amount,
-        loadRate: async () => {},
-    }),
+    useCurrencyStore: (selector?: (state: any) => any) => {
+        const state = {
+            displayCurrency: "EUR",
+            exchangeRate: 0.863,
+            manualRate: { enabled: false, rate: 0.863 },
+            convert: (amount: number) => amount,
+            loadRate: async () => {},
+            getActiveRate: () => 0.863,
+        };
+        return typeof selector === "function" ? selector(state) : state;
+    },
 }));
 
 jest.mock("@/lib/supabase/client", () => {
@@ -37,8 +43,9 @@ jest.mock("@/lib/supabase/client", () => {
         { id: "v2", name: "Cash", currency: "EUR" },
     ];
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const todayIso = new Date().toISOString();
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const todayIso = now.toISOString();
 
     const txRows = [
         {

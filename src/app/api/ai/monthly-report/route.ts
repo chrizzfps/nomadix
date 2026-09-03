@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { buildMonthlyReportContext, buildReportPrompt } from "@/lib/ai-report";
+import { buildMonthlyReportContext, buildReportPrompt, type ReportLanguage } from "@/lib/ai-report";
 import { callChatModel } from "@/lib/ai-chat";
 import { DEFAULT_MODEL, isKnownModel, type AiProvider } from "@/lib/ai-providers";
 import { todayISO } from "@/lib/subscriptions";
@@ -37,6 +37,8 @@ export async function POST(request: Request) {
         typeof body?.month === "string" && MONTH_RE.test(body.month)
             ? body.month
             : todayISO().slice(0, 7);
+    const language: ReportLanguage = body?.language === "es" ? "es" : "en";
+    const force = body?.force === true;
 
     const supabase = await createClient();
     const {
@@ -46,6 +48,27 @@ export async function POST(request: Request) {
 
     if (authError || !user) {
         return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    if (!force) {
+        const { data: cached } = await supabase
+            .from("ai_monthly_reports")
+            .select("context, narrative, provider, model")
+            .eq("user_id", user.id)
+            .eq("month", monthISO)
+            .eq("language", language)
+            .maybeSingle();
+
+        if (cached) {
+            return NextResponse.json({
+                context: cached.context,
+                narrative: cached.narrative,
+                provider: cached.provider,
+                model: cached.model,
+                language,
+                cached: true,
+            });
+        }
     }
 
     const { data: profile } = await supabase
@@ -95,7 +118,7 @@ export async function POST(request: Request) {
         usdEurRate,
     });
 
-    const { system, user: userPrompt } = buildReportPrompt(context);
+    const { system, user: userPrompt } = buildReportPrompt(context, language);
 
     const result = await callChatModel({ provider, model, apiKey, system, user: userPrompt });
 
@@ -103,5 +126,25 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: result.error, provider }, { status: result.status || 502 });
     }
 
-    return NextResponse.json({ context, narrative: result.text, provider, model });
+    await supabase.from("ai_monthly_reports").upsert(
+        {
+            user_id: user.id,
+            month: monthISO,
+            language,
+            provider,
+            model,
+            context,
+            narrative: result.text,
+        },
+        { onConflict: "user_id,month,language" }
+    );
+
+    return NextResponse.json({
+        context,
+        narrative: result.text,
+        provider,
+        model,
+        language,
+        cached: false,
+    });
 }

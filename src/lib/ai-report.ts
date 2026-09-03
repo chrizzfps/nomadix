@@ -16,6 +16,14 @@ export interface CategoryTotal {
     amount: number;
 }
 
+export interface BiggestExpense {
+    id: string;
+    vaultId: string;
+    description: string;
+    amount: number;
+    date: string;
+}
+
 export interface VaultBalance {
     name: string;
     currency: Currency;
@@ -35,7 +43,7 @@ export interface MonthlyReportContext {
     current: MonthPeriodTotals;
     previous: MonthPeriodTotals | null;
     topExpenseCategories: CategoryTotal[];
-    biggestExpenses: { description: string; amount: number; date: string }[];
+    biggestExpenses: BiggestExpense[];
     activeSubscriptionsMonthlyCost: number;
     activeSubscriptionCount: number;
     vaultBalances: VaultBalance[];
@@ -132,10 +140,12 @@ export function buildMonthlyReportContext(params: {
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5);
 
-    const biggestExpenses = currentMonthExpenses
+    const biggestExpenses: BiggestExpense[] = currentMonthExpenses
         .map((t) => {
             const from = vaultCurrencyOf.get(t.vault_id) || t.original_currency;
             return {
+                id: t.id,
+                vaultId: t.vault_id,
                 description: t.description || t.category || "Expense",
                 amount: Math.abs(
                     convertTransactionAmount(
@@ -185,7 +195,17 @@ export function buildMonthlyReportContext(params: {
     };
 }
 
-export function buildReportPrompt(ctx: MonthlyReportContext): {
+export type ReportLanguage = "en" | "es";
+
+const LANGUAGE_INSTRUCTION: Record<ReportLanguage, string> = {
+    en: "Write your entire reply in English.",
+    es: "Escribí toda tu respuesta en español (España/neutro), nunca en inglés.",
+};
+
+export function buildReportPrompt(
+    ctx: MonthlyReportContext,
+    language: ReportLanguage = "en"
+): {
     system: string;
     user: string;
 } {
@@ -193,7 +213,7 @@ export function buildReportPrompt(ctx: MonthlyReportContext): {
         "You are a concise, honest personal finance assistant inside the Nomadix app. " +
         "You are given already-computed figures for one month — never recompute or " +
         "second-guess them, and never invent numbers that are not in the data. " +
-        "Write in clear, direct English. No markdown headers, no emoji. " +
+        `${LANGUAGE_INSTRUCTION[language]} No markdown headers, no emoji. ` +
         "Structure your reply in exactly three parts, each on its own paragraph or list: " +
         "1) a 2-3 sentence summary of the month, " +
         "2) 3-5 short bullet insights (start each line with '- '), " +
@@ -206,7 +226,11 @@ export function buildReportPrompt(ctx: MonthlyReportContext): {
             thisMonth: ctx.current,
             previousMonth: ctx.previous,
             topExpenseCategories: ctx.topExpenseCategories,
-            biggestExpenses: ctx.biggestExpenses,
+            biggestExpenses: ctx.biggestExpenses.map((e) => ({
+                description: e.description,
+                amount: e.amount,
+                date: e.date,
+            })),
             activeSubscriptions: {
                 count: ctx.activeSubscriptionCount,
                 monthlyCost: ctx.activeSubscriptionsMonthlyCost,

@@ -31,19 +31,22 @@ interface CurrencyState {
     exchangeRate: number; // USD → EUR rate (from API)
     manualRate: ManualRateConfig;
     rateLoaded: boolean;
+    lastUpdated: number | null;
     toggleCurrency: () => void;
     setExchangeRate: (rate: number) => void;
     setManualRate: (config: ManualRateConfig) => void;
     convert: (amount: number, from: Currency) => number;
-    loadRate: () => Promise<void>;
+    loadRate: (forceRefresh?: boolean) => Promise<void>;
+    refreshLiveRate: () => Promise<number>;
     getActiveRate: () => number;
 }
 
 export const useCurrencyStore = create<CurrencyState>((set, get) => ({
     displayCurrency: "USD",
-    exchangeRate: 0.92,
+    exchangeRate: 0.863,
     manualRate: loadManualRate(),
     rateLoaded: false,
+    lastUpdated: null,
     toggleCurrency: () =>
         set((state) => ({
             displayCurrency: state.displayCurrency === "USD" ? "EUR" : "USD",
@@ -52,6 +55,7 @@ export const useCurrencyStore = create<CurrencyState>((set, get) => ({
     setManualRate: (config) => {
         saveManualRate(config);
         set({ manualRate: config });
+        void persistActiveRate(config.enabled ? config.rate : get().exchangeRate);
     },
     getActiveRate: () => {
         const { manualRate, exchangeRate } = get();
@@ -62,9 +66,20 @@ export const useCurrencyStore = create<CurrencyState>((set, get) => ({
         const activeRate = manualRate.enabled ? manualRate.rate : exchangeRate;
         return convertAmount(amount, from, displayCurrency, activeRate);
     },
-    loadRate: async () => {
-        if (get().rateLoaded) return;
-        if (typeof window !== "undefined") {
+    loadRate: async (forceRefresh = false) => {
+        if (get().rateLoaded && !forceRefresh) return;
+        
+        // Fetch fresh rate from external API
+        const rate = await fetchExchangeRate(forceRefresh);
+        set({
+            exchangeRate: rate,
+            rateLoaded: true,
+            lastUpdated: Date.now(),
+        });
+
+        // If the user hasn't explicitly set a local preference, check server once
+        const currentManual = get().manualRate;
+        if (!currentManual.enabled && typeof window !== "undefined") {
             try {
                 const res = await fetch(
                     "/api/exchange-rate?baseCurrency=USD&targetCurrency=EUR"
@@ -73,29 +88,34 @@ export const useCurrencyStore = create<CurrencyState>((set, get) => ({
                     const json = (await res.json()) as {
                         exchangeRate?: number;
                     };
+                    // Keep live rate as default active rate
                     if (
                         typeof json.exchangeRate === "number" &&
-                        json.exchangeRate > 0
+                        json.exchangeRate > 0 &&
+                        currentManual.enabled
                     ) {
-                        const next = {
-                            enabled: true,
-                            rate: json.exchangeRate,
-                        };
-                        saveManualRate(next);
-                        set({ manualRate: next });
+                        set({
+                            manualRate: { enabled: true, rate: json.exchangeRate },
+                        });
                     }
                 }
             } catch {
+                // ignore
             }
         }
-        const rate = await fetchExchangeRate();
-        set({ exchangeRate: rate, rateLoaded: true });
 
-        // Persist the active USD->EUR rate into user_exchange_rates so the
-        // server-side subscriptions charger (which has no access to this
-        // browser-only machinery) has something fresher than its 0.92
-        // fallback. Fire-and-forget: never blocks the UI on this.
+        // Persist active rate for server-side functions
         void persistActiveRate(get().getActiveRate());
+    },
+    refreshLiveRate: async () => {
+        const rate = await fetchExchangeRate(true);
+        set({
+            exchangeRate: rate,
+            rateLoaded: true,
+            lastUpdated: Date.now(),
+        });
+        void persistActiveRate(get().getActiveRate());
+        return rate;
     },
 }));
 

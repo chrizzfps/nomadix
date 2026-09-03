@@ -1008,6 +1008,57 @@ alter table public.users_profile
         check (preferred_ai_provider in ('openai', 'gemini')),
     add column if not exists preferred_ai_model text not null default 'gpt-4.1-mini';
 
+-- ---------------------------------------------------------------------------
+-- ai_monthly_reports: persisted report cache, one row per (user, month,
+-- language). `context` is the exact aggregated numbers that were narrated --
+-- kept alongside `narrative` so a re-visit renders instantly with no API
+-- call, and stays internally consistent even if new transactions land later.
+-- Regular data, not a secret -- plain owner RLS, no vault involved.
+-- ---------------------------------------------------------------------------
+create table if not exists public.ai_monthly_reports (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users(id) on delete cascade,
+    month text not null,
+    language text not null default 'en' check (language in ('en', 'es')),
+    provider text not null,
+    model text not null,
+    context jsonb not null,
+    narrative text not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    unique (user_id, month, language)
+);
+
+create index if not exists ai_monthly_reports_user_month_idx
+    on public.ai_monthly_reports (user_id, month);
+
+alter table public.ai_monthly_reports enable row level security;
+
+do $$
+begin
+    begin
+        create policy "ai_monthly_reports_select_own" on public.ai_monthly_reports
+        for select using (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+    begin
+        create policy "ai_monthly_reports_insert_own" on public.ai_monthly_reports
+        for insert with check (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+    begin
+        create policy "ai_monthly_reports_update_own" on public.ai_monthly_reports
+        for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+    begin
+        create policy "ai_monthly_reports_delete_own" on public.ai_monthly_reports
+        for delete using (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+end $$;
+
+drop trigger if exists ai_monthly_reports_touch_trg on public.ai_monthly_reports;
+create trigger ai_monthly_reports_touch_trg
+    before update on public.ai_monthly_reports
+    for each row execute function public.nomadix_touch_updated_at();
+
 -- ============================================================================
 -- MANUAL VERIFICATION (run once after applying, keep for future reference)
 -- ============================================================================

@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, FloppyDisk, Check } from "@phosphor-icons/react";
+import { User, FloppyDisk, Check, ShieldCheck, UserCircle, Bell } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 
@@ -240,6 +241,48 @@ export default function AccountSettingsPage() {
                         )}
                     </button>
                 </div>
+            </div>
+
+            {/* Quick Navigation Cards */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Link
+                    href="/dashboard/settings/security"
+                    className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 transition-all hover:border-zinc-300 hover:shadow-sm"
+                >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700">
+                        <ShieldCheck size={18} />
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold text-zinc-900">Security & Password</p>
+                        <p className="text-[11px] text-zinc-400">Update credentials</p>
+                    </div>
+                </Link>
+
+                <Link
+                    href="/dashboard/settings/profile"
+                    className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 transition-all hover:border-zinc-300 hover:shadow-sm"
+                >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700">
+                        <UserCircle size={18} />
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold text-zinc-900">Public Profile</p>
+                        <p className="text-[11px] text-zinc-400">Bio & tax residency</p>
+                    </div>
+                </Link>
+
+                <Link
+                    href="/dashboard/settings/notifications"
+                    className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 transition-all hover:border-zinc-300 hover:shadow-sm"
+                >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700">
+                        <Bell size={18} />
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold text-zinc-900">Notification Alerts</p>
+                        <p className="text-[11px] text-zinc-400">Bills & vault warnings</p>
+                    </div>
+                </Link>
             </div>
         </motion.div>
     );

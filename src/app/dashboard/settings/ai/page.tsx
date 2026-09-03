@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkle, Check, FloppyDisk, Robot } from "@phosphor-icons/react";
+import { Check, FloppyDisk, Robot } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 import { ApiKeyCard } from "@/components/settings/api-key-card";
@@ -92,7 +92,7 @@ export default function AiSettingsPage() {
         >
             <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                    <Sparkle size={20} className="text-zinc-600" />
+                    <Robot size={20} className="text-zinc-600" />
                 </div>
                 <div>
                     <h2 className="text-lg font-semibold text-zinc-900">AI Assistant</h2>

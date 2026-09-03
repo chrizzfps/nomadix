@@ -29,15 +29,29 @@ function setCachedRate(rate: number) {
     );
 }
 
+export function getExchangeRateCacheInfo(): { rate: number | null; timestamp: number | null } {
+    if (typeof window === "undefined") return { rate: null, timestamp: null };
+    try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return { rate: null, timestamp: null };
+        const cached: CachedRates = JSON.parse(raw);
+        return { rate: cached.rate, timestamp: cached.timestamp };
+    } catch {
+        return { rate: null, timestamp: null };
+    }
+}
+
 /**
  * Fetches the USD→EUR exchange rate from a free API.
- * Rate means: 1 USD = X EUR (e.g. 0.92)
- * Falls back to cached value, then to a hardcoded default.
+ * Rate means: 1 USD = X EUR (e.g. 0.863)
+ * Falls back to cached value, then to a realistic fallback.
  */
-export async function fetchExchangeRate(): Promise<number> {
-    // Check cache first
-    const cached = getCachedRate();
-    if (cached) return cached;
+export async function fetchExchangeRate(forceRefresh = false): Promise<number> {
+    // Check cache first (unless forced refresh)
+    if (!forceRefresh) {
+        const cached = getCachedRate();
+        if (cached) return cached;
+    }
 
     try {
         // Free API — base: USD

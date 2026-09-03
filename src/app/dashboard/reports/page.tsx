@@ -1,28 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-    Sparkle,
+    FileText,
     TrendUp,
     TrendDown,
     ArrowRight,
     ArrowClockwise,
     Wallet,
+    CaretRight,
 } from "@phosphor-icons/react";
+import { createClient } from "@/lib/supabase/client";
 import { usePrivacyStore } from "@/stores/privacy-store";
 import { formatMoney } from "@/lib/currency";
 import { todayISO } from "@/lib/subscriptions";
 import { AI_PROVIDERS, type AiProvider } from "@/lib/ai-providers";
-import type { MonthlyReportContext } from "@/lib/ai-report";
+import { TransactionDetailModal } from "@/components/vaults/transaction-detail-modal";
+import type { MonthlyReportContext, ReportLanguage } from "@/lib/ai-report";
 
 interface ReportResult {
     context: MonthlyReportContext;
     narrative: string;
     provider: AiProvider;
     model: string;
+    cached?: boolean;
 }
+
+interface TxDetail {
+    id: string;
+    amount: number;
+    type: string;
+    category: string | null;
+    description: string | null;
+    original_currency: string;
+    date: string | null;
+    created_at: string;
+    vault_name?: string;
+    fee?: number | null;
+    exchange_rate_at_time?: number | null;
+}
+
+const LANGUAGES: { id: ReportLanguage; label: string }[] = [
+    { id: "en", label: "EN" },
+    { id: "es", label: "ES" },
+];
 
 function modelLabel(provider: AiProvider, model: string): string {
     const info = AI_PROVIDERS.find((p) => p.id === provider);
@@ -51,10 +74,12 @@ function parseNarrative(text: string): { paragraphs: string[]; bullets: string[]
 }
 
 export default function ReportsPage() {
+    const supabase = createClient();
     const { isPrivacyMode } = usePrivacyStore();
     const blur = isPrivacyMode ? "blur-sm select-none" : "";
 
     const [month, setMonth] = useState(todayISO().slice(0, 7));
+    const [language, setLanguage] = useState<ReportLanguage>("en");
     const [result, setResult] = useState<ReportResult | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<{
@@ -62,19 +87,24 @@ export default function ReportsPage() {
         code?: string;
         provider?: AiProvider;
     } | null>(null);
+    const [selectedTx, setSelectedTx] = useState<TxDetail | null>(null);
 
-    const generate = async () => {
+    const generate = async (force: boolean) => {
         setIsLoading(true);
         setError(null);
         try {
             const res = await fetch("/api/ai/monthly-report", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ month }),
+                body: JSON.stringify({ month, language, force }),
             });
             const json = await res.json();
             if (!res.ok) {
-                setError({ message: json.error || "Something went wrong.", code: json.code, provider: json.provider });
+                setError({
+                    message: json.error || "Something went wrong.",
+                    code: json.code,
+                    provider: json.provider,
+                });
                 setResult(null);
             } else {
                 setResult(json);
@@ -84,6 +114,20 @@ export default function ReportsPage() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    useEffect(() => {
+        setResult(null);
+        generate(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [month, language]);
+
+    const openExpense = async (id: string, vaultId: string) => {
+        const [{ data: tx }, { data: vault }] = await Promise.all([
+            supabase.from("transactions").select("*").eq("id", id).single(),
+            supabase.from("vaults").select("name").eq("id", vaultId).single(),
+        ]);
+        if (tx) setSelectedTx({ ...tx, vault_name: vault?.name });
     };
 
     const ctx = result?.context;
@@ -102,7 +146,22 @@ export default function ReportsPage() {
                         AI-generated monthly summary of your finances.
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex rounded-xl border border-zinc-200 bg-white p-0.5">
+                        {LANGUAGES.map((l) => (
+                            <button
+                                key={l.id}
+                                onClick={() => setLanguage(l.id)}
+                                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
+                                    language === l.id
+                                        ? "bg-zinc-900 text-white"
+                                        : "text-zinc-500 hover:text-zinc-700"
+                                }`}
+                            >
+                                {l.label}
+                            </button>
+                        ))}
+                    </div>
                     <input
                         type="month"
                         value={month}
@@ -110,18 +169,18 @@ export default function ReportsPage() {
                         className="rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-700 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400"
                     />
                     <button
-                        onClick={generate}
+                        onClick={() => generate(true)}
                         disabled={isLoading}
                         className="flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
                     >
                         {isLoading ? (
                             <>
                                 <ArrowClockwise size={15} className="animate-spin" />
-                                Generating…
+                                {result ? "Regenerating…" : "Generating…"}
                             </>
                         ) : (
                             <>
-                                <Sparkle size={15} />
+                                <FileText size={15} />
                                 {result ? "Regenerate" : "Generate report"}
                             </>
                         )}
@@ -131,10 +190,8 @@ export default function ReportsPage() {
 
             {error && error.code === "no_api_key" && (
                 <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center">
-                    <Sparkle size={36} weight="thin" className="mx-auto text-zinc-300" />
-                    <p className="mt-3 text-sm font-semibold text-zinc-700">
-                        Connect an OpenAI API key to generate reports
-                    </p>
+                    <FileText size={36} weight="thin" className="mx-auto text-zinc-300" />
+                    <p className="mt-3 text-sm font-semibold text-zinc-700">{error.message}</p>
                     <p className="mt-1 text-xs text-zinc-400">
                         Your key is stored encrypted and used only to generate this report.
                     </p>
@@ -156,7 +213,7 @@ export default function ReportsPage() {
 
             {!result && !error && !isLoading && (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-white py-20">
-                    <Sparkle size={40} weight="thin" className="text-zinc-300" />
+                    <FileText size={40} weight="thin" className="text-zinc-300" />
                     <p className="mt-3 text-sm font-semibold text-zinc-400">No report yet</p>
                     <p className="mt-1 text-xs text-zinc-300">
                         Pick a month and generate your first AI summary.
@@ -164,7 +221,7 @@ export default function ReportsPage() {
                 </div>
             )}
 
-            {isLoading && (
+            {isLoading && !result && (
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                         {[1, 2, 3, 4].map((i) => (
@@ -175,11 +232,11 @@ export default function ReportsPage() {
                 </div>
             )}
 
-            {ctx && narrative && (
+            {ctx && narrative && result && (
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="space-y-6"
+                    className={`space-y-6 transition-opacity ${isLoading ? "opacity-50" : ""}`}
                 >
                     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                         <div className="rounded-2xl border border-zinc-200 bg-white p-5">
@@ -243,7 +300,7 @@ export default function ReportsPage() {
                         <div className="rounded-2xl border border-zinc-200 bg-white p-6">
                             <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2">
-                                    <Sparkle size={16} className="text-zinc-400" />
+                                    <FileText size={16} className="text-zinc-400" />
                                     <h3 className="text-sm font-semibold text-zinc-900">
                                         {ctx.monthLabel} summary
                                     </h3>
@@ -296,14 +353,21 @@ export default function ReportsPage() {
                                 {ctx.biggestExpenses.length === 0 ? (
                                     <p className="mt-2 text-xs text-zinc-400">No expenses this month.</p>
                                 ) : (
-                                    <div className="mt-3 space-y-2.5">
-                                        {ctx.biggestExpenses.map((e, i) => (
-                                            <div key={i} className="flex items-center justify-between text-sm">
+                                    <div className="mt-3 space-y-1">
+                                        {ctx.biggestExpenses.map((e) => (
+                                            <button
+                                                key={e.id}
+                                                onClick={() => openExpense(e.id, e.vaultId)}
+                                                className="flex w-full items-center justify-between gap-2 rounded-xl px-2 py-2 text-sm transition-colors hover:bg-zinc-50"
+                                            >
                                                 <span className="truncate text-zinc-600">{e.description}</span>
-                                                <span className={`shrink-0 font-semibold tabular-nums text-zinc-900 ${blur}`}>
-                                                    {formatMoney(e.amount, ctx.currency)}
+                                                <span className="flex shrink-0 items-center gap-1">
+                                                    <span className={`font-semibold tabular-nums text-zinc-900 ${blur}`}>
+                                                        {formatMoney(e.amount, ctx.currency)}
+                                                    </span>
+                                                    <CaretRight size={12} className="text-zinc-300" />
                                                 </span>
-                                            </div>
+                                            </button>
                                         ))}
                                     </div>
                                 )}
@@ -312,6 +376,13 @@ export default function ReportsPage() {
                     </div>
                 </motion.div>
             )}
+
+            <TransactionDetailModal
+                isOpen={!!selectedTx}
+                onClose={() => setSelectedTx(null)}
+                onDeleted={() => setSelectedTx(null)}
+                transaction={selectedTx}
+            />
         </div>
     );
 }
