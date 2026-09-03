@@ -10,7 +10,7 @@ export default function DashboardLayout({
 }) {
     return (
         <AuthGuard>
-            <div className="min-h-screen bg-zinc-50">
+            <div className="min-h-screen bg-background">
                 <Sidebar />
                 <MobileNav />
                 <main className="lg:ml-[220px]">

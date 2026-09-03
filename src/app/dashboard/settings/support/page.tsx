@@ -13,6 +13,7 @@ import {
 } from "@phosphor-icons/react";
 import { useToastStore } from "@/stores/toast-store";
 import { useLanguageStore } from "@/stores/language-store";
+import { createClient } from "@/lib/supabase/client";
 
 interface FaqItem {
     question: string;
@@ -66,6 +67,7 @@ const FAQ_ITEMS_ES: FaqItem[] = [
 ];
 
 export default function SupportPage() {
+    const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
     const { language, t } = useLanguageStore();
 
@@ -82,7 +84,7 @@ export default function SupportPage() {
 
     const faqItems = language === "es" ? FAQ_ITEMS_ES : FAQ_ITEMS_EN;
 
-    const handleSubmitTicket = (e: React.FormEvent) => {
+    const handleSubmitTicket = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!subject.trim() || !message.trim()) {
             addToast("Por favor completa el asunto y el mensaje", "error");
@@ -90,16 +92,38 @@ export default function SupportPage() {
         }
 
         setIsSubmitting(true);
-        setTimeout(() => {
+
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
             setIsSubmitting(false);
-            setSubmitted(true);
-            addToast(
-                language === "es" ? "Ticket de soporte enviado. Te responderemos pronto." : "Support ticket submitted. We will contact you soon.",
-                "success"
-            );
-            setSubject("");
-            setMessage("");
-        }, 800);
+            addToast("You must be logged in.", "error");
+            return;
+        }
+
+        const { error } = await supabase.from("support_tickets").insert({
+            user_id: user.id,
+            category,
+            priority,
+            subject: subject.trim(),
+            message: message.trim(),
+        });
+
+        setIsSubmitting(false);
+
+        if (error) {
+            addToast(error.message, "error");
+            return;
+        }
+
+        setSubmitted(true);
+        addToast(
+            language === "es" ? "Ticket de soporte enviado. Te responderemos pronto." : "Support ticket submitted. We will contact you soon.",
+            "success"
+        );
+        setSubject("");
+        setMessage("");
     };
 
     return (
@@ -110,12 +134,12 @@ export default function SupportPage() {
         >
             {/* Header */}
             <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                    <Headset size={20} className="text-zinc-600" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                    <Headset size={20} className="text-foreground/70" />
                 </div>
                 <div>
-                    <h2 className="text-lg font-semibold text-zinc-900">{t("support.title")}</h2>
-                    <p className="text-xs text-zinc-400">
+                    <h2 className="text-lg font-semibold text-foreground">{t("support.title")}</h2>
+                    <p className="text-xs text-muted-foreground">
                         {t("support.subtitle")}
                     </p>
                 </div>
@@ -123,41 +147,41 @@ export default function SupportPage() {
 
             {/* Quick Support Resource Cards */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-foreground/80">
                             <BookOpen size={20} />
                         </div>
                         <div>
-                            <p className="text-sm font-semibold text-zinc-900">{t("support.docs")}</p>
-                            <p className="text-xs text-zinc-400">Guías de bóvedas y divisas</p>
+                            <p className="text-sm font-semibold text-foreground">{t("support.docs")}</p>
+                            <p className="text-xs text-muted-foreground">Guías de bóvedas y divisas</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-foreground/80">
                             <Users size={20} />
                         </div>
                         <div>
-                            <p className="text-sm font-semibold text-zinc-900">{t("support.community")}</p>
-                            <p className="text-xs text-zinc-400">Discord & Telegram chat</p>
+                            <p className="text-sm font-semibold text-foreground">{t("support.community")}</p>
+                            <p className="text-xs text-muted-foreground">Discord & Telegram chat</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
                             <ShieldCheck size={20} />
                         </div>
                         <div>
                             <div className="flex items-center gap-1.5">
                                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                                <p className="text-sm font-semibold text-zinc-900">{t("support.status")}</p>
+                                <p className="text-sm font-semibold text-foreground">{t("support.status")}</p>
                             </div>
-                            <p className="text-xs text-zinc-400">Operacional 100%</p>
+                            <p className="text-xs text-muted-foreground">Operacional 100%</p>
                         </div>
                     </div>
                 </div>
@@ -165,10 +189,10 @@ export default function SupportPage() {
 
             {/* Interactive FAQ */}
             <div className="space-y-3">
-                <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-zinc-400">
+                <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-muted-foreground">
                     {t("support.faq")}
                 </h3>
-                <div className="divide-y divide-zinc-100 rounded-2xl border border-zinc-200 bg-white overflow-hidden shadow-sm">
+                <div className="divide-y divide-border rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
                     {faqItems.map((item, idx) => {
                         const isOpen = openFaq === idx;
                         return (
@@ -176,13 +200,13 @@ export default function SupportPage() {
                                 <button
                                     type="button"
                                     onClick={() => setOpenFaq(isOpen ? null : idx)}
-                                    className="flex w-full items-center justify-between p-4 text-left font-medium text-zinc-900 hover:bg-zinc-50"
+                                    className="flex w-full items-center justify-between p-4 text-left font-medium text-foreground hover:bg-accent"
                                 >
                                     <span className="text-sm font-medium">{item.question}</span>
                                     <CaretDown
                                         size={16}
-                                        className={`shrink-0 text-zinc-400 transition-transform ${
-                                            isOpen ? "rotate-180 text-zinc-900" : ""
+                                        className={`shrink-0 text-muted-foreground transition-transform ${
+                                            isOpen ? "rotate-180 text-foreground" : ""
                                         }`}
                                     />
                                 </button>
@@ -192,9 +216,9 @@ export default function SupportPage() {
                                             initial={{ height: 0, opacity: 0 }}
                                             animate={{ height: "auto", opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}
-                                            className="overflow-hidden bg-zinc-50/50 px-4 pb-4 pt-1"
+                                            className="overflow-hidden bg-accent/50 px-4 pb-4 pt-1"
                                         >
-                                            <p className="text-xs leading-relaxed text-zinc-600">{item.answer}</p>
+                                            <p className="text-xs leading-relaxed text-foreground/70">{item.answer}</p>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
@@ -205,25 +229,25 @@ export default function SupportPage() {
             </div>
 
             {/* Contact Support Form */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-                <h3 className="text-sm font-semibold text-zinc-900 mb-1">{t("support.contact")}</h3>
-                <p className="text-xs text-zinc-400 mb-5">
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                <h3 className="text-sm font-semibold text-foreground mb-1">{t("support.contact")}</h3>
+                <p className="text-xs text-muted-foreground mb-5">
                     ¿Tienes dudas sobre tasas de cambio o configuración de cuentas? Escríbenos directamente.
                 </p>
 
                 {submitted ? (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 text-center">
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/30 p-5 text-center">
                         <CheckCircle size={28} weight="fill" className="mx-auto text-emerald-600 mb-2" />
-                        <p className="text-sm font-semibold text-zinc-900">
+                        <p className="text-sm font-semibold text-foreground">
                             {language === "es" ? "Ticket enviado exitosamente" : "Ticket submitted successfully"}
                         </p>
-                        <p className="text-xs text-zinc-500 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                             {language === "es" ? "Nuestro equipo te responderá en menos de 24 horas hábiles." : "Our support team will get back to you within 24 business hours."}
                         </p>
                         <button
                             type="button"
                             onClick={() => setSubmitted(false)}
-                            className="mt-4 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
+                            className="mt-4 rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground/80 hover:bg-accent"
                         >
                             {language === "es" ? "Enviar otra consulta" : "Submit another inquiry"}
                         </button>
@@ -232,13 +256,13 @@ export default function SupportPage() {
                     <form onSubmit={handleSubmitTicket} className="space-y-4 max-w-xl">
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-zinc-400">
+                                <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-muted-foreground">
                                     {t("support.category")}
                                 </label>
                                 <select
                                     value={category}
                                     onChange={(e) => setCategory(e.target.value)}
-                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-medium text-zinc-900 focus:border-zinc-400 focus:bg-white focus:outline-none"
+                                    className="w-full rounded-xl border border-border bg-accent px-3.5 py-2 text-xs font-medium text-foreground focus:border-ring focus:bg-card focus:outline-none"
                                 >
                                     <option value="General Question">General / Consultas</option>
                                     <option value="Exchange Rates">Tasas de Cambio / Conversión</option>
@@ -249,13 +273,13 @@ export default function SupportPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-zinc-400">
+                                <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-muted-foreground">
                                     {t("support.priority")}
                                 </label>
                                 <select
                                     value={priority}
                                     onChange={(e) => setPriority(e.target.value)}
-                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-medium text-zinc-900 focus:border-zinc-400 focus:bg-white focus:outline-none"
+                                    className="w-full rounded-xl border border-border bg-accent px-3.5 py-2 text-xs font-medium text-foreground focus:border-ring focus:bg-card focus:outline-none"
                                 >
                                     <option value="Low">Baja (Informativa)</option>
                                     <option value="Normal">Normal</option>
@@ -265,7 +289,7 @@ export default function SupportPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-zinc-400">
+                            <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-muted-foreground">
                                 {t("support.subject")}
                             </label>
                             <input
@@ -273,13 +297,13 @@ export default function SupportPage() {
                                 value={subject}
                                 onChange={(e) => setSubject(e.target.value)}
                                 placeholder="Resumen breve del problema..."
-                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm text-zinc-900 focus:border-zinc-400 focus:bg-white focus:outline-none"
+                                className="w-full rounded-xl border border-border bg-accent px-3.5 py-2 text-sm text-foreground focus:border-ring focus:bg-card focus:outline-none"
                                 required
                             />
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-zinc-400">
+                            <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-muted-foreground">
                                 {t("support.message")}
                             </label>
                             <textarea
@@ -287,7 +311,7 @@ export default function SupportPage() {
                                 onChange={(e) => setMessage(e.target.value)}
                                 placeholder="Describe con detalle lo que sucede..."
                                 rows={4}
-                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-900 focus:border-zinc-400 focus:bg-white focus:outline-none"
+                                className="w-full rounded-xl border border-border bg-accent p-3 text-sm text-foreground focus:border-ring focus:bg-card focus:outline-none"
                                 required
                             />
                         </div>
@@ -296,7 +320,7 @@ export default function SupportPage() {
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-xs font-semibold text-white transition-all hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
+                                className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-semibold text-white transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
                             >
                                 <PaperPlaneTilt size={15} />
                                 {isSubmitting ? "Enviando..." : t("support.send")}

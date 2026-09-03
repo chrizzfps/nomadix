@@ -38,17 +38,17 @@ export function Sidebar() {
     };
 
     return (
-        <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[220px] flex-col border-r border-zinc-200 bg-white lg:flex">
+        <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[220px] flex-col border-r border-border bg-card lg:flex">
             {/* Logo */}
             <div className="flex items-center justify-between gap-3 px-6 py-6">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-900">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
                         <svg
                             width="16"
                             height="16"
                             viewBox="0 0 24 24"
                             fill="none"
-                            stroke="white"
+                            stroke="currentColor"
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -59,8 +59,8 @@ export function Sidebar() {
                         </svg>
                     </div>
                     <div>
-                        <p className="text-sm font-semibold text-zinc-900">{APP_NAME}</p>
-                        <p className="text-[10px] text-zinc-400">Premium Plan</p>
+                        <p className="text-sm font-semibold text-foreground">{APP_NAME}</p>
+                        <p className="text-[10px] text-muted-foreground">Premium Plan</p>
                     </div>
                 </div>
                 <NotificationBell align="left" />
@@ -79,8 +79,8 @@ export function Sidebar() {
                                     href={item.href}
                                     className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                                         active
-                                            ? "bg-zinc-900 text-white"
-                                            : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                                            ? "bg-primary text-primary-foreground"
+                                            : "text-muted-foreground hover:bg-accent hover:text-foreground"
                                     }`}
                                 >
                                     <Icon
@@ -96,17 +96,17 @@ export function Sidebar() {
             </nav>
 
             {/* Bottom */}
-            <div className="border-t border-zinc-100 px-3 py-4 space-y-1">
+            <div className="border-t border-border px-3 py-4 space-y-1">
                 <Link
                     href="/dashboard/settings"
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-500 transition-all hover:bg-zinc-100 hover:text-zinc-900"
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-accent hover:text-foreground"
                 >
                     <GearSix size={18} />
                     {t("nav.settings")}
                 </Link>
                 <button
                     onClick={() => signOut()}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-500 transition-all hover:bg-zinc-100 hover:text-zinc-900"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-accent hover:text-foreground"
                 >
                     <SignOut size={18} />
                     {t("nav.signOut")}

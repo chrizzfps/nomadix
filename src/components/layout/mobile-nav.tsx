@@ -47,15 +47,15 @@ export function MobileNav() {
     return (
         <>
             {/* Mobile Top Bar */}
-            <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between border-b border-zinc-200 bg-white/80 backdrop-blur-xl px-4 py-3 lg:hidden">
+            <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-xl px-4 py-3 lg:hidden">
                 <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
                         <svg
                             width="14"
                             height="14"
                             viewBox="0 0 24 24"
                             fill="none"
-                            stroke="white"
+                            stroke="currentColor"
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -65,13 +65,13 @@ export function MobileNav() {
                             <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                         </svg>
                     </div>
-                    <span className="text-sm font-semibold">Nomadix</span>
+                    <span className="text-sm font-semibold text-foreground">Nomadix</span>
                 </div>
                 <div className="flex items-center gap-1">
                     <NotificationBell align="right" />
                     <button
                         onClick={() => setIsOpen(!isOpen)}
-                        className="rounded-lg p-1.5 hover:bg-zinc-100 transition-colors"
+                        className="rounded-lg p-1.5 text-foreground hover:bg-accent transition-colors"
                     >
                         {isOpen ? <X size={20} /> : <List size={20} />}
                     </button>
@@ -94,7 +94,7 @@ export function MobileNav() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                            className="fixed top-[57px] left-0 right-0 z-50 border-b border-zinc-200 bg-white px-4 py-3 shadow-lg lg:hidden"
+                            className="fixed top-[57px] left-0 right-0 z-50 border-b border-border bg-card px-4 py-3 shadow-lg lg:hidden"
                         >
                             <div className="space-y-1">
                                 {moreNavItems.map((item) => {
@@ -108,8 +108,8 @@ export function MobileNav() {
                                             onClick={() => setIsOpen(false)}
                                             className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                                                 active
-                                                    ? "bg-zinc-900 text-white"
-                                                    : "text-zinc-600 hover:bg-zinc-100"
+                                                    ? "bg-primary text-primary-foreground"
+                                                    : "text-muted-foreground hover:bg-accent"
                                             }`}
                                         >
                                             <Icon size={18} weight={active ? "fill" : "regular"} />
@@ -120,7 +120,7 @@ export function MobileNav() {
                                 <Link
                                     href="/dashboard/settings"
                                     onClick={() => setIsOpen(false)}
-                                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-600 transition-all hover:bg-zinc-100"
+                                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-accent"
                                 >
                                     <GearSix size={18} />
                                     {t("nav.settings")}
@@ -130,7 +130,7 @@ export function MobileNav() {
                                         setIsOpen(false);
                                         signOut();
                                     }}
-                                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-600 transition-all hover:bg-zinc-100"
+                                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-accent"
                                 >
                                     <SignOut size={18} />
                                     {t("nav.signOut")}
@@ -142,7 +142,7 @@ export function MobileNav() {
             </AnimatePresence>
 
             {/* Bottom Navigation Bar */}
-            <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-200 bg-white/80 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] lg:hidden">
+            <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/80 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] lg:hidden">
                 <div className="flex items-center justify-around px-2 py-2">
                     {navItems.map((item) => {
                         const Icon = item.icon;
@@ -153,7 +153,7 @@ export function MobileNav() {
                                 key={item.href}
                                 href={item.href}
                                 className={`flex flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-medium transition-colors ${
-                                    active ? "text-zinc-900" : "text-zinc-400"
+                                    active ? "text-foreground" : "text-muted-foreground"
                                 }`}
                             >
                                 <Icon size={20} weight={active ? "fill" : "regular"} />

@@ -55,8 +55,8 @@ export function SettingsSidebar() {
                                 href={item.href}
                                 className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
                                     active
-                                        ? "bg-zinc-900 text-white"
-                                        : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                                        ? "bg-primary text-primary-foreground"
+                                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
                                 }`}
                             >
                                 <Icon
@@ -71,7 +71,7 @@ export function SettingsSidebar() {
             </aside>
 
             {/* Mobile horizontal tabs */}
-            <div className="lg:hidden -mx-6 mb-6 overflow-x-auto border-b border-zinc-200 px-6">
+            <div className="lg:hidden -mx-6 mb-6 overflow-x-auto border-b border-border px-6">
                 <div className="flex gap-1 pb-2">
                     {settingsNav.map((item) => {
                         const Icon = item.icon;
@@ -83,8 +83,8 @@ export function SettingsSidebar() {
                                 href={item.href}
                                 className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
                                     active
-                                        ? "bg-zinc-900 text-white"
-                                        : "text-zinc-500 hover:bg-zinc-100"
+                                        ? "bg-primary text-primary-foreground"
+                                        : "text-muted-foreground hover:bg-accent"
                                 }`}
                             >
                                 <Icon size={14} />

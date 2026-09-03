@@ -11,10 +11,10 @@ export default function SettingsLayout({
         <div className="p-6 lg:p-8">
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">
                     Settings
                 </h1>
-                <p className="mt-1 text-sm text-zinc-500">
+                <p className="mt-1 text-sm text-muted-foreground">
                     Manage your account, preferences, and security.
                 </p>
             </div>
