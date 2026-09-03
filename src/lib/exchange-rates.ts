@@ -47,10 +47,11 @@ export function getExchangeRateCacheInfo(): { rate: number | null; timestamp: nu
  * Falls back to cached value, then to a realistic fallback.
  */
 export async function fetchExchangeRate(forceRefresh = false): Promise<number> {
+    const cached = getCachedRate();
+
     // Check cache first (unless forced refresh)
-    if (!forceRefresh) {
-        const cached = getCachedRate();
-        if (cached) return cached;
+    if (!forceRefresh && cached) {
+        return cached;
     }
 
     try {
