@@ -78,7 +78,7 @@ export default function AiSettingsPage() {
         return (
             <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-24 animate-pulse rounded-2xl bg-zinc-100" />
+                    <div key={i} className="h-24 animate-pulse rounded-2xl bg-accent" />
                 ))}
             </div>
         );
@@ -91,20 +91,20 @@ export default function AiSettingsPage() {
             className="space-y-6"
         >
             <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                    <Robot size={20} className="text-zinc-600" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                    <Robot size={20} className="text-foreground/70" />
                 </div>
                 <div>
-                    <h2 className="text-lg font-semibold text-zinc-900">AI Assistant</h2>
-                    <p className="text-xs text-zinc-400">
+                    <h2 className="text-lg font-semibold text-foreground">AI Assistant</h2>
+                    <p className="text-xs text-muted-foreground">
                         Connect an API key and pick the model used for AI features
                     </p>
                 </div>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
-                <h3 className="text-sm font-semibold text-zinc-900">Default for reports</h3>
-                <p className="mt-1 text-xs text-zinc-400">
+            <div className="rounded-2xl border border-border bg-card p-6">
+                <h3 className="text-sm font-semibold text-foreground">Default for reports</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
                     Which provider and model generate your monthly report.
                 </p>
 
@@ -115,15 +115,15 @@ export default function AiSettingsPage() {
                             onClick={() => handleProviderChange(p.id)}
                             className={`flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
                                 provider === p.id
-                                    ? "border-zinc-900 bg-zinc-900 text-white"
-                                    : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300"
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-border bg-card text-muted-foreground hover:border-ring"
                             }`}
                         >
                             {p.label}
                             {!hasKey[p.id] && (
                                 <span
                                     className={`text-[10px] font-medium normal-case ${
-                                        provider === p.id ? "text-zinc-300" : "text-amber-500"
+                                        provider === p.id ? "text-muted-foreground" : "text-amber-500"
                                     }`}
                                 >
                                     no key
@@ -140,15 +140,15 @@ export default function AiSettingsPage() {
                             onClick={() => setModel(m.id)}
                             className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all ${
                                 model === m.id
-                                    ? "border-zinc-900 bg-zinc-50"
-                                    : "border-zinc-200 bg-white hover:border-zinc-300"
+                                    ? "border-primary bg-accent"
+                                    : "border-border bg-card hover:border-ring"
                             }`}
                         >
                             <div>
-                                <p className="text-sm font-semibold text-zinc-900">{m.label}</p>
-                                <p className="text-xs text-zinc-400">{m.description}</p>
+                                <p className="text-sm font-semibold text-foreground">{m.label}</p>
+                                <p className="text-xs text-muted-foreground">{m.description}</p>
                             </div>
-                            {model === m.id && <Check size={16} weight="bold" className="text-zinc-900" />}
+                            {model === m.id && <Check size={16} weight="bold" className="text-foreground" />}
                         </button>
                     ))}
                 </div>
@@ -158,7 +158,7 @@ export default function AiSettingsPage() {
                         onClick={handleSavePreference}
                         disabled={isSaving}
                         className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 ${
-                            saved ? "bg-emerald-600 text-white" : "bg-zinc-900 text-white hover:bg-zinc-800"
+                            saved ? "bg-emerald-600 text-white" : "bg-primary text-primary-foreground hover:bg-primary/90"
                         }`}
                     >
                         {saved ? (
@@ -184,26 +184,26 @@ export default function AiSettingsPage() {
                 />
             ))}
 
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+            <div className="rounded-2xl border border-border bg-card p-6">
                 <div className="flex items-center gap-2">
-                    <Robot size={16} className="text-zinc-400" />
-                    <h3 className="text-sm font-semibold text-zinc-900">What this unlocks</h3>
+                    <Robot size={16} className="text-muted-foreground" />
+                    <h3 className="text-sm font-semibold text-foreground">What this unlocks</h3>
                 </div>
-                <ul className="mt-3 space-y-2 text-sm text-zinc-500">
+                <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                     <li>
-                        <span className="font-medium text-zinc-700">Monthly AI report</span> — a
+                        <span className="font-medium text-foreground/80">Monthly AI report</span> — a
                         plain-English summary of your spending, income and trends, generated from
                         your real numbers.{" "}
-                        <a href="/dashboard/reports" className="font-medium text-zinc-900 underline">
+                        <a href="/dashboard/reports" className="font-medium text-foreground underline">
                             Go to Reports →
                         </a>
                     </li>
                     <li>
-                        <span className="font-medium text-zinc-700">Chat expense entry</span> —
+                        <span className="font-medium text-foreground/80">Chat expense entry</span> —
                         coming soon.
                     </li>
                 </ul>
-                <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">
+                <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
                     Keys are encrypted at rest (Supabase Vault) and never shown again after saving —
                     only the last 4 characters are kept for display. Used server-side only, never
                     sent to your browser. Usage is billed by the provider directly to your account.

@@ -19,6 +19,7 @@ import { AccessLog } from "@/components/identity/access-log";
 import { usePrivacyStore } from "@/stores/privacy-store";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
+import { useLanguageStore } from "@/stores/language-store";
 import type { DocumentType, AccessLogEntry } from "@/types";
 
 interface DocumentData {
@@ -33,6 +34,7 @@ interface DocumentData {
 export default function IdentityPage() {
     const supabase = createClient();
     const { isPrivacyMode, togglePrivacy } = usePrivacyStore();
+    const t = useLanguageStore((s) => s.t);
     const [showAddDocument, setShowAddDocument] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState<DocumentData | null>(null);
     const [editDoc, setEditDoc] = useState<DocumentData | null>(null);
@@ -75,18 +77,18 @@ export default function IdentityPage() {
             hour: "2-digit",
             minute: "2-digit",
         }),
-        device: "Current Device",
+        device: t("identity.currentDevice"),
     }));
 
     if (isLoading) {
         return (
             <div className="p-6 lg:p-8 space-y-6">
-                <div className="h-10 w-56 animate-pulse rounded-lg bg-zinc-100" />
+                <div className="h-10 w-56 animate-pulse rounded-lg bg-accent" />
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     {[1, 2, 3].map((i) => (
                         <div
                             key={i}
-                            className="h-20 animate-pulse rounded-2xl bg-zinc-100"
+                            className="h-20 animate-pulse rounded-2xl bg-accent"
                         />
                     ))}
                 </div>
@@ -94,7 +96,7 @@ export default function IdentityPage() {
                     {[1, 2, 3].map((i) => (
                         <div
                             key={i}
-                            className="h-48 animate-pulse rounded-2xl bg-zinc-100"
+                            className="h-48 animate-pulse rounded-2xl bg-accent"
                         />
                     ))}
                 </div>
@@ -107,11 +109,11 @@ export default function IdentityPage() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
-                        Identity Vault
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                        {t("identity.title")}
                     </h1>
-                    <p className="mt-1 text-sm text-zinc-500">
-                        Securely store and manage your identity documents.
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        {t("identity.subtitle")}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -119,8 +121,8 @@ export default function IdentityPage() {
                     <button
                         onClick={togglePrivacy}
                         className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${isPrivacyMode
-                            ? "border-zinc-900 bg-zinc-900 text-white"
-                            : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-foreground/80 hover:bg-accent"
                             }`}
                     >
                         {isPrivacyMode ? (
@@ -128,14 +130,14 @@ export default function IdentityPage() {
                         ) : (
                             <Eye size={16} />
                         )}
-                        {isPrivacyMode ? "Privacy On" : "Privacy Off"}
+                        {isPrivacyMode ? t("identity.privacyOn") : t("identity.privacyOff")}
                     </button>
                     <button
                         onClick={() => setShowAddDocument(true)}
-                        className="flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-zinc-800 active:scale-[0.98]"
+                        className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
                     >
                         <Plus size={16} weight="bold" />
-                        Add Document
+                        {t("identity.addDocument")}
                     </button>
                 </div>
             </div>
@@ -148,22 +150,22 @@ export default function IdentityPage() {
                 className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3"
             >
                 {/* Total Documents */}
-                <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-100">
-                        <Files size={20} className="text-zinc-600" />
+                <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent">
+                        <Files size={20} className="text-foreground/70" />
                     </div>
                     <div>
-                        <p className="text-[11px] font-semibold tracking-[0.15em] uppercase text-zinc-400">
-                            Total Documents
+                        <p className="text-[11px] font-semibold tracking-[0.15em] uppercase text-muted-foreground">
+                            {t("identity.totalDocuments")}
                         </p>
-                        <p className="text-2xl font-bold text-zinc-900">
+                        <p className="text-2xl font-bold text-foreground">
                             {totalDocuments}
                         </p>
                     </div>
                 </div>
 
                 {/* Verified */}
-                <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
+                <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5">
                     <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50">
                         <CheckCircle
                             size={20}
@@ -172,12 +174,12 @@ export default function IdentityPage() {
                         />
                     </div>
                     <div>
-                        <p className="text-[11px] font-semibold tracking-[0.15em] uppercase text-zinc-400">
-                            With Files
+                        <p className="text-[11px] font-semibold tracking-[0.15em] uppercase text-muted-foreground">
+                            {t("identity.withFiles")}
                         </p>
-                        <p className="text-2xl font-bold text-zinc-900">
+                        <p className="text-2xl font-bold text-foreground">
                             {verifiedCount}
-                            <span className="ml-1 text-sm font-normal text-zinc-400">
+                            <span className="ml-1 text-sm font-normal text-muted-foreground">
                                 / {totalDocuments}
                             </span>
                         </p>
@@ -185,25 +187,25 @@ export default function IdentityPage() {
                 </div>
 
                 {/* Privacy Mode */}
-                <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
+                <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5">
                     <div
-                        className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${isPrivacyMode ? "bg-zinc-900" : "bg-zinc-100"
+                        className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${isPrivacyMode ? "bg-primary" : "bg-accent"
                             }`}
                     >
                         <ShieldCheck
                             size={20}
                             weight={isPrivacyMode ? "fill" : "regular"}
                             className={
-                                isPrivacyMode ? "text-white" : "text-zinc-600"
+                                isPrivacyMode ? "text-white" : "text-foreground/70"
                             }
                         />
                     </div>
                     <div className="flex-1">
-                        <p className="text-[11px] font-semibold tracking-[0.15em] uppercase text-zinc-400">
-                            Privacy Mode
+                        <p className="text-[11px] font-semibold tracking-[0.15em] uppercase text-muted-foreground">
+                            {t("identity.privacyMode")}
                         </p>
-                        <p className="text-sm font-semibold text-zinc-900">
-                            {isPrivacyMode ? "Active" : "Inactive"}
+                        <p className="text-sm font-semibold text-foreground">
+                            {isPrivacyMode ? t("identity.active") : t("identity.inactive")}
                         </p>
                     </div>
                     {/* Toggle switch */}
@@ -214,8 +216,8 @@ export default function IdentityPage() {
                             onChange={togglePrivacy}
                             className="peer sr-only"
                         />
-                        <div className="h-5 w-9 rounded-full bg-zinc-200 peer-checked:bg-zinc-900 transition-colors" />
-                        <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+                        <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
+                        <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
                     </label>
                 </div>
             </motion.div>
@@ -239,13 +241,13 @@ export default function IdentityPage() {
                             onView={() => setSelectedDoc(doc)}
                             onEdit={() => setEditDoc(doc)}
                             onDelete={async () => {
-                                if (!confirm("Are you sure you want to delete this document?")) return;
+                                if (!confirm(t("identity.confirmDelete"))) return;
                                 const supabase2 = createClient();
                                 const { error } = await supabase2.from("documents").delete().eq("id", doc.id);
                                 if (error) {
                                     addToast(error.message, "error");
                                 } else {
-                                    addToast("Document deleted");
+                                    addToast(t("identity.documentDeleted"));
                                     loadDocuments();
                                 }
                             }}
@@ -263,21 +265,21 @@ export default function IdentityPage() {
                 >
                     <button
                         onClick={() => setShowAddDocument(true)}
-                        className="flex h-full min-h-[200px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-zinc-200 bg-white/50 transition-all hover:border-zinc-400 hover:bg-zinc-50 active:scale-[0.98]"
+                        className="flex h-full min-h-[200px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border bg-card/50 transition-all hover:border-ring hover:bg-accent active:scale-[0.98]"
                     >
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent">
                             <Plus
                                 size={22}
                                 weight="bold"
-                                className="text-zinc-400"
+                                className="text-muted-foreground"
                             />
                         </div>
                         <div className="text-center">
-                            <p className="text-sm font-semibold text-zinc-600">
-                                Add Document
+                            <p className="text-sm font-semibold text-foreground/70">
+                                {t("identity.addDocument")}
                             </p>
-                            <p className="mt-0.5 text-xs text-zinc-400">
-                                Upload a new ID document
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                                {t("identity.uploadNewDoc")}
                             </p>
                         </div>
                     </button>
@@ -292,11 +294,11 @@ export default function IdentityPage() {
                     transition={{ delay: 0.4 }}
                     className="mt-8"
                 >
-                    <h2 className="text-xl font-semibold text-zinc-900">
-                        Access Log
+                    <h2 className="text-xl font-semibold text-foreground">
+                        {t("identity.accessLog")}
                     </h2>
-                    <p className="mt-1 text-sm text-zinc-500">
-                        Recent activity on your documents.
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        {t("identity.recentActivity")}
                     </p>
                     <div className="mt-4">
                         <AccessLog entries={accessLog} />
@@ -309,10 +311,10 @@ export default function IdentityPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="mt-8 overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-r from-zinc-900 to-zinc-800 p-6"
+                className="mt-8 overflow-hidden rounded-2xl border border-border bg-gradient-to-r from-zinc-900 to-zinc-800 p-6"
             >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-card/10">
                         <LockKey
                             size={24}
                             weight="fill"
@@ -321,18 +323,16 @@ export default function IdentityPage() {
                     </div>
                     <div className="flex-1">
                         <h3 className="text-base font-semibold text-white">
-                            End-to-End Encryption
+                            {t("identity.e2eTitle")}
                         </h3>
-                        <p className="mt-1 text-sm text-zinc-400">
-                            All documents in your Identity Vault are encrypted
-                            at rest and in transit. Only you can access your
-                            files — not even the Nomadix team can read them.
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            {t("identity.e2eDesc")}
                         </p>
                     </div>
                     <div className="flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5">
                         <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         <span className="text-xs font-semibold text-emerald-400">
-                            Protected
+                            {t("identity.protected")}
                         </span>
                     </div>
                 </div>

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { MapPin, CalendarBlank, CurrencyEur, CurrencyDollar } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useLanguageStore } from "@/stores/language-store";
 
 interface TripCardProps {
     id: string;
@@ -30,11 +31,12 @@ export function TripCard({
     currency,
     spent = 0,
 }: TripCardProps) {
+    const t = useLanguageStore((s) => s.t);
     const gradientIndex =
         destinationName.charCodeAt(0) % gradients.length;
 
     const formatDate = (d: string | null) => {
-        if (!d) return "TBD";
+        if (!d) return t("travel.status.tbd");
         return new Date(d).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
@@ -45,22 +47,22 @@ export function TripCard({
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(endDate) : null;
 
-    let statusLabel = "Planning";
-    let statusColor = "bg-zinc-600 text-zinc-300";
+    let statusLabel = t("travel.status.planning");
+    let statusColor = "bg-zinc-600 text-muted-foreground";
 
     if (start && end) {
         if (now < start) {
             const daysUntil = Math.ceil(
                 (start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
             );
-            statusLabel = `In ${daysUntil}d`;
+            statusLabel = t("travel.status.inDays", { n: daysUntil });
             statusColor = "bg-emerald-500/20 text-emerald-400";
         } else if (now >= start && now <= end) {
-            statusLabel = "Active";
+            statusLabel = t("travel.status.active");
             statusColor = "bg-blue-500/20 text-blue-400";
         } else {
-            statusLabel = "Completed";
-            statusColor = "bg-zinc-600 text-zinc-400";
+            statusLabel = t("travel.status.completed");
+            statusColor = "bg-zinc-600 text-muted-foreground";
         }
     }
 
@@ -82,8 +84,8 @@ export function TripCard({
                 {/* Status Badge */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                        <MapPin size={14} weight="fill" className="text-zinc-400" />
-                        <span className="text-xs font-medium text-zinc-400">
+                        <MapPin size={14} weight="fill" className="text-muted-foreground" />
+                        <span className="text-xs font-medium text-muted-foreground">
                             Trip
                         </span>
                     </div>
@@ -100,7 +102,7 @@ export function TripCard({
                 </h3>
 
                 {/* Dates */}
-                <div className="mt-1 flex items-center gap-1.5 text-xs text-zinc-400">
+                <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <CalendarBlank size={12} />
                     {formatDate(startDate)} — {formatDate(endDate)}
                 </div>
@@ -109,11 +111,11 @@ export function TripCard({
                 {totalBudget && totalBudget > 0 ? (
                     <div className="mt-4">
                         <div className="flex items-center justify-between text-xs">
-                            <span className="flex items-center gap-1 text-zinc-400">
+                            <span className="flex items-center gap-1 text-muted-foreground">
                                 <CurrencyIcon size={12} />
                                 Budget
                             </span>
-                            <span className="font-semibold text-zinc-300">
+                            <span className="font-semibold text-muted-foreground">
                                 {symbol}
                                 {spent.toLocaleString()} / {symbol}
                                 {totalBudget.toLocaleString()}
@@ -121,13 +123,13 @@ export function TripCard({
                         </div>
                         <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-zinc-700">
                             <div
-                                className="h-full rounded-full bg-white/60 transition-all"
+                                className="h-full rounded-full bg-card/60 transition-all"
                                 style={{ width: `${budgetPercent}%` }}
                             />
                         </div>
                     </div>
                 ) : (
-                    <div className="mt-4 flex items-center gap-1 text-xs text-zinc-500">
+                    <div className="mt-4 flex items-center gap-1 text-xs text-muted-foreground">
                         <CurrencyIcon size={12} />
                         No budget set
                     </div>

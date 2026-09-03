@@ -21,6 +21,7 @@ import {
     todayISO,
 } from "@/lib/subscriptions";
 import { ConfirmChargeModal } from "@/components/subscriptions/confirm-charge-modal";
+import { useLanguageStore } from "@/stores/language-store";
 import type { Subscription } from "@/types";
 
 interface FlatCharge {
@@ -34,6 +35,7 @@ export function UpcomingChargesWidget() {
     const { displayCurrency, getActiveRate } = useCurrencyStore();
     const { isPrivacyMode } = usePrivacyStore();
     const runCatchUp = useRemindersStore((s) => s.runCatchUp);
+    const t = useLanguageStore((s) => s.t);
 
     const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
     const [startingBalance, setStartingBalance] = useState(0);
@@ -130,11 +132,11 @@ export function UpcomingChargesWidget() {
 
     if (isLoading) {
         return (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-                <div className="h-5 w-32 animate-pulse rounded-lg bg-zinc-100" />
+            <div className="rounded-2xl border border-border bg-card p-5">
+                <div className="h-5 w-32 animate-pulse rounded-lg bg-accent" />
                 <div className="mt-4 space-y-2">
                     {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-10 animate-pulse rounded-xl bg-zinc-50" />
+                        <div key={i} className="h-10 animate-pulse rounded-xl bg-accent" />
                     ))}
                 </div>
             </div>
@@ -146,21 +148,21 @@ export function UpcomingChargesWidget() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="rounded-2xl border border-zinc-200 bg-white"
+            className="rounded-2xl border border-border bg-card"
         >
-            <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-                <h3 className="text-base font-semibold text-zinc-900">Upcoming charges</h3>
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                <h3 className="text-base font-semibold text-foreground">{t("subs.widget.title")}</h3>
                 <Link
                     href="/dashboard/subscriptions"
-                    className="text-xs font-medium text-zinc-400 hover:text-zinc-600"
+                    className="text-xs font-medium text-muted-foreground hover:text-foreground/70"
                 >
-                    View all →
+                    {t("subs.widget.viewAll")} →
                 </Link>
             </div>
 
-            <div className="flex items-center justify-between px-5 py-3 text-xs text-zinc-400">
-                <span>Next 30 days</span>
-                <span className={`text-sm font-semibold text-zinc-900 tabular-nums ${blur}`}>
+            <div className="flex items-center justify-between px-5 py-3 text-xs text-muted-foreground">
+                <span>{t("subs.widget.next30days")}</span>
+                <span className={`text-sm font-semibold text-foreground tabular-nums ${blur}`}>
                     {symbol}
                     {next30Total.toLocaleString("en-US", {
                         minimumFractionDigits: 2,
@@ -169,15 +171,15 @@ export function UpcomingChargesWidget() {
                 </span>
             </div>
 
-            <div className="divide-y divide-zinc-50">
+            <div className="divide-y divide-border">
                 {upcoming.length === 0 ? (
                     <div className="px-5 py-6 text-center">
-                        <p className="text-sm text-zinc-400">No upcoming charges in the next 30 days.</p>
+                        <p className="text-sm text-muted-foreground">{t("subs.widget.empty")}</p>
                         <Link
                             href="/dashboard/subscriptions"
-                            className="mt-1 inline-block text-xs font-semibold text-zinc-600 hover:text-zinc-900"
+                            className="mt-1 inline-block text-xs font-semibold text-foreground/70 hover:text-foreground"
                         >
-                            Add a subscription →
+                            {t("subs.widget.addSubscription")}
                         </Link>
                     </div>
                 ) : (
@@ -193,10 +195,10 @@ export function UpcomingChargesWidget() {
                                 className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm"
                             >
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate font-medium text-zinc-900">
+                                    <p className="truncate font-medium text-foreground">
                                         {item.subscription.name}
                                     </p>
-                                    <p className="text-[11px] text-zinc-400">
+                                    <p className="text-[11px] text-muted-foreground">
                                         {formatDueDateShort(item.dueDate)}
                                     </p>
                                 </div>
@@ -208,7 +210,7 @@ export function UpcomingChargesWidget() {
                                         }}
                                         className="shrink-0 rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-100"
                                     >
-                                        Confirm
+                                        {t("subs.widget.confirm")}
                                     </button>
                                 ) : (
                                     <span
@@ -217,7 +219,7 @@ export function UpcomingChargesWidget() {
                                                 ? "text-emerald-600"
                                                 : tone === "overdue"
                                                     ? "text-red-500"
-                                                    : "text-zinc-900"
+                                                    : "text-foreground"
                                         }`}
                                     >
                                         {isIncome ? "+" : ""}
@@ -234,7 +236,12 @@ export function UpcomingChargesWidget() {
             {shortfall && (
                 <div className="mx-4 mb-4 mt-1 flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                     <WarningCircle size={14} weight="fill" className="mt-0.5 shrink-0" />
-                    <span>Balance may drop below {symbol}0 on {formatDueDate(shortfall.dateISO)}</span>
+                    <span>
+                        {t("subs.widget.shortfall", {
+                            zero: `${symbol}0`,
+                            date: formatDueDate(shortfall.dateISO),
+                        })}
+                    </span>
                 </div>
             )}
 

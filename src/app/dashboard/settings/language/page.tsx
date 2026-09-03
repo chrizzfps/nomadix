@@ -71,43 +71,43 @@ export default function LanguagePage() {
         >
             {/* Header */}
             <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                    <Translate size={20} className="text-zinc-600" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                    <Translate size={20} className="text-foreground/70" />
                 </div>
                 <div>
-                    <h2 className="text-lg font-semibold text-zinc-900">{t("lang.title")}</h2>
-                    <p className="text-xs text-zinc-400">{t("lang.subtitle")}</p>
+                    <h2 className="text-lg font-semibold text-foreground">{t("lang.title")}</h2>
+                    <p className="text-xs text-muted-foreground">{t("lang.subtitle")}</p>
                 </div>
             </div>
 
             {/* Live Preview Box */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-zinc-400 mb-3">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground mb-3">
                     <Eye size={14} />
                     {t("lang.preview")}
                 </div>
-                <div className="grid grid-cols-1 gap-4 rounded-xl border border-zinc-100 bg-zinc-50/70 p-4 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 rounded-xl border border-border bg-accent/70 p-4 sm:grid-cols-3">
                     <div>
-                        <p className="text-[11px] text-zinc-400 uppercase tracking-wide">
+                        <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
                             {t("lang.datePreview")}
                         </p>
-                        <p className="text-sm font-semibold text-zinc-900 mt-0.5">
+                        <p className="text-sm font-semibold text-foreground mt-0.5">
                             {formatDate(new Date())}
                         </p>
                     </div>
                     <div>
-                        <p className="text-[11px] text-zinc-400 uppercase tracking-wide">
+                        <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
                             {t("lang.numberPreview")}
                         </p>
-                        <p className="text-sm font-semibold text-zinc-900 mt-0.5">
+                        <p className="text-sm font-semibold text-foreground mt-0.5">
                             {formatNumber(1450.75, "€")}
                         </p>
                     </div>
                     <div>
-                        <p className="text-[11px] text-zinc-400 uppercase tracking-wide">
+                        <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
                             {t("lang.firstDayPreview")}
                         </p>
-                        <p className="text-sm font-semibold text-zinc-900 mt-0.5 capitalize">
+                        <p className="text-sm font-semibold text-foreground mt-0.5 capitalize">
                             {firstDayOfWeek === "monday" ? t("lang.monday") : t("lang.sunday")}
                         </p>
                     </div>
@@ -116,7 +116,7 @@ export default function LanguagePage() {
 
             {/* Language Selector */}
             <div className="space-y-3">
-                <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-zinc-400">
+                <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-muted-foreground">
                     {t("lang.displayLang")}
                 </h3>
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
@@ -129,8 +129,8 @@ export default function LanguagePage() {
                                 onClick={() => handleSelectLanguage(lang.code)}
                                 className={`flex items-center justify-between rounded-xl border p-4 text-left transition-all ${
                                     isSelected
-                                        ? "border-zinc-900 bg-zinc-900 text-white shadow-sm"
-                                        : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-300"
+                                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                                        : "border-border bg-card text-foreground hover:border-ring"
                                 }`}
                             >
                                 <div className="flex items-center gap-3">
@@ -138,14 +138,14 @@ export default function LanguagePage() {
                                     <div>
                                         <p
                                             className={`text-sm font-semibold ${
-                                                isSelected ? "text-white" : "text-zinc-900"
+                                                isSelected ? "text-white" : "text-foreground"
                                             }`}
                                         >
                                             {lang.label}
                                         </p>
                                         <p
                                             className={`text-xs ${
-                                                isSelected ? "text-zinc-400" : "text-zinc-400"
+                                                isSelected ? "text-muted-foreground" : "text-muted-foreground"
                                             }`}
                                         >
                                             {lang.region}
@@ -161,15 +161,15 @@ export default function LanguagePage() {
 
             {/* Date & Number Formats */}
             <div className="space-y-3">
-                <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-zinc-400">
+                <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-muted-foreground">
                     {t("lang.formatsSection")}
                 </h3>
-                <div className="divide-y divide-zinc-100 rounded-2xl border border-zinc-200 bg-white p-5 space-y-4 shadow-sm">
+                <div className="divide-y divide-border rounded-2xl border border-border bg-card p-5 space-y-4 shadow-sm">
                     {/* Date format */}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2">
                         <div>
-                            <p className="text-sm font-semibold text-zinc-900">{t("lang.dateFormat")}</p>
-                            <p className="text-xs text-zinc-400">
+                            <p className="text-sm font-semibold text-foreground">{t("lang.dateFormat")}</p>
+                            <p className="text-xs text-muted-foreground">
                                 {dateFormat === "DD/MM/YYYY"
                                     ? "Día/Mes/Año (24/12/2026)"
                                     : dateFormat === "MM/DD/YYYY"
@@ -182,7 +182,7 @@ export default function LanguagePage() {
                             onChange={(e) =>
                                 setRegionalPrefs({ dateFormat: e.target.value as DateFormat })
                             }
-                            className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-900 focus:border-zinc-400 focus:outline-none"
+                            className="rounded-xl border border-border bg-accent px-3 py-2 text-xs font-semibold text-foreground focus:border-ring focus:outline-none"
                         >
                             <option value="DD/MM/YYYY">DD/MM/YYYY (24/12/2026)</option>
                             <option value="MM/DD/YYYY">MM/DD/YYYY (12/24/2026)</option>
@@ -193,8 +193,8 @@ export default function LanguagePage() {
                     {/* Number format */}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-4">
                         <div>
-                            <p className="text-sm font-semibold text-zinc-900">{t("lang.numberFormat")}</p>
-                            <p className="text-xs text-zinc-400">
+                            <p className="text-sm font-semibold text-foreground">{t("lang.numberFormat")}</p>
+                            <p className="text-xs text-muted-foreground">
                                 {numberFormat === "en" ? "1,234.56 (Coma miles, punto decimal)" : "1.234,56 (Punto miles, coma decimal)"}
                             </p>
                         </div>
@@ -203,7 +203,7 @@ export default function LanguagePage() {
                             onChange={(e) =>
                                 setRegionalPrefs({ numberFormat: e.target.value as NumberFormat })
                             }
-                            className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-900 focus:border-zinc-400 focus:outline-none"
+                            className="rounded-xl border border-border bg-accent px-3 py-2 text-xs font-semibold text-foreground focus:border-ring focus:outline-none"
                         >
                             <option value="en">1,234.56 (English / US)</option>
                             <option value="de">1.234,56 (Europeo / ES)</option>
@@ -213,8 +213,8 @@ export default function LanguagePage() {
                     {/* Week start */}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-4">
                         <div>
-                            <p className="text-sm font-semibold text-zinc-900">{t("lang.firstDay")}</p>
-                            <p className="text-xs text-zinc-400">
+                            <p className="text-sm font-semibold text-foreground">{t("lang.firstDay")}</p>
+                            <p className="text-xs text-muted-foreground">
                                 {firstDayOfWeek === "monday" ? t("lang.monday") : t("lang.sunday")}
                             </p>
                         </div>
@@ -225,7 +225,7 @@ export default function LanguagePage() {
                                     firstDayOfWeek: e.target.value as "monday" | "sunday",
                                 })
                             }
-                            className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-900 focus:border-zinc-400 focus:outline-none"
+                            className="rounded-xl border border-border bg-accent px-3 py-2 text-xs font-semibold text-foreground focus:border-ring focus:outline-none"
                         >
                             <option value="monday">{t("lang.monday")}</option>
                             <option value="sunday">{t("lang.sunday")}</option>
@@ -240,7 +240,7 @@ export default function LanguagePage() {
                     type="button"
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="flex items-center gap-2 rounded-xl bg-zinc-900 px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
+                    className="flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
                 >
                     <FloppyDisk size={16} />
                     {isSaving ? t("account.saving") : t("lang.save")}

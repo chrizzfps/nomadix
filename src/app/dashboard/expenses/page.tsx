@@ -23,6 +23,7 @@ import { CurrencyToggle } from "@/components/shared/currency-toggle";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import { convertWithRate, getActiveUsdToEurRate } from "@/lib/currency";
+import { useLanguageStore } from "@/stores/language-store";
 
 interface VaultBasic {
     id: string;
@@ -91,6 +92,7 @@ export default function ExpensesPage() {
         s.manualRate.enabled ? s.manualRate.rate : s.exchangeRate
     );
     const symbol = CURRENCY_SYMBOLS[displayCurrency];
+    const t = useLanguageStore((s) => s.t);
 
     const [vaults, setVaults] = useState<VaultBasic[]>([]);
     const [transactions, setTransactions] = useState<TransactionRow[]>([]);
@@ -356,9 +358,9 @@ export default function ExpensesPage() {
     if (isLoading) {
         return (
             <div className="p-6 lg:p-8 space-y-6">
-                <div className="h-10 w-48 animate-pulse rounded-lg bg-zinc-100" />
-                <div className="h-24 animate-pulse rounded-2xl bg-zinc-100" />
-                <div className="h-72 animate-pulse rounded-2xl bg-zinc-100" />
+                <div className="h-10 w-48 animate-pulse rounded-lg bg-accent" />
+                <div className="h-24 animate-pulse rounded-2xl bg-accent" />
+                <div className="h-72 animate-pulse rounded-2xl bg-accent" />
             </div>
         );
     }
@@ -371,18 +373,18 @@ export default function ExpensesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.05 }}
                 >
-                    <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
-                        Expenses
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                        {t("expenses.title")}
                     </h1>
-                    <p className="mt-1 text-sm text-zinc-500">
-                        Analyze your spending across categories and time.
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        {t("expenses.subtitle")}
                     </p>
                 </motion.div>
                 <div className="flex items-center gap-3">
                     <CurrencyToggle />
                     {isConverting && (
-                        <span className="text-xs font-medium text-zinc-400">
-                            Convirtiendo…
+                        <span className="text-xs font-medium text-muted-foreground">
+                            {t("expenses.converting")}
                         </span>
                     )}
                 </div>
@@ -392,54 +394,54 @@ export default function ExpensesPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4"
+                className="mt-6 rounded-2xl border border-border bg-card p-4"
             >
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-                    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                        <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.1em] uppercase text-zinc-400">
+                    <div className="rounded-xl border border-border bg-accent p-3">
+                        <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
                             <CalendarBlank size={14} />
-                            Date range
+                            {t("expenses.dateRange")}
                         </div>
                         <div className="mt-2 grid grid-cols-2 gap-2">
                             <label className="sr-only" htmlFor="dateFrom">
-                                From
+                                {t("expenses.from")}
                             </label>
                             <input
                                 id="dateFrom"
                                 type="date"
                                 value={dateFrom}
                                 onChange={(e) => setDateFrom(e.target.value)}
-                                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+                                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
                             />
                             <label className="sr-only" htmlFor="dateTo">
-                                To
+                                {t("expenses.to")}
                             </label>
                             <input
                                 id="dateTo"
                                 type="date"
                                 value={dateTo}
                                 onChange={(e) => setDateTo(e.target.value)}
-                                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+                                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
                             />
                         </div>
                     </div>
 
-                    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                        <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.1em] uppercase text-zinc-400">
+                    <div className="rounded-xl border border-border bg-accent p-3">
+                        <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
                             <Vault size={14} />
-                            Vault
+                            {t("expenses.vault")}
                         </div>
                         <div className="mt-2">
                             <label className="sr-only" htmlFor="vaultFilter">
-                                Vault filter
+                                {t("expenses.vaultFilter")}
                             </label>
                             <select
                                 id="vaultFilter"
                                 value={vaultFilter}
                                 onChange={(e) => setVaultFilter(e.target.value)}
-                                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+                                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
                             >
-                                <option value="all">All vaults</option>
+                                <option value="all">{t("expenses.allVaults")}</option>
                                 {vaults.map((v) => (
                                     <option key={v.id} value={v.id}>
                                         {v.name}
@@ -449,39 +451,41 @@ export default function ExpensesPage() {
                         </div>
                     </div>
 
-                    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                        <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.1em] uppercase text-zinc-400">
+                    <div className="rounded-xl border border-border bg-accent p-3">
+                        <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
                             <Receipt size={14} />
-                            Total spent
+                            {t("expenses.totalSpent")}
                         </div>
-                        <div className="mt-2 text-2xl font-bold tabular-nums text-zinc-900">
+                        <div className="mt-2 text-2xl font-bold tabular-nums text-foreground">
                             {symbol}
                             {metrics.total.toLocaleString("en-US", {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                             })}
                         </div>
-                        <div className="mt-1 text-xs text-zinc-400">
-                            Top category: {metrics.topCategory} (
-                            {metrics.topCategoryPct.toFixed(1)}%)
+                        <div className="mt-1 text-xs text-muted-foreground">
+                            {t("expenses.topCategory", {
+                                category: metrics.topCategory,
+                                pct: metrics.topCategoryPct.toFixed(1),
+                            })}
                         </div>
                     </div>
 
-                    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                        <div className="text-xs font-semibold tracking-[0.1em] uppercase text-zinc-400">
-                            Period vs period
+                    <div className="rounded-xl border border-border bg-accent p-3">
+                        <div className="text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
+                            {t("expenses.periodVsPeriod")}
                         </div>
                         <div className="mt-2 flex items-center gap-2">
                             {periodComparison?.pct != null ? (
                                 periodComparison.pct >= 0 ? (
-                                    <TrendUp size={18} className="text-zinc-700" />
+                                    <TrendUp size={18} className="text-foreground/80" />
                                 ) : (
-                                    <TrendDown size={18} className="text-zinc-700" />
+                                    <TrendDown size={18} className="text-foreground/80" />
                                 )
                             ) : (
-                                <TrendUp size={18} className="text-zinc-700" />
+                                <TrendUp size={18} className="text-foreground/80" />
                             )}
-                            <div className="text-2xl font-bold tabular-nums text-zinc-900">
+                            <div className="text-2xl font-bold tabular-nums text-foreground">
                                 {periodComparison?.pct == null
                                     ? "—"
                                     : `${periodComparison.pct >= 0 ? "+" : ""}${periodComparison.pct.toFixed(
@@ -489,16 +493,16 @@ export default function ExpensesPage() {
                                       )}%`}
                             </div>
                         </div>
-                        <div className="mt-1 text-xs text-zinc-400">
+                        <div className="mt-1 text-xs text-muted-foreground">
                             {periodComparison?.days
-                                ? `Compared to previous ${periodComparison.days} days`
-                                : "Set a date range to compare"}
+                                ? t("expenses.comparedToPrevious", { days: periodComparison.days })
+                                : t("expenses.setDateRange")}
                         </div>
                     </div>
                 </div>
 
                 {error && (
-                    <div className="mt-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
+                    <div className="mt-4 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground/70">
                         {error}
                     </div>
                 )}
@@ -509,12 +513,12 @@ export default function ExpensesPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
-                    className="rounded-2xl border border-zinc-200 bg-white p-5 lg:col-span-2"
+                    className="rounded-2xl border border-border bg-card p-5 lg:col-span-2"
                 >
-                    <h2 className="text-base font-semibold text-zinc-900">
-                        Spending over time
+                    <h2 className="text-base font-semibold text-foreground">
+                        {t("expenses.spendingOverTime")}
                     </h2>
-                    <p className="mt-1 text-xs text-zinc-400">
+                    <p className="mt-1 text-xs text-muted-foreground">
                         {normalizedRange.from} → {normalizedRange.to}
                     </p>
                     <div className="mt-4 h-64">
@@ -544,13 +548,13 @@ export default function ExpensesPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.18 }}
-                    className="rounded-2xl border border-zinc-200 bg-white p-5"
+                    className="rounded-2xl border border-border bg-card p-5"
                 >
-                    <h2 className="text-base font-semibold text-zinc-900">
-                        Category share
+                    <h2 className="text-base font-semibold text-foreground">
+                        {t("expenses.categoryShare")}
                     </h2>
-                    <p className="mt-1 text-xs text-zinc-400">
-                        Top categories by spend
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        {t("expenses.topCategoriesBySpend")}
                     </p>
                     <div className="mt-4 h-64">
                         <ResponsiveContainer width="100%" height="100%">
@@ -590,13 +594,13 @@ export default function ExpensesPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.22 }}
-                    className="rounded-2xl border border-zinc-200 bg-white p-5 lg:col-span-2"
+                    className="rounded-2xl border border-border bg-card p-5 lg:col-span-2"
                 >
-                    <h2 className="text-base font-semibold text-zinc-900">
-                        Spend by category
+                    <h2 className="text-base font-semibold text-foreground">
+                        {t("expenses.spendByCategory")}
                     </h2>
-                    <p className="mt-1 text-xs text-zinc-400">
-                        Total and distribution for the selected filters
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        {t("expenses.totalDistribution")}
                     </p>
                     <div className="mt-4 h-64">
                         <ResponsiveContainer width="100%" height="100%">
@@ -621,16 +625,16 @@ export default function ExpensesPage() {
                         </ResponsiveContainer>
                     </div>
 
-                    <div className="mt-6 overflow-hidden rounded-2xl border border-zinc-200">
-                        <div className="grid grid-cols-[1fr_120px_80px] gap-3 border-b border-zinc-100 bg-white px-4 py-3 text-xs font-semibold tracking-[0.1em] uppercase text-zinc-400">
-                            <span>Category</span>
-                            <span className="text-right">Total</span>
+                    <div className="mt-6 overflow-hidden rounded-2xl border border-border">
+                        <div className="grid grid-cols-[1fr_120px_80px] gap-3 border-b border-border bg-card px-4 py-3 text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
+                            <span>{t("expenses.colCategory")}</span>
+                            <span className="text-right">{t("expenses.colTotal")}</span>
                             <span className="text-right">%</span>
                         </div>
-                        <div className="divide-y divide-zinc-50 bg-white">
+                        <div className="divide-y divide-border bg-card">
                             {totalsByCategory.items.length === 0 ? (
-                                <div className="px-4 py-8 text-center text-sm text-zinc-400">
-                                    No expenses found for the selected filters.
+                                <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                                    {t("expenses.noExpensesFound")}
                                 </div>
                             ) : (
                                 totalsByCategory.items.map((x) => (
@@ -638,17 +642,17 @@ export default function ExpensesPage() {
                                         key={x.category}
                                         className="grid grid-cols-[1fr_120px_80px] gap-3 px-4 py-3 text-sm"
                                     >
-                                        <span className="font-medium text-zinc-900">
+                                        <span className="font-medium text-foreground">
                                             {x.category}
                                         </span>
-                                        <span className="text-right font-semibold tabular-nums text-zinc-900">
+                                        <span className="text-right font-semibold tabular-nums text-foreground">
                                             {symbol}
                                             {x.total.toLocaleString("en-US", {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
                                             })}
                                         </span>
-                                        <span className="text-right text-zinc-500 tabular-nums">
+                                        <span className="text-right text-muted-foreground tabular-nums">
                                             {x.percent.toFixed(1)}%
                                         </span>
                                     </div>
@@ -662,17 +666,17 @@ export default function ExpensesPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 }}
-                    className="rounded-2xl border border-zinc-200 bg-white p-5"
+                    className="rounded-2xl border border-border bg-card p-5"
                 >
-                    <h2 className="text-base font-semibold text-zinc-900">
-                        Highlights
+                    <h2 className="text-base font-semibold text-foreground">
+                        {t("expenses.highlights")}
                     </h2>
                     <div className="mt-4 space-y-4">
-                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                            <p className="text-xs font-semibold tracking-[0.1em] uppercase text-zinc-400">
-                                Monthly average
+                        <div className="rounded-xl border border-border bg-accent p-3">
+                            <p className="text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
+                                {t("expenses.monthlyAverage")}
                             </p>
-                            <p className="mt-1 text-xl font-bold tabular-nums text-zinc-900">
+                            <p className="mt-1 text-xl font-bold tabular-nums text-foreground">
                                 {monthlyAverage == null ? (
                                     "—"
                                 ) : (
@@ -687,11 +691,11 @@ export default function ExpensesPage() {
                             </p>
                         </div>
 
-                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                            <p className="text-xs font-semibold tracking-[0.1em] uppercase text-zinc-400">
-                                Largest expense
+                        <div className="rounded-xl border border-border bg-accent p-3">
+                            <p className="text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
+                                {t("expenses.largestExpense")}
                             </p>
-                            <p className="mt-1 text-xl font-bold tabular-nums text-zinc-900">
+                            <p className="mt-1 text-xl font-bold tabular-nums text-foreground">
                                 {largestExpense ? (
                                     <>
                                         {symbol}
@@ -705,9 +709,9 @@ export default function ExpensesPage() {
                                 )}
                             </p>
                             {largestExpense && (
-                                <p className="mt-1 text-xs text-zinc-400">
+                                <p className="mt-1 text-xs text-muted-foreground">
                                     {largestExpense.description} ·{" "}
-                                    {vaultNameMap.get(largestExpense.vaultId) || "Unknown"} ·{" "}
+                                    {vaultNameMap.get(largestExpense.vaultId) || t("expenses.unknown")} ·{" "}
                                     {new Date(largestExpense.date).toLocaleDateString("en-US", {
                                         month: "short",
                                         day: "numeric",
@@ -717,15 +721,15 @@ export default function ExpensesPage() {
                             )}
                         </div>
 
-                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                            <p className="text-xs font-semibold tracking-[0.1em] uppercase text-zinc-400">
-                                Total transactions
+                        <div className="rounded-xl border border-border bg-accent p-3">
+                            <p className="text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
+                                {t("expenses.totalTransactions")}
                             </p>
-                            <p className="mt-1 text-xl font-bold tabular-nums text-zinc-900">
+                            <p className="mt-1 text-xl font-bold tabular-nums text-foreground">
                                 {filteredExpenses.length.toLocaleString("en-US")}
                             </p>
-                            <p className="mt-1 text-xs text-zinc-400">
-                                Filtered expenses in the selected range
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                {t("expenses.filteredExpenses")}
                             </p>
                         </div>
                     </div>

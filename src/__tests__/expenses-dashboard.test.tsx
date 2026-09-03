@@ -2,6 +2,7 @@ import * as React from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ExpensesPage from "@/app/dashboard/expenses/page";
+import { useLanguageStore } from "@/stores/language-store";
 
 jest.mock("recharts", () => {
     const Mock = ({ children }: { children?: React.ReactNode }) =>
@@ -125,6 +126,10 @@ jest.mock("@/lib/supabase/client", () => {
 });
 
 describe("Expenses dashboard", () => {
+    beforeEach(() => {
+        useLanguageStore.getState().setLanguage("en");
+    });
+
     it("aggregates expenses by category and filters by vault", async () => {
         const user = userEvent.setup();
         render(<ExpensesPage />);

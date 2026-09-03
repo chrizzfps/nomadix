@@ -11,10 +11,10 @@ interface DueBadgeProps {
 
 const TONE_CLASSES: Record<string, string> = {
     overdue: "border-red-100 bg-red-50 text-red-600",
-    today: "border-zinc-900 bg-zinc-900 text-white",
+    today: "border-primary bg-primary text-primary-foreground",
     urgent: "border-amber-100 bg-amber-50 text-amber-700",
-    soon: "border-zinc-200 bg-zinc-50 text-zinc-600",
-    normal: "border-transparent bg-transparent text-zinc-400",
+    soon: "border-border bg-accent text-foreground/70",
+    normal: "border-transparent bg-transparent text-muted-foreground",
 };
 
 export function DueBadge({ dueDate, todayIso, className = "" }: DueBadgeProps) {

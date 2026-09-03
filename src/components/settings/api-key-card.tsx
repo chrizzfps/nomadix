@@ -92,15 +92,15 @@ export function ApiKeyCard({
     };
 
     if (isLoading) {
-        return <div className="h-32 animate-pulse rounded-2xl bg-zinc-100" />;
+        return <div className="h-32 animate-pulse rounded-2xl bg-accent" />;
     }
 
     return (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+        <div className="rounded-2xl border border-border bg-card p-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <Key size={15} className="text-zinc-400" />
-                    <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                    <Key size={15} className="text-muted-foreground" />
+                    <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                         {provider.label} API key
                     </label>
                 </div>
@@ -108,7 +108,7 @@ export function ApiKeyCard({
                     href={provider.getKeyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-500 underline hover:text-zinc-900"
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground underline hover:text-foreground"
                 >
                     Get a key
                     <ArrowSquareOut size={11} />
@@ -116,12 +116,12 @@ export function ApiKeyCard({
             </div>
 
             {status ? (
-                <div className="mt-3 flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+                <div className="mt-3 flex items-center justify-between rounded-xl border border-border bg-accent px-4 py-3">
                     <div>
-                        <p className="font-mono text-sm font-semibold text-zinc-900">
+                        <p className="font-mono text-sm font-semibold text-foreground">
                             ••••{status.keyLast4}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-zinc-400">
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
                             Updated{" "}
                             {new Date(status.updatedAt).toLocaleDateString("en-US", {
                                 month: "short",
@@ -134,7 +134,7 @@ export function ApiKeyCard({
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setConfirmRemove(false)}
-                                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-zinc-500 hover:bg-zinc-100"
+                                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent"
                             >
                                 Cancel
                             </button>
@@ -157,7 +157,7 @@ export function ApiKeyCard({
                     )}
                 </div>
             ) : (
-                <p className="mt-2 text-xs text-zinc-400">Not connected.</p>
+                <p className="mt-2 text-xs text-muted-foreground">Not connected.</p>
             )}
 
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -169,13 +169,13 @@ export function ApiKeyCard({
                         setError(null);
                     }}
                     placeholder={status ? "Paste a new key to replace it…" : provider.keyPlaceholder}
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 font-mono text-sm text-zinc-900 placeholder:font-sans placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                    className="w-full rounded-xl border border-border bg-accent px-4 py-3 font-mono text-sm text-foreground placeholder:font-sans placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                 />
                 <button
                     onClick={handleSave}
                     disabled={isSaving || !inputValue.trim()}
                     className={`flex shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
-                        saved ? "bg-emerald-600 text-white" : "bg-zinc-900 text-white hover:bg-zinc-800"
+                        saved ? "bg-emerald-600 text-white" : "bg-primary text-primary-foreground hover:bg-primary/90"
                     }`}
                 >
                     {saved ? (

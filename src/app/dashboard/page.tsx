@@ -30,6 +30,7 @@ import { convertTransactionAmount } from "@/lib/currency-helpers";
 import { NewTransactionModal } from "@/components/vaults/new-transaction-modal";
 import { TransactionEditModal } from "@/components/vaults/transaction-edit-modal";
 import { UpcomingChargesWidget } from "@/components/subscriptions/upcoming-charges-widget";
+import { useLanguageStore } from "@/stores/language-store";
 import Link from "next/link";
 import {
     LineChart,
@@ -111,6 +112,7 @@ interface VaultBasic {
 export default function DashboardPage() {
     const supabase = createClient();
     const { displayCurrency, convert, loadRate, getActiveRate } = useCurrencyStore();
+    const t = useLanguageStore((s) => s.t);
 
     const [userName, setUserName] = useState("");
     const [recentTx, setRecentTx] = useState<Transaction[]>([]);
@@ -208,6 +210,7 @@ export default function DashboardPage() {
 
         // Build chart data — group by week
         const now = new Date();
+        const weekLabel = t("dashboard.week");
         const weeks: { name: string; income: number; expenses: number }[] = [];
         for (let w = 3; w >= 0; w--) {
             const weekStart = new Date(now);
@@ -226,14 +229,14 @@ export default function DashboardPage() {
             });
 
             weeks.push({
-                name: `Week ${4 - w}`,
+                name: `${weekLabel} ${4 - w}`,
                 income: Math.round(income),
                 expenses: Math.round(expenses),
             });
         }
         setChartData(weeks);
         setIsLoading(false);
-    }, [supabase]);
+    }, [supabase, t]);
 
     useEffect(() => {
         loadRate().then(() => loadData());
@@ -250,18 +253,18 @@ export default function DashboardPage() {
     const cashBalance = sumConverted(rawBalances.cash);
 
     const summaryCards = [
-        { label: "Total Balance", value: totalBalance, icon: Wallet },
-        { label: "Checking", value: checkingBalance, icon: Wallet },
-        { label: "Savings", value: savingsBalance, icon: PiggyBank },
-        { label: "Cash", value: cashBalance, icon: Wallet },
+        { label: t("dashboard.totalBalance"), value: totalBalance, icon: Wallet },
+        { label: t("dashboard.checking"), value: checkingBalance, icon: Wallet },
+        { label: t("dashboard.savings"), value: savingsBalance, icon: PiggyBank },
+        { label: t("dashboard.cash"), value: cashBalance, icon: Wallet },
     ];
 
     if (isLoading) {
         return (
             <div className="p-6 lg:p-8 space-y-6">
-                <div className="h-10 w-56 animate-pulse rounded-lg bg-zinc-100" />
-                <div className="h-32 animate-pulse rounded-2xl bg-zinc-100" />
-                <div className="h-64 animate-pulse rounded-2xl bg-zinc-100" />
+                <div className="h-10 w-56 animate-pulse rounded-lg bg-accent" />
+                <div className="h-32 animate-pulse rounded-2xl bg-accent" />
+                <div className="h-64 animate-pulse rounded-2xl bg-accent" />
             </div>
         );
     }
@@ -271,11 +274,11 @@ export default function DashboardPage() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
-                        Dashboard
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                        {t("dashboard.title")}
                     </h1>
-                    <p className="mt-1 text-sm text-zinc-500">
-                        Welcome back, {userName}.
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        {t("dashboard.welcome", { name: userName })}
                     </p>
                 </div>
                 <CurrencyToggle />
@@ -290,13 +293,13 @@ export default function DashboardPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.05 }}
-                        className="rounded-2xl border border-zinc-200 bg-white p-6"
+                        className="rounded-2xl border border-border bg-card p-6"
                     >
-                        <p className="text-xs font-semibold tracking-[0.15em] uppercase text-zinc-400">
-                            Total Combined Balance
+                        <p className="text-xs font-semibold tracking-[0.15em] uppercase text-muted-foreground">
+                            {t("dashboard.totalBalance")}
                         </p>
                         <div className="mt-3 flex items-baseline gap-3">
-                            <span className="text-4xl font-bold tracking-tight text-zinc-900">
+                            <span className="text-4xl font-bold tracking-tight text-foreground">
                                 {symbol}
                                 {totalBalance.toLocaleString("en-US", {
                                     minimumFractionDigits: 2,
@@ -306,7 +309,7 @@ export default function DashboardPage() {
                             {totalBalance > 0 && (
                                 <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-600">
                                     <TrendUp size={12} weight="bold" />
-                                    Active
+                                    {t("dashboard.active")}
                                 </span>
                             )}
                         </div>
@@ -317,15 +320,15 @@ export default function DashboardPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="rounded-2xl border border-zinc-200 bg-white p-6"
+                        className="rounded-2xl border border-border bg-card p-6"
                     >
                         <div className="flex items-center justify-between">
                             <div>
-                                <h3 className="text-base font-semibold text-zinc-900">
-                                    Income vs Expenses
+                                <h3 className="text-base font-semibold text-foreground">
+                                    {t("dashboard.incomeVsExpenses")}
                                 </h3>
-                                <p className="mt-0.5 text-xs text-zinc-400">
-                                    Last 4 weeks overview
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                    {t("dashboard.last4Weeks")}
                                 </p>
                             </div>
                         </div>
@@ -378,7 +381,7 @@ export default function DashboardPage() {
                                             r: 6,
                                             fill: "#09090b",
                                         }}
-                                        name="Income"
+                                        name={t("dashboard.income")}
                                     />
                                     <Line
                                         type="monotone"
@@ -395,7 +398,7 @@ export default function DashboardPage() {
                                             r: 6,
                                             fill: "#d4d4d8",
                                         }}
-                                        name="Expenses"
+                                        name={t("dashboard.expenses")}
                                     />
                                 </LineChart>
                             </ResponsiveContainer>
@@ -414,18 +417,18 @@ export default function DashboardPage() {
                             return (
                                 <div
                                     key={card.label}
-                                    className="rounded-2xl border border-zinc-200 bg-white p-4 text-center"
+                                    className="rounded-2xl border border-border bg-card p-4 text-center"
                                 >
-                                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
+                                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
                                         <Icon
                                             size={18}
-                                            className="text-zinc-600"
+                                            className="text-foreground/70"
                                         />
                                     </div>
-                                    <p className="text-[10px] font-medium tracking-wide uppercase text-zinc-400">
+                                    <p className="text-[10px] font-medium tracking-wide uppercase text-muted-foreground">
                                         {card.label}
                                     </p>
-                                    <p className="mt-1 text-base font-bold text-zinc-900">
+                                    <p className="mt-1 text-base font-bold text-foreground">
                                         {formatCurrency(
                                             card.value,
                                             displayCurrency
@@ -443,26 +446,26 @@ export default function DashboardPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="rounded-2xl border border-zinc-200 bg-white"
+                    className="rounded-2xl border border-border bg-card"
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-                        <h3 className="text-base font-semibold text-zinc-900">
-                            Transactions
+                    <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                        <h3 className="text-base font-semibold text-foreground">
+                            {t("dashboard.transactions")}
                         </h3>
                         <button
                             onClick={() => setShowAddTx(true)}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-200 text-zinc-400 transition-colors hover:bg-zinc-50 hover:text-zinc-600"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground/70"
                         >
                             <Plus size={14} weight="bold" />
                         </button>
                     </div>
 
                     {/* Transaction List */}
-                    <div className="divide-y divide-zinc-50">
+                    <div className="divide-y divide-border">
                         {recentTx.length === 0 ? (
-                            <div className="px-5 py-8 text-center text-sm text-zinc-400">
-                                No transactions yet. Add one!
+                            <div className="px-5 py-8 text-center text-sm text-muted-foreground">
+                                {t("dashboard.noTransactions")}
                             </div>
                         ) : (
                             recentTx.map((tx) => {
@@ -473,38 +476,38 @@ export default function DashboardPage() {
                                     <div
                                         key={tx.id}
                                         onClick={() => setSelectedTx(tx)}
-                                        className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-zinc-50 cursor-pointer"
+                                        className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-accent cursor-pointer"
                                     >
-                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-100">
+                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent">
                                             {tx.type === "transfer" ? (
                                                 <ArrowsLeftRight
                                                     size={18}
-                                                    className="text-zinc-600"
+                                                    className="text-foreground/70"
                                                 />
                                             ) : isIncome ? (
                                                 <ArrowDown
                                                     size={18}
-                                                    className="text-zinc-600"
+                                                    className="text-foreground/70"
                                                 />
                                             ) : (
                                                 <IconCmp
                                                     size={18}
-                                                    className="text-zinc-600"
+                                                    className="text-foreground/70"
                                                 />
                                             )}
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-medium text-zinc-900">
+                                            <p className="truncate text-sm font-medium text-foreground">
                                                 {tx.description || tx.type}
                                             </p>
-                                            <p className="text-[11px] text-zinc-400">
+                                            <p className="text-[11px] text-muted-foreground">
                                                 {tx.category || tx.type}
                                             </p>
                                         </div>
                                         <span
                                             className={`text-sm font-semibold tabular-nums ${isIncome
                                                 ? "text-emerald-600"
-                                                : "text-zinc-900"
+                                                : "text-foreground"
                                                 }`}
                                         >
                                             {isIncome ? "+" : "-"}
@@ -529,12 +532,12 @@ export default function DashboardPage() {
                     </div>
 
                     {/* View All */}
-                    <div className="border-t border-zinc-100 px-5 py-3">
+                    <div className="border-t border-border px-5 py-3">
                         <Link
                             href="/dashboard/vaults"
-                            className="block w-full rounded-xl border border-zinc-200 py-2.5 text-center text-xs font-semibold text-zinc-600 transition-all hover:bg-zinc-50 hover:text-zinc-900"
+                            className="block w-full rounded-xl border border-border py-2.5 text-center text-xs font-semibold text-foreground/70 transition-all hover:bg-accent hover:text-foreground"
                         >
-                            View All Transactions
+                            {t("dashboard.viewAllTransactions")}
                         </Link>
                     </div>
                 </motion.div>

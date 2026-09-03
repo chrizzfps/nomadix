@@ -15,6 +15,7 @@ import {
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguageStore } from "@/stores/language-store";
 
 interface Trip {
     id: string;
@@ -37,6 +38,7 @@ export default function TripDetailPage() {
     const params = useParams();
     const router = useRouter();
     const supabase = createClient();
+    const t = useLanguageStore((s) => s.t);
     const tripId = params.id as string;
 
     const [trip, setTrip] = useState<Trip | null>(null);
@@ -110,9 +112,9 @@ export default function TripDetailPage() {
     if (isLoading) {
         return (
             <div className="p-6 lg:p-8 space-y-4">
-                <div className="h-8 w-32 animate-pulse rounded-lg bg-zinc-100" />
-                <div className="h-48 animate-pulse rounded-2xl bg-zinc-100" />
-                <div className="h-32 animate-pulse rounded-2xl bg-zinc-100" />
+                <div className="h-8 w-32 animate-pulse rounded-lg bg-accent" />
+                <div className="h-48 animate-pulse rounded-2xl bg-accent" />
+                <div className="h-32 animate-pulse rounded-2xl bg-accent" />
             </div>
         );
     }
@@ -132,7 +134,7 @@ export default function TripDetailPage() {
             : 0;
 
     const formatDate = (d: string | null) => {
-        if (!d) return "TBD";
+        if (!d) return t("travel.detail.tbd");
         return new Date(d).toLocaleDateString("en-US", {
             weekday: "short",
             month: "short",
@@ -146,10 +148,10 @@ export default function TripDetailPage() {
             {/* Back */}
             <Link
                 href="/dashboard/travel"
-                className="inline-flex items-center gap-1.5 text-sm text-zinc-400 transition-colors hover:text-zinc-600"
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground/70"
             >
                 <ArrowLeft size={14} />
-                Back to Travel
+                {t("travel.detail.backToTravel")}
             </Link>
 
             {/* Trip Header */}
@@ -160,14 +162,14 @@ export default function TripDetailPage() {
             >
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <MapPin size={12} weight="fill" />
-                            Trip
+                            {t("travel.detail.trip")}
                         </div>
                         <h1 className="mt-2 text-2xl font-bold tracking-tight">
                             {trip.destination_name}
                         </h1>
-                        <div className="mt-1 flex items-center gap-1.5 text-sm text-zinc-400">
+                        <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
                             <CalendarBlank size={14} />
                             {formatDate(trip.start_date)} —{" "}
                             {formatDate(trip.end_date)}
@@ -179,11 +181,11 @@ export default function TripDetailPage() {
                 {trip.total_budget && trip.total_budget > 0 && (
                     <div className="mt-6">
                         <div className="flex justify-between text-xs">
-                            <span className="flex items-center gap-1 text-zinc-400">
+                            <span className="flex items-center gap-1 text-muted-foreground">
                                 <CurrencyIcon size={12} />
-                                Budget
+                                {t("travel.detail.budget")}
                             </span>
-                            <span className="font-semibold text-zinc-300">
+                            <span className="font-semibold text-muted-foreground">
                                 {symbol}
                                 {totalSpent.toLocaleString()} / {symbol}
                                 {trip.total_budget.toLocaleString()}
@@ -195,7 +197,7 @@ export default function TripDetailPage() {
                                         ? "bg-red-400"
                                         : budgetPercent > 70
                                             ? "bg-amber-400"
-                                            : "bg-white/60"
+                                            : "bg-card/60"
                                     }`}
                                 style={{ width: `${budgetPercent}%` }}
                             />
@@ -215,18 +217,18 @@ export default function TripDetailPage() {
                     <div className="flex items-center gap-2">
                         <ListNumbers
                             size={18}
-                            className="text-zinc-600"
+                            className="text-foreground/70"
                         />
-                        <h2 className="text-lg font-semibold text-zinc-900">
-                            Itinerary
+                        <h2 className="text-lg font-semibold text-foreground">
+                            {t("travel.detail.itinerary")}
                         </h2>
                     </div>
                     <button
                         onClick={() => setShowAddDay(!showAddDay)}
-                        className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-zinc-600 transition-all hover:bg-zinc-50"
+                        className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground/70 transition-all hover:bg-accent"
                     >
                         <Plus size={12} weight="bold" />
-                        Add Day
+                        {t("travel.detail.addDay")}
                     </button>
                 </div>
 
@@ -235,22 +237,22 @@ export default function TripDetailPage() {
                     <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
-                        className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4"
+                        className="mt-4 rounded-2xl border border-border bg-card p-4"
                     >
                         <div className="space-y-3">
                             <input
                                 type="text"
                                 value={newDayTitle}
                                 onChange={(e) => setNewDayTitle(e.target.value)}
-                                placeholder="Day title (e.g. Explore Old Town)"
-                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                placeholder={t("travel.detail.dayTitlePlaceholder")}
+                                className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                             />
                             <input
                                 type="text"
                                 value={newDayDesc}
                                 onChange={(e) => setNewDayDesc(e.target.value)}
-                                placeholder="Description (optional)"
-                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                placeholder={t("travel.detail.descriptionOptional")}
+                                className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                             />
                             <div className="flex gap-2">
                                 <input
@@ -259,17 +261,17 @@ export default function TripDetailPage() {
                                     onChange={(e) =>
                                         setNewDayCost(e.target.value)
                                     }
-                                    placeholder="Estimated cost"
+                                    placeholder={t("travel.detail.estimatedCost")}
                                     min="0"
                                     step="0.01"
-                                    className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                    className="flex-1 rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                 />
                                 <button
                                     onClick={handleAddDay}
                                     disabled={isAdding || !newDayTitle.trim()}
-                                    className="rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50"
+                                    className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50"
                                 >
-                                    {isAdding ? "Adding..." : "Add"}
+                                    {isAdding ? t("travel.detail.adding") : t("travel.detail.add")}
                                 </button>
                             </div>
                         </div>
@@ -279,37 +281,37 @@ export default function TripDetailPage() {
                 {/* Itinerary List */}
                 <div className="mt-4 space-y-3">
                     {itinerary.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-200 py-12 text-zinc-400">
+                        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-12 text-muted-foreground">
                             <CalendarBlank
                                 size={32}
                                 weight="thin"
-                                className="text-zinc-300"
+                                className="text-muted-foreground"
                             />
                             <p className="mt-2 text-sm font-medium">
-                                No itinerary yet
+                                {t("travel.detail.noItineraryYet")}
                             </p>
-                            <p className="text-xs text-zinc-300">
-                                Add your first day to get started
+                            <p className="text-xs text-muted-foreground">
+                                {t("travel.detail.addFirstDay")}
                             </p>
                         </div>
                     ) : (
                         itinerary.map((item) => (
                             <div
                                 key={item.id}
-                                className="flex items-start gap-4 rounded-2xl border border-zinc-200 bg-white p-4 transition-colors hover:bg-zinc-50"
+                                className="flex items-start gap-4 rounded-2xl border border-border bg-card p-4 transition-colors hover:bg-accent"
                             >
                                 {/* Day Number */}
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-sm font-bold text-white">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">
                                     {item.day_number}
                                 </div>
 
                                 {/* Content */}
                                 <div className="min-w-0 flex-1">
-                                    <p className="font-semibold text-zinc-900 text-sm">
-                                        {item.title || `Day ${item.day_number}`}
+                                    <p className="font-semibold text-foreground text-sm">
+                                        {item.title || t("travel.detail.dayLabel", { n: item.day_number })}
                                     </p>
                                     {item.description && (
-                                        <p className="mt-0.5 text-xs text-zinc-400">
+                                        <p className="mt-0.5 text-xs text-muted-foreground">
                                             {item.description}
                                         </p>
                                     )}
@@ -319,7 +321,7 @@ export default function TripDetailPage() {
                                 <div className="flex items-center gap-2 shrink-0">
                                     {item.estimated_cost != null &&
                                         item.estimated_cost > 0 && (
-                                            <span className="rounded-lg bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-600">
+                                            <span className="rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-foreground/70">
                                                 {symbol}
                                                 {item.estimated_cost.toLocaleString()}
                                             </span>
@@ -328,7 +330,7 @@ export default function TripDetailPage() {
                                         onClick={() =>
                                             handleDeleteDay(item.id)
                                         }
-                                        className="rounded-lg p-1.5 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500"
                                     >
                                         <Trash size={14} />
                                     </button>

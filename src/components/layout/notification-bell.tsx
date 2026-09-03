@@ -9,16 +9,17 @@ import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import { formatDueDate } from "@/lib/subscriptions";
 import type { ReminderItem } from "@/lib/subscriptions";
 import { cn } from "@/lib/utils";
+import { useLanguageStore } from "@/stores/language-store";
 
-const GROUP_LABEL: Record<ReminderItem["kind"], string> = {
-    overdue: "Needs attention",
-    failed: "Needs attention",
-    pending: "Needs attention",
-    trial_ending: "Trial ending",
-    upcoming: "Upcoming",
+const GROUP_KEY: Record<ReminderItem["kind"], string> = {
+    overdue: "bell.needsAttention",
+    failed: "bell.needsAttention",
+    pending: "bell.needsAttention",
+    trial_ending: "bell.trialEnding",
+    upcoming: "bell.upcoming",
 };
 
-const GROUP_ORDER = ["Needs attention", "Trial ending", "Upcoming"];
+const GROUP_ORDER = ["bell.needsAttention", "bell.trialEnding", "bell.upcoming"];
 
 interface NotificationBellProps {
     align?: "left" | "right";
@@ -28,6 +29,7 @@ interface NotificationBellProps {
 export function NotificationBell({ align = "left", className }: NotificationBellProps = {}) {
     const router = useRouter();
     const { items, unreadCount, load, markAllSeen } = useRemindersStore();
+    const t = useLanguageStore((s) => s.t);
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -49,9 +51,10 @@ export function NotificationBell({ align = "left", className }: NotificationBell
 
     const hasOverdue = items.some((it) => it.kind === "overdue" || it.kind === "failed");
 
-    const grouped = GROUP_ORDER.map((label) => ({
-        label,
-        items: items.filter((it) => GROUP_LABEL[it.kind] === label),
+    const grouped = GROUP_ORDER.map((key) => ({
+        key,
+        label: t(key),
+        items: items.filter((it) => GROUP_KEY[it.kind] === key),
     })).filter((g) => g.items.length > 0);
 
     const goTo = (item: ReminderItem) => {
@@ -69,7 +72,7 @@ export function NotificationBell({ align = "left", className }: NotificationBell
                         ? "bg-accent text-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
-                aria-label="Notifications"
+                aria-label={t("bell.notifications")}
             >
                 {unreadCount > 0 ? (
                     <BellRinging size={18} weight="fill" />
@@ -106,12 +109,12 @@ export function NotificationBell({ align = "left", className }: NotificationBell
                                 <div className="flex flex-col items-center justify-center gap-2 py-10">
                                     <CheckCircle size={28} className="text-emerald-500" />
                                     <p className="text-sm font-medium text-muted-foreground">
-                                        You&apos;re all caught up.
+                                        {t("bell.allCaughtUp")}
                                     </p>
                                 </div>
                             ) : (
                                 grouped.map((group) => (
-                                    <div key={group.label}>
+                                    <div key={group.key}>
                                         <p className="px-4 pt-3 pb-1 text-[10px] font-semibold tracking-[0.1em] uppercase text-muted-foreground">
                                             {group.label}
                                         </p>
@@ -146,7 +149,7 @@ export function NotificationBell({ align = "left", className }: NotificationBell
                                 disabled={items.length === 0}
                                 className="text-xs font-semibold text-muted-foreground hover:text-foreground disabled:opacity-40"
                             >
-                                Mark all as read
+                                {t("bell.markAllRead")}
                             </button>
                             <button
                                 onClick={() => {
@@ -155,7 +158,7 @@ export function NotificationBell({ align = "left", className }: NotificationBell
                                 }}
                                 className="text-xs font-semibold text-muted-foreground hover:text-foreground"
                             >
-                                Manage subscriptions →
+                                {t("bell.manageSubscriptions")}
                             </button>
                         </div>
                     </motion.div>

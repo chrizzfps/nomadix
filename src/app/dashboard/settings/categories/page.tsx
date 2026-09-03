@@ -271,14 +271,14 @@ export default function CategoriesPage() {
         >
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                        <Tag size={20} className="text-zinc-600" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                        <Tag size={20} className="text-foreground/70" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-semibold text-zinc-900">
+                        <h2 className="text-lg font-semibold text-foreground">
                             Categories
                         </h2>
-                        <p className="text-xs text-zinc-400">
+                        <p className="text-xs text-muted-foreground">
                             Create and manage your transaction categories
                         </p>
                     </div>
@@ -286,7 +286,7 @@ export default function CategoriesPage() {
                 <button
                     type="button"
                     onClick={openCreate}
-                    className="flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-zinc-800 active:scale-[0.98]"
+                    className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
                 >
                     <Plus size={16} weight="bold" />
                     New Category
@@ -294,33 +294,33 @@ export default function CategoriesPage() {
             </div>
 
             {error && (
-                <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
+                <div className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground/70">
                     {error}
                 </div>
             )}
 
             {isLoading ? (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-6">
-                    <div className="h-6 w-40 animate-pulse rounded-lg bg-zinc-100" />
+                <div className="rounded-2xl border border-border bg-card p-6">
+                    <div className="h-6 w-40 animate-pulse rounded-lg bg-accent" />
                     <div className="mt-4 space-y-3">
                         {[1, 2, 3].map((i) => (
                             <div
                                 key={i}
-                                className="h-14 animate-pulse rounded-xl bg-zinc-50"
+                                className="h-14 animate-pulse rounded-xl bg-accent"
                             />
                         ))}
                     </div>
                 </div>
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
-                    <div className="grid grid-cols-[1fr_120px_80px] gap-3 border-b border-zinc-100 px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase text-zinc-400">
+                <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                    <div className="grid grid-cols-[1fr_120px_80px] gap-3 border-b border-border px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
                         <span>Category</span>
                         <span>Status</span>
                         <span className="text-right">Edit</span>
                     </div>
-                    <div className="divide-y divide-zinc-50">
+                    <div className="divide-y divide-border">
                         {categories.length === 0 ? (
-                            <div className="px-5 py-10 text-center text-sm text-zinc-400">
+                            <div className="px-5 py-10 text-center text-sm text-muted-foreground">
                                 No categories found.
                             </div>
                         ) : (
@@ -333,17 +333,17 @@ export default function CategoriesPage() {
                                         className="grid grid-cols-[1fr_120px_80px] gap-3 px-5 py-3"
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-100">
+                                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent">
                                                 <Icon
                                                     size={18}
-                                                    className="text-zinc-600"
+                                                    className="text-foreground/70"
                                                 />
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="truncate text-sm font-semibold text-zinc-900">
+                                                <p className="truncate text-sm font-semibold text-foreground">
                                                     {c.name}
                                                 </p>
-                                                <p className="truncate text-xs text-zinc-400">
+                                                <p className="truncate text-xs text-muted-foreground">
                                                     {c.description || "—"}
                                                 </p>
                                             </div>
@@ -351,7 +351,7 @@ export default function CategoriesPage() {
                                         <button
                                             type="button"
                                             onClick={() => toggleActive(c)}
-                                            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-foreground/70 hover:bg-accent"
                                         >
                                             {c.is_active ? (
                                                 <>
@@ -369,7 +369,7 @@ export default function CategoriesPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => openEdit(c)}
-                                                className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+                                                className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground/70 hover:bg-accent"
                                             >
                                                 Edit
                                             </button>
@@ -401,16 +401,16 @@ export default function CategoriesPage() {
                                 damping: 25,
                                 stiffness: 300,
                             }}
-                            className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white shadow-2xl"
+                            className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card shadow-2xl"
                         >
-                            <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
-                                <h3 className="text-base font-semibold text-zinc-900">
+                            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+                                <h3 className="text-base font-semibold text-foreground">
                                     {editing ? "Edit Category" : "New Category"}
                                 </h3>
                                 <button
                                     type="button"
                                     onClick={closeModal}
-                                    className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+                                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground/70"
                                 >
                                     <X size={18} weight="bold" />
                                 </button>
@@ -418,24 +418,24 @@ export default function CategoriesPage() {
 
                             <div className="space-y-4 px-6 py-5">
                                 {formError && (
-                                    <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+                                    <div className="rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground/70">
                                         {formError}
                                     </div>
                                 )}
 
                                 <div className="space-y-1.5">
-                                    <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                    <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                         Name
                                     </label>
                                     <input
                                         value={formName}
                                         onChange={(e) => setFormName(e.target.value)}
-                                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                        className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                     />
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                    <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                         Description
                                     </label>
                                     <input
@@ -443,13 +443,13 @@ export default function CategoriesPage() {
                                         onChange={(e) =>
                                             setFormDescription(e.target.value)
                                         }
-                                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                        className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                     />
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div className="space-y-1.5">
-                                        <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                        <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                             Icon
                                         </label>
                                         <select
@@ -457,7 +457,7 @@ export default function CategoriesPage() {
                                             onChange={(e) =>
                                                 setFormIconKey(e.target.value)
                                             }
-                                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                            className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                         >
                                             <option value="tag">tag</option>
                                             {availableIcons.map((k) => (
@@ -469,7 +469,7 @@ export default function CategoriesPage() {
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                        <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                             Color
                                         </label>
                                         <input
@@ -477,17 +477,17 @@ export default function CategoriesPage() {
                                             onChange={(e) =>
                                                 setFormColor(e.target.value)
                                             }
-                                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                            className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+                                <div className="flex items-center justify-between rounded-xl border border-border bg-accent px-4 py-3">
                                     <div>
-                                        <p className="text-sm font-semibold text-zinc-900">
+                                        <p className="text-sm font-semibold text-foreground">
                                             Active
                                         </p>
-                                        <p className="text-xs text-zinc-400">
+                                        <p className="text-xs text-muted-foreground">
                                             Disable to hide from category pickers
                                         </p>
                                     </div>
@@ -500,17 +500,17 @@ export default function CategoriesPage() {
                                             }
                                             className="peer sr-only"
                                         />
-                                        <div className="h-5 w-9 rounded-full bg-zinc-200 peer-checked:bg-zinc-900 transition-colors" />
-                                        <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+                                        <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
+                                        <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
                                     </label>
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-end gap-2 border-t border-zinc-100 px-6 py-4">
+                            <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
                                 <button
                                     type="button"
                                     onClick={closeModal}
-                                    className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
+                                    className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground/80 hover:bg-accent"
                                 >
                                     Cancel
                                 </button>
@@ -518,7 +518,7 @@ export default function CategoriesPage() {
                                     type="button"
                                     onClick={handleSave}
                                     disabled={formSaving}
-                                    className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     {formSaving ? "Saving..." : "Save"}
                                 </button>

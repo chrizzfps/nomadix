@@ -2,6 +2,7 @@
 
 import { WarningCircle } from "@phosphor-icons/react";
 import { usePrivacyStore } from "@/stores/privacy-store";
+import { useLanguageStore } from "@/stores/language-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import type { Currency } from "@/types";
 
@@ -34,33 +35,38 @@ export function SubscriptionStats({
     displayCurrency,
 }: SubscriptionStatsProps) {
     const { isPrivacyMode } = usePrivacyStore();
+    const t = useLanguageStore((s) => s.t);
     const symbol = CURRENCY_SYMBOLS[displayCurrency] || "$";
     const blur = isPrivacyMode ? "blur-sm select-none" : "";
 
     const cards = [
         {
-            label: "Monthly cost",
+            label: t("subs.stats.monthlyCost"),
             value: `${symbol}${formatAmount(monthly)}`,
-            sub: "Normalized across all cycles",
+            sub: t("subs.stats.normalized"),
         },
         {
-            label: "Annualized",
+            label: t("subs.stats.annualized"),
             value: `${symbol}${formatAmount(annual)}`,
-            sub: `${activeCount} active subscription${activeCount === 1 ? "" : "s"}`,
+            sub: t(activeCount === 1 ? "subs.stats.activeOne" : "subs.stats.activeMany", {
+                count: activeCount,
+            }),
         },
         {
-            label: "Next 30 days",
+            label: t("subs.stats.next30Days"),
             value: `${symbol}${formatAmount(next30Total)}`,
-            sub: `${next30Count} charge${next30Count === 1 ? "" : "s"}`,
+            sub: t(next30Count === 1 ? "subs.stats.chargeOne" : "subs.stats.chargeMany", {
+                count: next30Count,
+            }),
             warning: hasShortfall,
         },
     ];
 
     if (incomeMonthly > 0) {
         cards.push({
-            label: "Recurring income",
-            value: `+${symbol}${formatAmount(incomeMonthly)}/mo`,
-            sub: "Salary, rent, freelance & more",
+            label: t("subs.stats.recurringIncome"),
+            value: `+${symbol}${formatAmount(incomeMonthly)}${t("subs.stats.perMonth")}`,
+            sub: t("subs.stats.incomeSub"),
         });
     }
 
@@ -72,20 +78,20 @@ export function SubscriptionStats({
                     className={`rounded-2xl border p-5 ${
                         c.warning
                             ? "border-amber-200 bg-amber-50/40"
-                            : "border-zinc-200 bg-white"
+                            : "border-border bg-card"
                     }`}
                 >
-                    <p className="text-xs font-medium tracking-[0.08em] uppercase text-zinc-400">
+                    <p className="text-xs font-medium tracking-[0.08em] uppercase text-muted-foreground">
                         {c.label}
                     </p>
                     <p
                         className={`mt-2 text-3xl font-bold tracking-tight tabular-nums ${blur} ${
-                            c.warning ? "text-amber-700" : "text-zinc-900"
+                            c.warning ? "text-amber-700" : "text-foreground"
                         }`}
                     >
                         {c.value}
                     </p>
-                    <p className="mt-1 flex items-center gap-1 text-xs text-zinc-400">
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                         {c.warning && (
                             <WarningCircle size={12} weight="fill" className="text-amber-500" />
                         )}

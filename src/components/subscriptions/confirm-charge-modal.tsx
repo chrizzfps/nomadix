@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, CreditCard } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
+import { useLanguageStore } from "@/stores/language-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import { formatDueDate } from "@/lib/subscriptions";
 import type { Subscription } from "@/types";
@@ -28,6 +29,7 @@ export function ConfirmChargeModal({
 }: ConfirmChargeModalProps) {
     const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
+    const t = useLanguageStore((s) => s.t);
 
     const [amount, setAmount] = useState("");
     const [note, setNote] = useState("");
@@ -49,7 +51,7 @@ export function ConfirmChargeModal({
 
     const handleConfirm = async () => {
         if (!amount || Number.isNaN(parsed) || parsed < 0) {
-            setError("Enter a valid amount.");
+            setError(t("subs.confirm.invalidAmount"));
             return;
         }
         setIsSubmitting(true);
@@ -68,7 +70,7 @@ export function ConfirmChargeModal({
             return;
         }
 
-        addToast(`${subscription.name} charged`);
+        addToast(t("subs.toast.charged", { name: subscription.name }));
         setIsSubmitting(false);
         onDone();
         onClose();
@@ -90,7 +92,7 @@ export function ConfirmChargeModal({
             return;
         }
 
-        addToast(`${subscription.name} skipped this cycle`);
+        addToast(t("subs.toast.skippedNamed", { name: subscription.name }));
         setIsSubmitting(false);
         onDone();
         onClose();
@@ -112,25 +114,28 @@ export function ConfirmChargeModal({
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        className="fixed left-1/2 top-1/2 z-[60] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white shadow-2xl"
+                        className="fixed left-1/2 top-1/2 z-[60] w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card shadow-2xl"
                     >
-                        <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
+                        <div className="flex items-center justify-between border-b border-border px-6 py-4">
                             <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                                    <CreditCard size={20} className="text-zinc-600" />
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                                    <CreditCard size={20} className="text-foreground/70" />
                                 </div>
                                 <div>
-                                    <h2 className="text-base font-semibold text-zinc-900">
-                                        Confirm charge
+                                    <h2 className="text-base font-semibold text-foreground">
+                                        {t("subs.confirm.title")}
                                     </h2>
-                                    <p className="text-xs text-zinc-400">
-                                        {subscription.name} · Due {formatDueDate(dueDate)}
+                                    <p className="text-xs text-muted-foreground">
+                                        {t("subs.confirm.dueLabel", {
+                                            name: subscription.name,
+                                            date: formatDueDate(dueDate),
+                                        })}
                                     </p>
                                 </div>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground/70"
                             >
                                 <X size={18} />
                             </button>
@@ -144,11 +149,11 @@ export function ConfirmChargeModal({
                             )}
 
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
-                                    Amount
+                                <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
+                                    {t("subs.confirm.amount")}
                                 </label>
-                                <div className="flex items-center rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-                                    <span className="mr-1 text-2xl font-semibold text-zinc-400">
+                                <div className="flex items-center rounded-xl border border-border bg-accent px-4 py-3">
+                                    <span className="mr-1 text-2xl font-semibold text-muted-foreground">
                                         {symbol}
                                     </span>
                                     <input
@@ -158,55 +163,58 @@ export function ConfirmChargeModal({
                                         step="0.01"
                                         value={amount}
                                         onChange={(e) => setAmount(e.target.value)}
-                                        className="w-full bg-transparent text-2xl font-semibold tabular-nums text-zinc-900 outline-none"
+                                        className="w-full bg-transparent text-2xl font-semibold tabular-nums text-foreground outline-none"
                                     />
                                 </div>
                             </div>
 
-                            <p className="text-xs text-zinc-500">
-                                Vault: <span className="font-medium text-zinc-700">{vaultName || "—"}</span>
+                            <p className="text-xs text-muted-foreground">
+                                {t("subs.confirm.vaultPrefix")}{" "}
+                                <span className="font-medium text-foreground/80">{vaultName || "—"}</span>
                             </p>
 
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
-                                    Note (optional)
+                                <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
+                                    {t("subs.confirm.note")}
                                 </label>
                                 <input
                                     value={note}
                                     onChange={(e) => setNote(e.target.value)}
-                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                    className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                 />
                             </div>
 
                             {!Number.isNaN(parsed) && parsed > 0 && (
-                                <p className="text-xs text-zinc-400">
-                                    This will {subscription.direction === "expense" ? "deduct" : "add"}{" "}
-                                    <span className="font-semibold text-zinc-600">
-                                        {symbol}
-                                        {parsed.toFixed(2)}
-                                    </span>{" "}
-                                    {subscription.direction === "expense" ? "from" : "to"}{" "}
-                                    {vaultName || "the vault"}.
+                                <p className="text-xs text-muted-foreground">
+                                    {t(
+                                        subscription.direction === "expense"
+                                            ? "subs.confirm.willDeductFrom"
+                                            : "subs.confirm.willAddTo",
+                                        {
+                                            amount: `${symbol}${parsed.toFixed(2)}`,
+                                            vault: vaultName || t("subs.confirm.theVault"),
+                                        }
+                                    )}
                                 </p>
                             )}
                         </div>
 
-                        <div className="flex items-center justify-between gap-2 border-t border-zinc-100 px-6 py-4">
+                        <div className="flex items-center justify-between gap-2 border-t border-border px-6 py-4">
                             <button
                                 type="button"
                                 onClick={handleSkip}
                                 disabled={isSubmitting}
-                                className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-600 hover:bg-zinc-50 disabled:opacity-60"
+                                className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground/70 hover:bg-accent disabled:opacity-60"
                             >
-                                Skip this cycle
+                                {t("subs.confirm.skip")}
                             </button>
                             <button
                                 type="button"
                                 onClick={handleConfirm}
                                 disabled={isSubmitting}
-                                className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                {isSubmitting ? "Processing..." : "Confirm charge"}
+                                {isSubmitting ? t("subs.confirm.processing") : t("subs.confirm.confirmCharge")}
                             </button>
                         </div>
                     </motion.div>

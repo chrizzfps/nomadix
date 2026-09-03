@@ -37,7 +37,7 @@ export function ToastContainer() {
                             <span>{toast.message}</span>
                             <button
                                 onClick={() => removeToast(toast.id)}
-                                className="ml-2 rounded p-0.5 transition-colors hover:bg-white/20"
+                                className="ml-2 rounded p-0.5 transition-colors hover:bg-card/20"
                             >
                                 <X size={12} />
                             </button>

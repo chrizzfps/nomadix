@@ -52,7 +52,7 @@ function getExpiryStatus(expiryDate: string | null): {
     urgent: boolean;
 } {
     if (!expiryDate)
-        return { label: "No expiry", color: "text-zinc-500", urgent: false };
+        return { label: "No expiry", color: "text-muted-foreground", urgent: false };
 
     const today = new Date();
     const expiry = new Date(expiryDate);
@@ -79,7 +79,7 @@ function getExpiryStatus(expiryDate: string | null): {
             month: "short",
             year: "numeric",
         });
-        return { label: formatted, color: "text-zinc-400", urgent: false };
+        return { label: formatted, color: "text-muted-foreground", urgent: false };
     }
 }
 
@@ -133,14 +133,14 @@ export function DocumentCard({
 
             {/* Subtle decorative circles */}
             <div className="absolute inset-0 opacity-[0.04]">
-                <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white" />
-                <div className="absolute -bottom-3 -left-3 h-20 w-20 rounded-full bg-white" />
-                <div className="absolute right-12 bottom-8 h-12 w-12 rounded-full bg-white" />
+                <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-card" />
+                <div className="absolute -bottom-3 -left-3 h-20 w-20 rounded-full bg-card" />
+                <div className="absolute right-12 bottom-8 h-12 w-12 rounded-full bg-card" />
             </div>
 
             {/* Header */}
             <div className="relative flex items-start justify-between">
-                <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider backdrop-blur-sm">
+                <span className="rounded-full bg-card/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider backdrop-blur-sm">
                     {typeLabels[type]}
                 </span>
                 <div className="flex items-center gap-1.5">
@@ -155,12 +155,12 @@ export function DocumentCard({
                     <div className="relative z-30" ref={menuRef}>
                         <button
                             onClick={() => setShowMenu(!showMenu)}
-                            className="rounded-lg p-1.5 transition-colors hover:bg-white/15"
+                            className="rounded-lg p-1.5 transition-colors hover:bg-card/15"
                         >
                             <DotsThree
                                 size={18}
                                 weight="bold"
-                                className="text-zinc-300"
+                                className="text-muted-foreground"
                             />
                         </button>
 
@@ -207,7 +207,7 @@ export function DocumentCard({
             {/* Expiry */}
             <div className="relative mt-5 flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                    <CalendarBlank size={13} className="text-zinc-400" />
+                    <CalendarBlank size={13} className="text-muted-foreground" />
                     <span className={`text-xs font-medium ${expiry.color}`}>
                         {expiry.label}
                     </span>
@@ -221,9 +221,9 @@ export function DocumentCard({
                 </div>
                 <div className="flex items-center gap-1">
                     {isPrivacyMode ? (
-                        <EyeSlash size={14} className="text-zinc-500" />
+                        <EyeSlash size={14} className="text-muted-foreground" />
                     ) : (
-                        <Eye size={14} className="text-zinc-400" />
+                        <Eye size={14} className="text-muted-foreground" />
                     )}
                 </div>
             </div>

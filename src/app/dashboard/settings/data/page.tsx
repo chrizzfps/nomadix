@@ -190,12 +190,12 @@ export default function DataManagementPage() {
         >
             {/* Section Header */}
             <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                    <Database size={20} className="text-zinc-600" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                    <Database size={20} className="text-foreground/70" />
                 </div>
                 <div>
-                    <h2 className="text-lg font-semibold text-zinc-900">{t("data.title")}</h2>
-                    <p className="text-xs text-zinc-400">
+                    <h2 className="text-lg font-semibold text-foreground">{t("data.title")}</h2>
+                    <p className="text-xs text-muted-foreground">
                         {t("data.subtitle")}
                     </p>
                 </div>
@@ -203,19 +203,19 @@ export default function DataManagementPage() {
 
             {/* Export Cards */}
             <div className="space-y-3">
-                <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-zinc-400">
+                <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-muted-foreground">
                     {t("data.exportSection")}
                 </h3>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {/* JSON Backup */}
-                    <div className="flex flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+                    <div className="flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-sm">
                         <div>
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700 mb-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-foreground/80 mb-3">
                                 <DownloadSimple size={20} />
                             </div>
-                            <h4 className="text-sm font-semibold text-zinc-900">{t("data.jsonTitle")}</h4>
-                            <p className="mt-1 text-xs text-zinc-400">
+                            <h4 className="text-sm font-semibold text-foreground">{t("data.jsonTitle")}</h4>
+                            <p className="mt-1 text-xs text-muted-foreground">
                                 {t("data.jsonDesc")}
                             </p>
                         </div>
@@ -224,7 +224,7 @@ export default function DataManagementPage() {
                                 type="button"
                                 onClick={handleExportJson}
                                 disabled={isExportingJson}
-                                className="flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-xs font-semibold text-white transition-all hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
+                                className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
                             >
                                 <DownloadSimple size={15} />
                                 {isExportingJson ? "Exporting JSON..." : t("data.downloadJson")}
@@ -233,13 +233,13 @@ export default function DataManagementPage() {
                     </div>
 
                     {/* CSV Export */}
-                    <div className="flex flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+                    <div className="flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-sm">
                         <div>
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700 mb-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-foreground/80 mb-3">
                                 <FileCsv size={20} />
                             </div>
-                            <h4 className="text-sm font-semibold text-zinc-900">{t("data.csvTitle")}</h4>
-                            <p className="mt-1 text-xs text-zinc-400">
+                            <h4 className="text-sm font-semibold text-foreground">{t("data.csvTitle")}</h4>
+                            <p className="mt-1 text-xs text-muted-foreground">
                                 {t("data.csvDesc")}
                             </p>
                         </div>
@@ -248,7 +248,7 @@ export default function DataManagementPage() {
                                 type="button"
                                 onClick={handleExportCsv}
                                 disabled={isExportingCsv}
-                                className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-xs font-semibold text-zinc-700 transition-all hover:bg-zinc-50 active:scale-[0.98] disabled:opacity-50"
+                                className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground/80 transition-all hover:bg-accent active:scale-[0.98] disabled:opacity-50"
                             >
                                 <FileCsv size={15} />
                                 {isExportingCsv ? "Exporting CSV..." : t("data.downloadCsv")}
@@ -281,7 +281,7 @@ export default function DataManagementPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowDeactivate(true)}
-                                    className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-600 transition-all hover:bg-red-50"
+                                    className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-card px-4 py-2 text-xs font-semibold text-red-600 transition-all hover:bg-red-50"
                                 >
                                     <Trash size={15} />
                                     {t("data.deleteBtn")}
@@ -296,7 +296,7 @@ export default function DataManagementPage() {
                                         value={confirmText}
                                         onChange={(e) => setConfirmText(e.target.value)}
                                         placeholder="DELETE"
-                                        className="w-full max-w-xs rounded-xl border border-red-200 bg-white px-4 py-2 text-sm text-red-900 placeholder:text-red-300 focus:border-red-400 focus:outline-none"
+                                        className="w-full max-w-xs rounded-xl border border-red-200 bg-card px-4 py-2 text-sm text-red-900 placeholder:text-red-300 focus:border-red-400 focus:outline-none"
                                     />
                                     <div className="flex gap-2">
                                         <button
@@ -305,7 +305,7 @@ export default function DataManagementPage() {
                                                 setShowDeactivate(false);
                                                 setConfirmText("");
                                             }}
-                                            className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-medium text-zinc-600 transition-all hover:bg-zinc-50"
+                                            className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-medium text-foreground/70 transition-all hover:bg-accent"
                                         >
                                             Cancel
                                         </button>

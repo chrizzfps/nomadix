@@ -469,22 +469,22 @@ export function TransactionEditModal({
                             damping: 25,
                             stiffness: 300,
                         }}
-                        className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white shadow-2xl"
+                        className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card shadow-2xl"
                     >
-                        <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
+                        <div className="flex items-center justify-between border-b border-border px-6 py-4">
                             <div className="flex items-center gap-3">
                                 <div
                                     className={`flex h-10 w-10 items-center justify-center rounded-xl ${isIncome
                                             ? "bg-emerald-50"
                                             : isTransfer
-                                                ? "bg-zinc-100"
+                                                ? "bg-accent"
                                                 : "bg-red-50"
                                         }`}
                                 >
                                     {isTransfer ? (
                                         <ArrowsLeftRight
                                             size={20}
-                                            className="text-zinc-600"
+                                            className="text-foreground/70"
                                         />
                                     ) : isIncome ? (
                                         <ArrowDown
@@ -499,10 +499,10 @@ export function TransactionEditModal({
                                     )}
                                 </div>
                                 <div>
-                                    <h2 className="text-base font-semibold text-zinc-900">
+                                    <h2 className="text-base font-semibold text-foreground">
                                         Edit Movement
                                     </h2>
-                                    <p className="text-[11px] text-zinc-400 capitalize">
+                                    <p className="text-[11px] text-muted-foreground capitalize">
                                         {transaction.vault_name || "—"}
                                     </p>
                                 </div>
@@ -514,7 +514,7 @@ export function TransactionEditModal({
                                     setConfirmDelete(false);
                                     setCategoryOpen(false);
                                 }}
-                                className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground/70"
                             >
                                 <X size={18} weight="bold" />
                             </button>
@@ -522,17 +522,17 @@ export function TransactionEditModal({
 
                         <div className="max-h-[70vh] overflow-auto px-6 py-5 space-y-4">
                             {saveError && (
-                                <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+                                <div className="rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground/70">
                                     {saveError}
                                 </div>
                             )}
 
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                     Amount
                                 </label>
-                                <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5">
-                                    <span className="text-sm font-semibold text-zinc-500">
+                                <div className="flex items-center gap-2 rounded-xl border border-border bg-accent px-4 py-2.5">
+                                    <span className="text-sm font-semibold text-muted-foreground">
                                         {isIncome ? "+" : isTransfer ? "" : "-"}
                                         {symbol}
                                     </span>
@@ -540,11 +540,11 @@ export function TransactionEditModal({
                                         inputMode="decimal"
                                         value={amount}
                                         onChange={(e) => setAmount(e.target.value)}
-                                        className="w-full bg-transparent text-sm font-semibold text-zinc-900 outline-none"
+                                        className="w-full bg-transparent text-sm font-semibold text-foreground outline-none"
                                     />
                                 </div>
                                 {validation.amount && (
-                                    <p className="text-xs text-zinc-400">
+                                    <p className="text-xs text-muted-foreground">
                                         {validation.amount}
                                     </p>
                                 )}
@@ -552,18 +552,18 @@ export function TransactionEditModal({
 
                             {isTransfer && transaction.amount < 0 && (
                                 <div className="space-y-1.5">
-                                    <label className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                    <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                         Comisión (Fee)
                                     </label>
-                                    <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5">
-                                        <span className="text-sm font-semibold text-zinc-500">
+                                    <div className="flex items-center gap-2 rounded-xl border border-border bg-accent px-4 py-2.5">
+                                        <span className="text-sm font-semibold text-muted-foreground">
                                             {symbol}
                                         </span>
                                         <input
                                             inputMode="decimal"
                                             value={fee}
                                             onChange={(e) => setFee(e.target.value)}
-                                            className="w-full bg-transparent text-sm font-semibold text-zinc-900 outline-none"
+                                            className="w-full bg-transparent text-sm font-semibold text-foreground outline-none"
                                         />
                                     </div>
                                     {validation.fee ? (
@@ -571,7 +571,7 @@ export function TransactionEditModal({
                                             {validation.fee}
                                         </p>
                                     ) : (
-                                        <p className="text-xs text-zinc-400">
+                                        <p className="text-xs text-muted-foreground">
                                             Total a descontar del origen: {symbol}{((parseAmount(amount) || 0) + (parseAmount(fee) || 0)).toFixed(2)}
                                         </p>
                                     )}
@@ -580,7 +580,7 @@ export function TransactionEditModal({
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
-                                    <label className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                    <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                         Type
                                     </label>
                                     <select
@@ -593,7 +593,7 @@ export function TransactionEditModal({
                                                     | "transfer"
                                             )
                                         }
-                                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                        className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                     >
                                         <option value="expense">Expense</option>
                                         <option value="income">Income</option>
@@ -602,7 +602,7 @@ export function TransactionEditModal({
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                    <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                         Currency
                                     </label>
                                     <select
@@ -612,7 +612,7 @@ export function TransactionEditModal({
                                                 normalizeCurrency(e.target.value)
                                             )
                                         }
-                                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                        className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                     >
                                         {SUPPORTED_CURRENCIES.map((c) => (
                                             <option key={c} value={c}>
@@ -621,7 +621,7 @@ export function TransactionEditModal({
                                         ))}
                                     </select>
                                     {validation.currency && (
-                                        <p className="text-xs text-zinc-400">
+                                        <p className="text-xs text-muted-foreground">
                                             {validation.currency}
                                         </p>
                                     )}
@@ -629,7 +629,7 @@ export function TransactionEditModal({
                             </div>
 
                             {/* Custom Rate Toggle */}
-                            <div className="space-y-3 pt-1 border-t border-zinc-100 mt-2">
+                            <div className="space-y-3 pt-1 border-t border-border mt-2">
                                 <label className="flex items-center gap-3 cursor-pointer select-none">
                                     <div className="relative">
                                         <input
@@ -638,10 +638,10 @@ export function TransactionEditModal({
                                             onChange={(e) => setUseCustomRate(e.target.checked)}
                                             className="peer sr-only"
                                         />
-                                        <div className="h-5 w-9 rounded-full bg-zinc-200 peer-checked:bg-zinc-900 transition-colors" />
-                                        <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+                                        <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
+                                        <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
                                     </div>
-                                    <span className="text-xs font-semibold text-zinc-600">
+                                    <span className="text-xs font-semibold text-foreground/70">
                                         Usar tasa de cambio personalizada
                                     </span>
                                 </label>
@@ -654,13 +654,13 @@ export function TransactionEditModal({
                                         transition={{ duration: 0.15 }}
                                         className="space-y-3 overflow-hidden pl-1"
                                     >
-                                        <div className="flex rounded-lg border border-zinc-200 p-0.5 bg-zinc-50 w-full">
+                                        <div className="flex rounded-lg border border-border p-0.5 bg-accent w-full">
                                             <button
                                                 type="button"
                                                 onClick={() => setCustomRateMode("auto")}
                                                 className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-all ${customRateMode === "auto"
-                                                        ? "bg-white text-zinc-900 shadow-sm border border-zinc-200"
-                                                        : "text-zinc-500 hover:text-zinc-700"
+                                                        ? "bg-card text-foreground shadow-sm border border-border"
+                                                        : "text-muted-foreground hover:text-foreground/80"
                                                     }`}
                                             >
                                                 Monto equivalente
@@ -669,8 +669,8 @@ export function TransactionEditModal({
                                                 type="button"
                                                 onClick={() => setCustomRateMode("manual")}
                                                 className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-all ${customRateMode === "manual"
-                                                        ? "bg-white text-zinc-900 shadow-sm border border-zinc-200"
-                                                        : "text-zinc-500 hover:text-zinc-700"
+                                                        ? "bg-card text-foreground shadow-sm border border-border"
+                                                        : "text-muted-foreground hover:text-foreground/80"
                                                     }`}
                                             >
                                                 Tasa manual
@@ -679,11 +679,11 @@ export function TransactionEditModal({
 
                                         {customRateMode === "auto" ? (
                                             <div className="space-y-1">
-                                                <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                                <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                                     Monto equivalente en {currency === "EUR" ? "USD" : "EUR"}
                                                 </label>
                                                 <div className="relative">
-                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-zinc-400">
+                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
                                                         {CURRENCY_SYMBOLS[currency === "EUR" ? "USD" : "EUR"]}
                                                     </span>
                                                     <input
@@ -693,27 +693,27 @@ export function TransactionEditModal({
                                                         placeholder="0.00"
                                                         value={equivalentAmount}
                                                         onChange={(e) => setEquivalentAmount(e.target.value)}
-                                                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-8 pr-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                        className="w-full rounded-xl border border-border bg-accent pl-8 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                                     />
                                                 </div>
                                             </div>
                                         ) : (
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                                    <span className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                                         Tasa de cambio aplicada
                                                     </span>
                                                     <button
                                                         type="button"
                                                         onClick={() => setCustomRateDirection(customRateDirection === "from_to" ? "to_from" : "from_to")}
-                                                        className="text-[10px] font-semibold text-zinc-500 hover:text-zinc-900 underline underline-offset-2 decoration-dotted"
+                                                        className="text-[10px] font-semibold text-muted-foreground hover:text-foreground underline underline-offset-2 decoration-dotted"
                                                     >
                                                         Cambiar dirección
                                                     </button>
                                                 </div>
 
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-bold text-zinc-500 whitespace-nowrap bg-zinc-100 px-2.5 py-2 rounded-lg border border-zinc-200">
+                                                    <span className="text-xs font-bold text-muted-foreground whitespace-nowrap bg-accent px-2.5 py-2 rounded-lg border border-border">
                                                         {customRateDirection === "from_to"
                                                             ? `1 ${currency} =`
                                                             : `1 ${currency === "EUR" ? "USD" : "EUR"} =`
@@ -727,9 +727,9 @@ export function TransactionEditModal({
                                                             placeholder="0.0000"
                                                             value={customRateVal}
                                                             onChange={(e) => setCustomRateVal(e.target.value)}
-                                                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                            className="w-full rounded-xl border border-border bg-accent px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                                         />
-                                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-zinc-400">
+                                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
                                                             {customRateDirection === "from_to"
                                                                 ? (currency === "EUR" ? "USD" : "EUR")
                                                                 : currency
@@ -742,23 +742,23 @@ export function TransactionEditModal({
 
                                         {/* Breakdown Box */}
                                         {editBreakdown && (
-                                            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 space-y-2.5 text-xs text-zinc-600 transition-all">
+                                            <div className="rounded-xl border border-border bg-accent p-4 space-y-2.5 text-xs text-foreground/70 transition-all">
                                                 <div className="flex justify-between">
-                                                    <span className="text-zinc-400 font-medium">Tasa oficial:</span>
-                                                    <span className="font-semibold text-zinc-800">
+                                                    <span className="text-muted-foreground font-medium">Tasa oficial:</span>
+                                                    <span className="font-semibold text-foreground">
                                                         1 {currency} = {convertBetween(1, currency, editBreakdown.oppositeCurrency).toFixed(4)} {editBreakdown.oppositeCurrency}
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between">
-                                                    <span className="text-zinc-400 font-medium">Tasa aplicada:</span>
-                                                    <span className="font-bold text-zinc-900">
+                                                    <span className="text-muted-foreground font-medium">Tasa aplicada:</span>
+                                                    <span className="font-bold text-foreground">
                                                         1 {currency} = {(editBreakdown.appliedEquivalent / (parseAmount(amount) || 1)).toFixed(4)} {editBreakdown.oppositeCurrency}
                                                     </span>
                                                 </div>
                                                 {editBreakdown.isTransfer ? (
                                                     editBreakdown.differenceDest !== 0 && (
                                                         <div className="flex justify-between items-center">
-                                                            <span className="text-zinc-400 font-medium">Diferencia vs oficial:</span>
+                                                            <span className="text-muted-foreground font-medium">Diferencia vs oficial:</span>
                                                             <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${editBreakdown.isGain ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
                                                                 {editBreakdown.isGain ? '+' : '-'}
                                                                 {CURRENCY_SYMBOLS[transaction.amount < 0 ? editBreakdown.oppositeCurrency : currency]}
@@ -770,7 +770,7 @@ export function TransactionEditModal({
                                                 ) : (
                                                     editBreakdown.differenceOpposite !== 0 && (
                                                         <div className="flex justify-between items-center">
-                                                            <span className="text-zinc-400 font-medium">Diferencia vs oficial:</span>
+                                                            <span className="text-muted-foreground font-medium">Diferencia vs oficial:</span>
                                                             <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${editBreakdown.isGain ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
                                                                 {editBreakdown.isGain ? '+' : '-'}
                                                                 {CURRENCY_SYMBOLS[editBreakdown.oppositeCurrency]}{Math.abs(editBreakdown.differenceOpposite).toFixed(2)}
@@ -786,41 +786,41 @@ export function TransactionEditModal({
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                     Description
                                 </label>
                                 <input
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                    className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                     Date
                                 </label>
-                                <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5">
+                                <div className="flex items-center gap-2 rounded-xl border border-border bg-accent px-4 py-2.5">
                                     <CalendarBlank
                                         size={16}
-                                        className="text-zinc-400"
+                                        className="text-muted-foreground"
                                     />
                                     <input
                                         type="date"
                                         value={date}
                                         onChange={(e) => setDate(e.target.value)}
-                                        className="w-full bg-transparent text-sm text-zinc-900 outline-none"
+                                        className="w-full bg-transparent text-sm text-foreground outline-none"
                                     />
                                 </div>
                                 {validation.date && (
-                                    <p className="text-xs text-zinc-400">
+                                    <p className="text-xs text-muted-foreground">
                                         {validation.date}
                                     </p>
                                 )}
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                     Category
                                 </label>
                                 <button
@@ -830,9 +830,9 @@ export function TransactionEditModal({
                                         setCategoryOpen((v) => !v);
                                     }}
                                     disabled={type === "transfer"}
-                                    className="flex w-full items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-left text-sm text-zinc-900 hover:bg-zinc-100"
+                                    className="flex w-full items-center gap-2 rounded-xl border border-border bg-accent px-4 py-2.5 text-left text-sm text-foreground hover:bg-accent"
                                 >
-                                    <Tag size={16} className="text-zinc-400" />
+                                    <Tag size={16} className="text-muted-foreground" />
                                     <span className="flex-1 truncate">
                                         {type === "transfer"
                                             ? "Not applicable for transfers"
@@ -840,7 +840,7 @@ export function TransactionEditModal({
                                     </span>
                                     <MagnifyingGlass
                                         size={16}
-                                        className="text-zinc-400"
+                                        className="text-muted-foreground"
                                     />
                                 </button>
 
@@ -850,13 +850,13 @@ export function TransactionEditModal({
                                             initial={{ opacity: 0, y: -6 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0, y: -6 }}
-                                            className="mt-2 w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl"
+                                            className="mt-2 w-full overflow-hidden rounded-2xl border border-border bg-card shadow-xl"
                                         >
-                                            <div className="border-b border-zinc-100 p-3">
-                                                <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+                                            <div className="border-b border-border p-3">
+                                                <div className="flex items-center gap-2 rounded-xl border border-border bg-accent px-3 py-2">
                                                     <MagnifyingGlass
                                                         size={16}
-                                                        className="text-zinc-400"
+                                                        className="text-muted-foreground"
                                                     />
                                                     <input
                                                         value={categoryQuery}
@@ -866,14 +866,14 @@ export function TransactionEditModal({
                                                             )
                                                         }
                                                         placeholder="Search..."
-                                                        className="w-full bg-transparent text-sm text-zinc-900 outline-none"
+                                                        className="w-full bg-transparent text-sm text-foreground outline-none"
                                                     />
                                                 </div>
                                             </div>
                                             <div className="max-h-48 overflow-auto p-1">
                                                 {filteredCategories.length ===
                                                 0 ? (
-                                                    <div className="px-3 py-4 text-center text-sm text-zinc-400">
+                                                    <div className="px-3 py-4 text-center text-sm text-muted-foreground">
                                                         No matches.
                                                     </div>
                                                 ) : (
@@ -891,8 +891,8 @@ export function TransactionEditModal({
                                                                 );
                                                             }}
                                                             className={`w-full rounded-xl px-3 py-2 text-left text-sm transition-colors ${c === category
-                                                                    ? "bg-zinc-900 text-white"
-                                                                    : "text-zinc-700 hover:bg-zinc-50"
+                                                                    ? "bg-primary text-primary-foreground"
+                                                                    : "text-foreground/80 hover:bg-accent"
                                                                 }`}
                                                         >
                                                             {c}
@@ -906,7 +906,7 @@ export function TransactionEditModal({
                             </div>
                         </div>
 
-                        <div className="border-t border-zinc-100 px-6 py-4">
+                        <div className="border-t border-border px-6 py-4">
                             {confirmDelete ? (
                                 <div className="space-y-3">
                                     <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
@@ -929,7 +929,7 @@ export function TransactionEditModal({
                                             onClick={() =>
                                                 setConfirmDelete(false)
                                             }
-                                            className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
+                                            className="flex-1 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground/80 hover:bg-accent"
                                         >
                                             Cancel
                                         </button>
@@ -948,7 +948,7 @@ export function TransactionEditModal({
                                     <button
                                         type="button"
                                         onClick={() => setConfirmDelete(true)}
-                                        className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
+                                        className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground/80 hover:bg-accent"
                                     >
                                         <Trash size={16} />
                                         Delete
@@ -960,7 +960,7 @@ export function TransactionEditModal({
                                                 onClose();
                                                 setCategoryOpen(false);
                                             }}
-                                            className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
+                                            className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground/80 hover:bg-accent"
                                         >
                                             Cancel
                                         </button>
@@ -968,7 +968,7 @@ export function TransactionEditModal({
                                             type="button"
                                             onClick={handleSave}
                                             disabled={!canSave}
-                                            className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                                         >
                                             {isSaving ? "Saving..." : "Save"}
                                         </button>

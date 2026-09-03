@@ -50,7 +50,7 @@ function EquivalentBalance({ balance, currency }: { balance: number; currency: s
         ? Math.abs(balance) * rate
         : Math.abs(balance) / rate;
     return (
-        <p className="mt-0.5 text-xs font-medium text-zinc-400/70">
+        <p className="mt-0.5 text-xs font-medium text-muted-foreground/70">
             ≈ {otherSymbol}
             {converted.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
@@ -127,8 +127,8 @@ export function VaultCard({
             >
                 {/* Subtle pattern overlay */}
                 <div className="absolute inset-0 opacity-5">
-                    <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white" />
-                    <div className="absolute -bottom-4 -left-4 h-24 w-24 rounded-full bg-white" />
+                    <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-card" />
+                    <div className="absolute -bottom-4 -left-4 h-24 w-24 rounded-full bg-card" />
                 </div>
 
                 {/* Header */}
@@ -138,16 +138,16 @@ export function VaultCard({
                             <CurrencyEur
                                 size={18}
                                 weight="bold"
-                                className="text-zinc-400"
+                                className="text-muted-foreground"
                             />
                         ) : (
                             <CurrencyDollar
                                 size={18}
                                 weight="bold"
-                                className="text-zinc-400"
+                                className="text-muted-foreground"
                             />
                         )}
-                        <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+                        <span className="rounded-full bg-card/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
                             {typeLabels[type]}
                         </span>
                     </div>
@@ -156,7 +156,7 @@ export function VaultCard({
                             <ShieldCheck
                                 size={16}
                                 weight="fill"
-                                className="text-zinc-400"
+                                className="text-muted-foreground"
                             />
                         )}
                         {/* 3-dot menu */}
@@ -167,12 +167,12 @@ export function VaultCard({
                                     setMenuOpen(!menuOpen);
                                     setConfirmDelete(false);
                                 }}
-                                className="rounded-lg p-1 transition-colors hover:bg-white/10"
+                                className="rounded-lg p-1 transition-colors hover:bg-card/10"
                             >
                                 <DotsThree
                                     size={18}
                                     weight="bold"
-                                    className="text-zinc-400"
+                                    className="text-muted-foreground"
                                 />
                             </button>
 
@@ -196,7 +196,7 @@ export function VaultCard({
                                             y: -4,
                                         }}
                                         transition={{ duration: 0.15 }}
-                                        className="absolute right-0 top-8 z-50 w-40 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl"
+                                        className="absolute right-0 top-8 z-50 w-40 overflow-hidden rounded-xl border border-border bg-card shadow-xl"
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         {!confirmDelete ? (
@@ -206,7 +206,7 @@ export function VaultCard({
                                                         setMenuOpen(false);
                                                         setShowEdit(true);
                                                     }}
-                                                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+                                                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent"
                                                 >
                                                     <PencilSimple size={15} />
                                                     Edit
@@ -223,10 +223,10 @@ export function VaultCard({
                                             </>
                                         ) : (
                                             <div className="p-3">
-                                                <p className="text-xs font-medium text-zinc-700">
+                                                <p className="text-xs font-medium text-foreground/80">
                                                     Delete this vault?
                                                 </p>
-                                                <p className="mt-1 text-[11px] text-zinc-400">
+                                                <p className="mt-1 text-[11px] text-muted-foreground">
                                                     All transactions will be
                                                     lost.
                                                 </p>
@@ -238,7 +238,7 @@ export function VaultCard({
                                                             );
                                                             setMenuOpen(false);
                                                         }}
-                                                        className="flex-1 rounded-lg border border-zinc-200 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+                                                        className="flex-1 rounded-lg border border-border py-1.5 text-xs font-medium text-foreground/70 hover:bg-accent"
                                                     >
                                                         Cancel
                                                     </button>
@@ -260,7 +260,7 @@ export function VaultCard({
 
                 {/* Balance */}
                 <div className="relative mt-8">
-                    <p className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                    <p className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
                         Balance
                     </p>
                     <p className="mt-1 text-2xl font-bold tracking-tight">
@@ -279,7 +279,7 @@ export function VaultCard({
                     <ArrowRight
                         size={16}
                         weight="bold"
-                        className="text-zinc-400"
+                        className="text-muted-foreground"
                     />
                 </div>
 

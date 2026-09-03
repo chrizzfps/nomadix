@@ -18,6 +18,7 @@ import { formatMoney } from "@/lib/currency";
 import { todayISO } from "@/lib/subscriptions";
 import { AI_PROVIDERS, type AiProvider } from "@/lib/ai-providers";
 import { TransactionDetailModal } from "@/components/vaults/transaction-detail-modal";
+import { useLanguageStore } from "@/stores/language-store";
 import type { MonthlyReportContext, ReportLanguage } from "@/lib/ai-report";
 
 interface ReportResult {
@@ -76,6 +77,7 @@ function parseNarrative(text: string): { paragraphs: string[]; bullets: string[]
 export default function ReportsPage() {
     const supabase = createClient();
     const { isPrivacyMode } = usePrivacyStore();
+    const t = useLanguageStore((s) => s.t);
     const blur = isPrivacyMode ? "blur-sm select-none" : "";
 
     const [month, setMonth] = useState(todayISO().slice(0, 7));
@@ -101,7 +103,7 @@ export default function ReportsPage() {
             const json = await res.json();
             if (!res.ok) {
                 setError({
-                    message: json.error || "Something went wrong.",
+                    message: json.error || t("reports.somethingWrong"),
                     code: json.code,
                     provider: json.provider,
                 });
@@ -110,7 +112,7 @@ export default function ReportsPage() {
                 setResult(json);
             }
         } catch {
-            setError({ message: "Network error. Please try again." });
+            setError({ message: t("reports.networkError") });
         } finally {
             setIsLoading(false);
         }
@@ -141,21 +143,21 @@ export default function ReportsPage() {
         <div className="p-6 lg:p-8 space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Reports</h1>
-                    <p className="mt-1 text-sm text-zinc-500">
-                        AI-generated monthly summary of your finances.
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">{t("reports.title")}</h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        {t("reports.subtitle")}
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex rounded-xl border border-zinc-200 bg-white p-0.5">
+                    <div className="flex rounded-xl border border-border bg-card p-0.5">
                         {LANGUAGES.map((l) => (
                             <button
                                 key={l.id}
                                 onClick={() => setLanguage(l.id)}
                                 className={`rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
                                     language === l.id
-                                        ? "bg-zinc-900 text-white"
-                                        : "text-zinc-500 hover:text-zinc-700"
+                                        ? "bg-primary text-primary-foreground"
+                                        : "text-muted-foreground hover:text-foreground/80"
                                 }`}
                             >
                                 {l.label}
@@ -166,22 +168,22 @@ export default function ReportsPage() {
                         type="month"
                         value={month}
                         onChange={(e) => setMonth(e.target.value)}
-                        className="rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-700 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                        className="rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground/80 focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                     <button
                         onClick={() => generate(true)}
                         disabled={isLoading}
-                        className="flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
+                        className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
                     >
                         {isLoading ? (
                             <>
                                 <ArrowClockwise size={15} className="animate-spin" />
-                                {result ? "Regenerating…" : "Generating…"}
+                                {result ? t("reports.regenerating") : t("reports.generating")}
                             </>
                         ) : (
                             <>
                                 <FileText size={15} />
-                                {result ? "Regenerate" : "Generate report"}
+                                {result ? t("reports.regenerate") : t("reports.generateReport")}
                             </>
                         )}
                     </button>
@@ -189,17 +191,17 @@ export default function ReportsPage() {
             </div>
 
             {error && error.code === "no_api_key" && (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center">
-                    <FileText size={36} weight="thin" className="mx-auto text-zinc-300" />
-                    <p className="mt-3 text-sm font-semibold text-zinc-700">{error.message}</p>
-                    <p className="mt-1 text-xs text-zinc-400">
-                        Your key is stored encrypted and used only to generate this report.
+                <div className="rounded-2xl border border-border bg-card p-8 text-center">
+                    <FileText size={36} weight="thin" className="mx-auto text-muted-foreground" />
+                    <p className="mt-3 text-sm font-semibold text-foreground/80">{error.message}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        {t("reports.keyStoredEncrypted")}
                     </p>
                     <Link
                         href="/dashboard/settings/ai"
-                        className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
+                        className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                     >
-                        Go to Settings
+                        {t("reports.goToSettings")}
                         <ArrowRight size={14} />
                     </Link>
                 </div>
@@ -212,11 +214,11 @@ export default function ReportsPage() {
             )}
 
             {!result && !error && !isLoading && (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-white py-20">
-                    <FileText size={40} weight="thin" className="text-zinc-300" />
-                    <p className="mt-3 text-sm font-semibold text-zinc-400">No report yet</p>
-                    <p className="mt-1 text-xs text-zinc-300">
-                        Pick a month and generate your first AI summary.
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card py-20">
+                    <FileText size={40} weight="thin" className="text-muted-foreground" />
+                    <p className="mt-3 text-sm font-semibold text-muted-foreground">{t("reports.noReportYet")}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        {t("reports.pickMonth")}
                     </p>
                 </div>
             )}
@@ -225,10 +227,10 @@ export default function ReportsPage() {
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                         {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="h-24 animate-pulse rounded-2xl bg-zinc-100" />
+                            <div key={i} className="h-24 animate-pulse rounded-2xl bg-accent" />
                         ))}
                     </div>
-                    <div className="h-48 animate-pulse rounded-2xl bg-zinc-100" />
+                    <div className="h-48 animate-pulse rounded-2xl bg-accent" />
                 </div>
             )}
 
@@ -239,29 +241,29 @@ export default function ReportsPage() {
                     className={`space-y-6 transition-opacity ${isLoading ? "opacity-50" : ""}`}
                 >
                     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                        <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-                            <p className="text-xs font-medium tracking-[0.08em] uppercase text-zinc-400">
-                                Income
+                        <div className="rounded-2xl border border-border bg-card p-5">
+                            <p className="text-xs font-medium tracking-[0.08em] uppercase text-muted-foreground">
+                                {t("reports.income")}
                             </p>
                             <p className={`mt-2 text-2xl font-bold tabular-nums text-emerald-600 ${blur}`}>
                                 {formatMoney(ctx.current.income, ctx.currency)}
                             </p>
                         </div>
-                        <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-                            <p className="text-xs font-medium tracking-[0.08em] uppercase text-zinc-400">
-                                Expenses
+                        <div className="rounded-2xl border border-border bg-card p-5">
+                            <p className="text-xs font-medium tracking-[0.08em] uppercase text-muted-foreground">
+                                {t("reports.expenses")}
                             </p>
-                            <p className={`mt-2 text-2xl font-bold tabular-nums text-zinc-900 ${blur}`}>
+                            <p className={`mt-2 text-2xl font-bold tabular-nums text-foreground ${blur}`}>
                                 {formatMoney(ctx.current.expense, ctx.currency)}
                             </p>
                         </div>
-                        <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-                            <p className="text-xs font-medium tracking-[0.08em] uppercase text-zinc-400">
-                                Net
+                        <div className="rounded-2xl border border-border bg-card p-5">
+                            <p className="text-xs font-medium tracking-[0.08em] uppercase text-muted-foreground">
+                                {t("reports.net")}
                             </p>
                             <p
                                 className={`mt-2 text-2xl font-bold tabular-nums ${blur} ${
-                                    ctx.current.net >= 0 ? "text-zinc-900" : "text-red-600"
+                                    ctx.current.net >= 0 ? "text-foreground" : "text-red-600"
                                 }`}
                             >
                                 {formatMoney(ctx.current.net, ctx.currency)}
@@ -277,45 +279,49 @@ export default function ReportsPage() {
                                     ) : (
                                         <TrendDown size={12} weight="bold" />
                                     )}
-                                    {Math.abs(delta).toFixed(0)}% vs last month
+                                    {t("reports.vsLastMonth", { pct: Math.abs(delta).toFixed(0) })}
                                 </p>
                             )}
                         </div>
-                        <div className="rounded-2xl border border-zinc-200 bg-white p-5">
-                            <p className="text-xs font-medium tracking-[0.08em] uppercase text-zinc-400">
-                                Net worth
+                        <div className="rounded-2xl border border-border bg-card p-5">
+                            <p className="text-xs font-medium tracking-[0.08em] uppercase text-muted-foreground">
+                                {t("reports.netWorth")}
                             </p>
-                            <p className={`mt-2 text-2xl font-bold tabular-nums text-zinc-900 ${blur}`}>
+                            <p className={`mt-2 text-2xl font-bold tabular-nums text-foreground ${blur}`}>
                                 {formatMoney(ctx.netWorth, ctx.currency)}
                             </p>
-                            <p className="mt-1 flex items-center gap-1 text-xs text-zinc-400">
+                            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                                 <Wallet size={12} />
-                                Across {ctx.vaultBalances.length} vault
-                                {ctx.vaultBalances.length === 1 ? "" : "s"}
+                                {t(
+                                    ctx.vaultBalances.length === 1
+                                        ? "reports.acrossVaultOne"
+                                        : "reports.acrossVaultMany",
+                                    { count: ctx.vaultBalances.length }
+                                )}
                             </p>
                         </div>
                     </div>
 
                     <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-                        <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+                        <div className="rounded-2xl border border-border bg-card p-6">
                             <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2">
-                                    <FileText size={16} className="text-zinc-400" />
-                                    <h3 className="text-sm font-semibold text-zinc-900">
-                                        {ctx.monthLabel} summary
+                                    <FileText size={16} className="text-muted-foreground" />
+                                    <h3 className="text-sm font-semibold text-foreground">
+                                        {t("reports.monthSummary", { month: ctx.monthLabel })}
                                     </h3>
                                 </div>
-                                <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+                                <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                                     {modelLabel(result.provider, result.model)}
                                 </span>
                             </div>
-                            <div className="mt-3 space-y-3 text-sm leading-relaxed text-zinc-600">
+                            <div className="mt-3 space-y-3 text-sm leading-relaxed text-foreground/70">
                                 {narrative.paragraphs.length > 0 && <p>{narrative.paragraphs[0]}</p>}
                                 {narrative.bullets.map((group, i) => (
                                     <ul key={i} className="space-y-1.5">
                                         {group.map((b, j) => (
                                             <li key={j} className="flex gap-2">
-                                                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-zinc-400" />
+                                                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-muted-foreground" />
                                                 <span>{b}</span>
                                             </li>
                                         ))}
@@ -328,18 +334,18 @@ export default function ReportsPage() {
                         </div>
 
                         <div className="space-y-6">
-                            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
-                                <h3 className="text-sm font-semibold text-zinc-900">
-                                    Top expense categories
+                            <div className="rounded-2xl border border-border bg-card p-6">
+                                <h3 className="text-sm font-semibold text-foreground">
+                                    {t("reports.topExpenseCategories")}
                                 </h3>
                                 {ctx.topExpenseCategories.length === 0 ? (
-                                    <p className="mt-2 text-xs text-zinc-400">No expenses this month.</p>
+                                    <p className="mt-2 text-xs text-muted-foreground">{t("reports.noExpensesMonth")}</p>
                                 ) : (
                                     <div className="mt-3 space-y-2.5">
                                         {ctx.topExpenseCategories.map((c) => (
                                             <div key={c.category} className="flex items-center justify-between text-sm">
-                                                <span className="text-zinc-600">{c.category}</span>
-                                                <span className={`font-semibold tabular-nums text-zinc-900 ${blur}`}>
+                                                <span className="text-foreground/70">{c.category}</span>
+                                                <span className={`font-semibold tabular-nums text-foreground ${blur}`}>
                                                     {formatMoney(c.amount, ctx.currency)}
                                                 </span>
                                             </div>
@@ -348,24 +354,24 @@ export default function ReportsPage() {
                                 )}
                             </div>
 
-                            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
-                                <h3 className="text-sm font-semibold text-zinc-900">Biggest expenses</h3>
+                            <div className="rounded-2xl border border-border bg-card p-6">
+                                <h3 className="text-sm font-semibold text-foreground">{t("reports.biggestExpenses")}</h3>
                                 {ctx.biggestExpenses.length === 0 ? (
-                                    <p className="mt-2 text-xs text-zinc-400">No expenses this month.</p>
+                                    <p className="mt-2 text-xs text-muted-foreground">{t("reports.noExpensesMonth")}</p>
                                 ) : (
                                     <div className="mt-3 space-y-1">
                                         {ctx.biggestExpenses.map((e) => (
                                             <button
                                                 key={e.id}
                                                 onClick={() => openExpense(e.id, e.vaultId)}
-                                                className="flex w-full items-center justify-between gap-2 rounded-xl px-2 py-2 text-sm transition-colors hover:bg-zinc-50"
+                                                className="flex w-full items-center justify-between gap-2 rounded-xl px-2 py-2 text-sm transition-colors hover:bg-accent"
                                             >
-                                                <span className="truncate text-zinc-600">{e.description}</span>
+                                                <span className="truncate text-foreground/70">{e.description}</span>
                                                 <span className="flex shrink-0 items-center gap-1">
-                                                    <span className={`font-semibold tabular-nums text-zinc-900 ${blur}`}>
+                                                    <span className={`font-semibold tabular-nums text-foreground ${blur}`}>
                                                         {formatMoney(e.amount, ctx.currency)}
                                                     </span>
-                                                    <CaretRight size={12} className="text-zinc-300" />
+                                                    <CaretRight size={12} className="text-muted-foreground" />
                                                 </span>
                                             </button>
                                         ))}

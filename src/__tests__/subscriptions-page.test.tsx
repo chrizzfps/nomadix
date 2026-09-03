@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import SubscriptionsPage from "@/app/dashboard/subscriptions/page";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguageStore } from "@/stores/language-store";
 
 jest.mock("@/lib/supabase/client", () => {
     const vault = { id: "v1", name: "Main Vault", currency: "EUR" };
@@ -92,6 +93,10 @@ jest.mock("@/lib/supabase/client", () => {
 });
 
 describe("SubscriptionsPage", () => {
+    beforeEach(() => {
+        useLanguageStore.getState().setLanguage("en");
+    });
+
     afterEach(() => {
         const client = createClient() as unknown as {
             __resetSubscriptions: () => void;

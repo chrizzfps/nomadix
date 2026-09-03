@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { useRemindersStore } from "@/stores/reminders-store";
+import { useLanguageStore } from "@/stores/language-store";
 
 jest.mock("next/navigation", () => ({
     useRouter: () => ({
@@ -14,6 +15,7 @@ jest.mock("@/stores/reminders-store", () => ({
 
 describe("NotificationBell UI alignment and toggle", () => {
     beforeEach(() => {
+        useLanguageStore.getState().setLanguage("en");
         (useRemindersStore as unknown as jest.Mock).mockReturnValue({
             items: [],
             unreadCount: 0,

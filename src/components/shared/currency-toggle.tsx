@@ -11,13 +11,13 @@ export function CurrencyToggle({ className }: CurrencyToggleProps) {
 
     return (
         <div
-            className={`inline-flex items-center rounded-full bg-zinc-100 p-0.5 ${className}`}
+            className={`inline-flex items-center rounded-full bg-accent p-0.5 ${className}`}
         >
             <button
                 onClick={() => displayCurrency !== "USD" && toggleCurrency()}
                 className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${displayCurrency === "USD"
-                        ? "bg-zinc-900 text-white shadow-sm"
-                        : "text-zinc-500 hover:text-zinc-700"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground/80"
                     }`}
             >
                 USD
@@ -25,8 +25,8 @@ export function CurrencyToggle({ className }: CurrencyToggleProps) {
             <button
                 onClick={() => displayCurrency !== "EUR" && toggleCurrency()}
                 className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${displayCurrency === "EUR"
-                        ? "bg-zinc-900 text-white shadow-sm"
-                        : "text-zinc-500 hover:text-zinc-700"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground/80"
                     }`}
             >
                 EUR

@@ -153,10 +153,10 @@ export default function ProfilePage() {
     if (isLoading) {
         return (
             <div className="space-y-4">
-                <div className="h-40 animate-pulse rounded-2xl bg-zinc-100" />
+                <div className="h-40 animate-pulse rounded-2xl bg-accent" />
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                     {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-24 animate-pulse rounded-2xl bg-zinc-100" />
+                        <div key={i} className="h-24 animate-pulse rounded-2xl bg-accent" />
                     ))}
                 </div>
             </div>
@@ -186,12 +186,12 @@ export default function ProfilePage() {
             {/* Section Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                        <UserCircle size={20} className="text-zinc-600" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                        <UserCircle size={20} className="text-foreground/70" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-semibold text-zinc-900">{t("profile.title")}</h2>
-                        <p className="text-xs text-zinc-400">
+                        <h2 className="text-lg font-semibold text-foreground">{t("profile.title")}</h2>
+                        <p className="text-xs text-muted-foreground">
                             {t("profile.subtitle")}
                         </p>
                     </div>
@@ -200,7 +200,7 @@ export default function ProfilePage() {
                 <button
                     type="button"
                     onClick={() => setIsEditing(!isEditing)}
-                    className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 active:scale-[0.98] transition-all shadow-sm"
+                    className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground/80 hover:bg-accent active:scale-[0.98] transition-all shadow-sm"
                 >
                     <PencilSimple size={14} />
                     {isEditing ? t("profile.cancel") : t("profile.edit")}
@@ -208,41 +208,41 @@ export default function ProfilePage() {
             </div>
 
             {/* Profile Card */}
-            <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                 {/* Banner */}
                 <div className="h-28 bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-950" />
 
                 {/* Avatar + Info */}
                 <div className="px-6 pb-6">
                     <div className="-mt-12 flex flex-col gap-4 sm:flex-row sm:items-end">
-                        <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-zinc-900 text-3xl font-bold text-white shadow-lg shrink-0">
+                        <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-primary text-3xl font-bold text-primary-foreground shadow-lg shrink-0">
                             {initials}
                         </div>
                         <div className="mb-1 flex-1">
-                            <h3 className="text-xl font-bold text-zinc-900">{profile.full_name}</h3>
-                            <p className="text-xs font-medium text-zinc-500">{extended.occupation}</p>
-                            <p className="mt-2 text-xs text-zinc-600 max-w-xl leading-relaxed">
+                            <h3 className="text-xl font-bold text-foreground">{profile.full_name}</h3>
+                            <p className="text-xs font-medium text-muted-foreground">{extended.occupation}</p>
+                            <p className="mt-2 text-xs text-foreground/70 max-w-xl leading-relaxed">
                                 {extended.bio}
                             </p>
                         </div>
                     </div>
 
                     {/* Details Badges */}
-                    <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-4">
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-                            <MapPin size={14} className="text-zinc-400" />
+                    <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <MapPin size={14} className="text-muted-foreground" />
                             {extended.taxResidency}
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-                            <Globe size={14} className="text-zinc-400" />
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Globe size={14} className="text-muted-foreground" />
                             {extended.website}
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-                            <CalendarBlank size={14} className="text-zinc-400" />
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <CalendarBlank size={14} className="text-muted-foreground" />
                             Member since {memberSince}
                         </div>
-                        <div className="flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700">
-                            <Crown size={12} weight="fill" className="text-zinc-900" />
+                        <div className="flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-foreground/80">
+                            <Crown size={12} weight="fill" className="text-foreground" />
                             Premium Plan
                         </div>
                     </div>
@@ -254,69 +254,69 @@ export default function ProfilePage() {
                 <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
-                    className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+                    className="rounded-2xl border border-border bg-card p-6 shadow-sm"
                 >
-                    <h3 className="text-sm font-semibold text-zinc-900 mb-4">Edit Profile Information</h3>
+                    <h3 className="text-sm font-semibold text-foreground mb-4">Edit Profile Information</h3>
                     <form onSubmit={handleSaveProfile} className="space-y-4 max-w-lg">
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-zinc-400">
+                            <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-muted-foreground">
                                 Full Name
                             </label>
                             <input
                                 type="text"
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
-                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm text-zinc-900 focus:border-zinc-400 focus:bg-white focus:outline-none"
+                                className="w-full rounded-xl border border-border bg-accent px-3.5 py-2 text-sm text-foreground focus:border-ring focus:bg-card focus:outline-none"
                                 required
                             />
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-zinc-400">
+                            <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-muted-foreground">
                                 Title / Occupation
                             </label>
                             <input
                                 type="text"
                                 value={extended.occupation}
                                 onChange={(e) => setExtended({ ...extended, occupation: e.target.value })}
-                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm text-zinc-900 focus:border-zinc-400 focus:bg-white focus:outline-none"
+                                className="w-full rounded-xl border border-border bg-accent px-3.5 py-2 text-sm text-foreground focus:border-ring focus:bg-card focus:outline-none"
                             />
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-zinc-400">
+                            <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-muted-foreground">
                                 Bio / Description
                             </label>
                             <textarea
                                 value={extended.bio}
                                 onChange={(e) => setExtended({ ...extended, bio: e.target.value })}
                                 rows={3}
-                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-900 focus:border-zinc-400 focus:bg-white focus:outline-none"
+                                className="w-full rounded-xl border border-border bg-accent p-3 text-sm text-foreground focus:border-ring focus:bg-card focus:outline-none"
                             />
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-zinc-400">
+                                <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-muted-foreground">
                                     Tax Residency / Country
                                 </label>
                                 <input
                                     type="text"
                                     value={extended.taxResidency}
                                     onChange={(e) => setExtended({ ...extended, taxResidency: e.target.value })}
-                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm text-zinc-900 focus:border-zinc-400 focus:bg-white focus:outline-none"
+                                    className="w-full rounded-xl border border-border bg-accent px-3.5 py-2 text-sm text-foreground focus:border-ring focus:bg-card focus:outline-none"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-zinc-400">
+                                <label className="text-[11px] font-medium tracking-[0.08em] uppercase text-muted-foreground">
                                     Website / Link
                                 </label>
                                 <input
                                     type="text"
                                     value={extended.website}
                                     onChange={(e) => setExtended({ ...extended, website: e.target.value })}
-                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm text-zinc-900 focus:border-zinc-400 focus:bg-white focus:outline-none"
+                                    className="w-full rounded-xl border border-border bg-accent px-3.5 py-2 text-sm text-foreground focus:border-ring focus:bg-card focus:outline-none"
                                 />
                             </div>
                         </div>
@@ -325,14 +325,14 @@ export default function ProfilePage() {
                             <button
                                 type="button"
                                 onClick={() => setIsEditing(false)}
-                                className="rounded-xl border border-zinc-200 px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+                                className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-foreground/70 hover:bg-accent"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={isSaving}
-                                className="flex items-center gap-1.5 rounded-xl bg-zinc-900 px-5 py-2 text-xs font-semibold text-white hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
+                                className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
                             >
                                 <FloppyDisk size={14} />
                                 {isSaving ? "Saving..." : "Save Changes"}
@@ -344,42 +344,42 @@ export default function ProfilePage() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-center shadow-sm">
-                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                        <Vault size={18} className="text-zinc-600" />
+                <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-sm">
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                        <Vault size={18} className="text-foreground/70" />
                     </div>
-                    <p className="text-2xl font-bold text-zinc-900">{stats.vaults}</p>
-                    <p className="text-[10px] font-semibold tracking-wider uppercase text-zinc-400">
+                    <p className="text-2xl font-bold text-foreground">{stats.vaults}</p>
+                    <p className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">
                         {t("profile.activeVaults")}
                     </p>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-center shadow-sm">
-                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                        <IdentificationCard size={18} className="text-zinc-600" />
+                <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-sm">
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                        <IdentificationCard size={18} className="text-foreground/70" />
                     </div>
-                    <p className="text-2xl font-bold text-zinc-900">{stats.documents}</p>
-                    <p className="text-[10px] font-semibold tracking-wider uppercase text-zinc-400">
+                    <p className="text-2xl font-bold text-foreground">{stats.documents}</p>
+                    <p className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">
                         {t("profile.documents")}
                     </p>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-center shadow-sm">
-                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                        <CalendarBlank size={18} className="text-zinc-600" />
+                <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-sm">
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                        <CalendarBlank size={18} className="text-foreground/70" />
                     </div>
-                    <p className="text-2xl font-bold text-zinc-900">{memberSince}</p>
-                    <p className="text-[10px] font-semibold tracking-wider uppercase text-zinc-400">
+                    <p className="text-2xl font-bold text-foreground">{memberSince}</p>
+                    <p className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">
                         {t("profile.memberSince")}
                     </p>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-center shadow-sm">
+                <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-sm">
                     <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
                         <Crown size={18} weight="fill" className="text-emerald-500" />
                     </div>
-                    <p className="text-2xl font-bold text-zinc-900">Premium</p>
-                    <p className="text-[10px] font-semibold tracking-wider uppercase text-zinc-400">
+                    <p className="text-2xl font-bold text-foreground">Premium</p>
+                    <p className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">
                         {t("profile.plan")}
                     </p>
                 </div>

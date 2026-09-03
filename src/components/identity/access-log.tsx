@@ -28,9 +28,9 @@ const actionLabels: Record<AccessLogEntry["action"], string> = {
 
 export function AccessLog({ entries }: AccessLogProps) {
     return (
-        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
             {/* Table Header */}
-            <div className="grid grid-cols-[100px_1fr_1fr_1fr] gap-4 border-b border-zinc-100 px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase text-zinc-400">
+            <div className="grid grid-cols-[100px_1fr_1fr_1fr] gap-4 border-b border-border px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
                 <span>Date</span>
                 <span>Action</span>
                 <span>Document</span>
@@ -38,32 +38,32 @@ export function AccessLog({ entries }: AccessLogProps) {
             </div>
 
             {/* Rows */}
-            <div className="divide-y divide-zinc-50">
+            <div className="divide-y divide-border">
                 {entries.map((entry) => {
                     const IconCmp = actionIcons[entry.action];
                     return (
                         <div
                             key={entry.id}
-                            className="grid grid-cols-[100px_1fr_1fr_1fr] items-center gap-4 px-5 py-3 text-sm transition-colors hover:bg-zinc-50"
+                            className="grid grid-cols-[100px_1fr_1fr_1fr] items-center gap-4 px-5 py-3 text-sm transition-colors hover:bg-accent"
                         >
-                            <span className="text-xs text-zinc-400">
+                            <span className="text-xs text-muted-foreground">
                                 {entry.timestamp}
                             </span>
                             <div className="flex items-center gap-2.5">
-                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent">
                                     <IconCmp
                                         size={14}
-                                        className="text-zinc-500"
+                                        className="text-muted-foreground"
                                     />
                                 </div>
-                                <span className="font-medium text-zinc-900">
+                                <span className="font-medium text-foreground">
                                     {actionLabels[entry.action]}
                                 </span>
                             </div>
-                            <span className="truncate text-zinc-500">
+                            <span className="truncate text-muted-foreground">
                                 {entry.document_title}
                             </span>
-                            <span className="text-xs text-zinc-400">
+                            <span className="text-xs text-muted-foreground">
                                 {entry.device}
                             </span>
                         </div>
@@ -71,7 +71,7 @@ export function AccessLog({ entries }: AccessLogProps) {
                 })}
 
                 {entries.length === 0 && (
-                    <div className="px-5 py-8 text-center text-sm text-zinc-400">
+                    <div className="px-5 py-8 text-center text-sm text-muted-foreground">
                         No activity recorded yet.
                     </div>
                 )}

@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { UpcomingChargesWidget } from "@/components/subscriptions/upcoming-charges-widget";
 import { createClient } from "@/lib/supabase/client";
 import { todayISO } from "@/lib/subscriptions";
+import { useLanguageStore } from "@/stores/language-store";
 
 function makeSub(overrides: Record<string, unknown>) {
     return {
@@ -126,6 +127,10 @@ jest.mock("@/lib/supabase/client", () => {
 });
 
 describe("UpcomingChargesWidget", () => {
+    beforeEach(() => {
+        useLanguageStore.getState().setLanguage("en");
+    });
+
     it("renders upcoming rows sorted by date", async () => {
         render(<UpcomingChargesWidget />);
         const rows = await screen.findAllByText("Netflix");

@@ -32,6 +32,7 @@ import { useCurrencyStore } from "@/stores/currency-store";
 import { CURRENCY_SYMBOLS, TRANSACTION_CATEGORIES } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { convertTransactionAmount } from "@/lib/currency-helpers";
+import { useLanguageStore } from "@/stores/language-store";
 
 interface VaultData {
     id: string;
@@ -81,6 +82,7 @@ const categoryIcons: Record<string, React.ElementType> = {
 export default function VaultsPage() {
     const supabase = createClient();
     const { displayCurrency, convert, loadRate, getActiveRate } = useCurrencyStore();
+    const t = useLanguageStore((s) => s.t);
     const symbol = CURRENCY_SYMBOLS[displayCurrency];
 
     const ACTIVITY_PAGE_SIZE = 10;
@@ -292,12 +294,12 @@ export default function VaultsPage() {
     if (isLoading) {
         return (
             <div className="p-6 lg:p-8 space-y-6">
-                <div className="h-10 w-48 animate-pulse rounded-lg bg-zinc-100" />
+                <div className="h-10 w-48 animate-pulse rounded-lg bg-accent" />
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {[1, 2, 3, 4].map((i) => (
                         <div
                             key={i}
-                            className="h-40 animate-pulse rounded-2xl bg-zinc-100"
+                            className="h-40 animate-pulse rounded-2xl bg-accent"
                         />
                     ))}
                 </div>
@@ -310,28 +312,28 @@ export default function VaultsPage() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
-                        Vaults
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                        {t("vaults.title")}
                     </h1>
-                    <p className="mt-1 text-sm text-zinc-500">
-                        Manage your multi-currency financial vaults.
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        {t("vaults.subtitle")}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
                     <CurrencyToggle />
                     <button
                         onClick={() => setShowNewTransaction(true)}
-                        className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-50"
+                        className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/80 transition-all hover:bg-accent"
                     >
                         <ArrowsLeftRight size={16} />
-                        Transaction
+                        {t("vaults.transaction")}
                     </button>
                     <button
                         onClick={() => setShowCreateVault(true)}
-                        className="flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-zinc-800 active:scale-[0.98]"
+                        className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
                     >
                         <Plus size={16} weight="bold" />
-                        New Vault
+                        {t("vaults.newVault")}
                     </button>
                 </div>
             </div>
@@ -363,12 +365,12 @@ export default function VaultsPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.25 }}
-                className="mt-4 flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-5 py-3"
+                className="mt-4 flex items-center justify-between rounded-xl border border-border bg-card px-5 py-3"
             >
-                <span className="text-xs font-semibold tracking-[0.15em] uppercase text-zinc-400">
-                    Total Across All Vaults
+                <span className="text-xs font-semibold tracking-[0.15em] uppercase text-muted-foreground">
+                    {t("vaults.totalAcrossAll")}
                 </span>
-                <span className="text-lg font-bold text-zinc-900">
+                <span className="text-lg font-bold text-foreground">
                     {symbol}
                     {totalBalance.toLocaleString("en-US", {
                         minimumFractionDigits: 2,
@@ -386,25 +388,25 @@ export default function VaultsPage() {
             >
                 {/* Activity Header */}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <h2 className="text-xl font-semibold text-zinc-900">
-                        Recent Activity
+                    <h2 className="text-xl font-semibold text-foreground">
+                        {t("vaults.recentActivity")}
                     </h2>
                     <div className="flex items-center gap-2">
-                        <div className="flex items-center rounded-lg border border-zinc-200 p-0.5">
+                        <div className="flex items-center rounded-lg border border-border p-0.5">
                             {(
                                 [
-                                    { value: "all", label: "All" },
-                                    { value: "income", label: "Income" },
-                                    { value: "expense", label: "Expense" },
-                                    { value: "transfer", label: "Transfer" },
+                                    { value: "all", label: t("vaults.filterAll") },
+                                    { value: "income", label: t("vaults.filterIncome") },
+                                    { value: "expense", label: t("vaults.filterExpense") },
+                                    { value: "transfer", label: t("vaults.filterTransfer") },
                                 ] as const
                             ).map((f) => (
                                 <button
                                     key={f.value}
                                     onClick={() => setActivityFilter(f.value)}
                                     className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${activityFilter === f.value
-                                        ? "bg-zinc-900 text-white"
-                                        : "text-zinc-500 hover:text-zinc-700"
+                                        ? "bg-primary text-primary-foreground"
+                                        : "text-muted-foreground hover:text-foreground/80"
                                         }`}
                                 >
                                     {f.label}
@@ -414,25 +416,25 @@ export default function VaultsPage() {
                         <div className="relative">
                             <button
                                 type="button"
-                                aria-label="Filtrar por categoría"
+                                aria-label={t("vaults.filterByCategory")}
                                 onClick={() =>
                                     setCategoryFilterOpen((v) => !v)
                                 }
-                                className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+                                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground/70 hover:bg-accent"
                             >
-                                <Tag size={14} className="text-zinc-500" />
+                                <Tag size={14} className="text-muted-foreground" />
                                 {selectedCategories.length > 0
-                                    ? `Categorías (${selectedCategories.length})`
-                                    : "Categorías"}
+                                    ? t("vaults.categoriesCount", { count: selectedCategories.length })
+                                    : t("vaults.categories")}
                             </button>
 
                             {categoryFilterOpen && (
-                                <div className="absolute right-0 z-20 mt-2 w-[260px] overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl">
-                                    <div className="border-b border-zinc-100 p-3 space-y-2">
-                                        <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+                                <div className="absolute right-0 z-20 mt-2 w-[260px] overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
+                                    <div className="border-b border-border p-3 space-y-2">
+                                        <div className="flex items-center gap-2 rounded-xl border border-border bg-accent px-3 py-2">
                                             <MagnifyingGlass
                                                 size={14}
-                                                className="text-zinc-400"
+                                                className="text-muted-foreground"
                                             />
                                             <input
                                                 value={categoryQuery}
@@ -441,8 +443,8 @@ export default function VaultsPage() {
                                                         e.target.value
                                                     )
                                                 }
-                                                placeholder="Buscar…"
-                                                className="w-full bg-transparent text-sm text-zinc-900 outline-none"
+                                                placeholder={t("vaults.search")}
+                                                className="w-full bg-transparent text-sm text-foreground outline-none"
                                             />
                                         </div>
                                         {selectedCategories.length > 0 && (
@@ -452,16 +454,16 @@ export default function VaultsPage() {
                                                     setSelectedCategories([]);
                                                     setCategoryQuery("");
                                                 }}
-                                                className="text-xs font-semibold text-zinc-500 hover:text-zinc-700"
+                                                className="text-xs font-semibold text-muted-foreground hover:text-foreground/80"
                                             >
-                                                Limpiar filtro
+                                                {t("vaults.clearFilter")}
                                             </button>
                                         )}
                                     </div>
                                     <div className="max-h-60 overflow-auto p-1">
                                         {filteredCategories.length === 0 ? (
-                                            <div className="px-3 py-4 text-center text-sm text-zinc-400">
-                                                Sin resultados.
+                                            <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                                                {t("vaults.noResults")}
                                             </div>
                                         ) : (
                                             filteredCategories.map((c) => {
@@ -505,8 +507,8 @@ export default function VaultsPage() {
                                                             );
                                                         }}
                                                         className={`w-full rounded-xl px-3 py-2 text-left text-sm transition-colors ${active
-                                                            ? "bg-zinc-900 text-white"
-                                                            : "text-zinc-700 hover:bg-zinc-50"
+                                                            ? "bg-primary text-primary-foreground"
+                                                            : "text-foreground/80 hover:bg-accent"
                                                             }`}
                                                     >
                                                         {c}
@@ -522,25 +524,25 @@ export default function VaultsPage() {
                 </div>
 
                 {/* Activity Table */}
-                <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+                <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
                     {/* Table Header */}
-                    <div className="hidden sm:grid grid-cols-[80px_1fr_1fr_100px_120px] gap-4 border-b border-zinc-100 px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase text-zinc-400">
-                        <span>Date</span>
-                        <span>Description</span>
-                        <span>Vault</span>
-                        <span>Category</span>
-                        <span className="text-right">Amount</span>
+                    <div className="hidden sm:grid grid-cols-[80px_1fr_1fr_100px_120px] gap-4 border-b border-border px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
+                        <span>{t("vaults.colDate")}</span>
+                        <span>{t("vaults.colDescription")}</span>
+                        <span>{t("vaults.colVault")}</span>
+                        <span>{t("vaults.colCategory")}</span>
+                        <span className="text-right">{t("vaults.colAmount")}</span>
                     </div>
 
                     {/* Rows */}
-                    <div className="divide-y divide-zinc-50">
+                    <div className="divide-y divide-border">
                         {activityError ? (
-                            <div className="px-5 py-8 text-center text-sm text-zinc-400">
+                            <div className="px-5 py-8 text-center text-sm text-muted-foreground">
                                 {activityError}
                             </div>
                         ) : filteredActivity.length === 0 ? (
-                            <div className="px-5 py-8 text-center text-sm text-zinc-400">
-                                No transactions found.
+                            <div className="px-5 py-8 text-center text-sm text-muted-foreground">
+                                {t("vaults.noTransactionsFound")}
                             </div>
                         ) : (
                             filteredActivity
@@ -559,53 +561,53 @@ export default function VaultsPage() {
                                     <div
                                         key={item.id}
                                         onClick={() => setSelectedTx(item)}
-                                        className="flex items-center gap-3 px-5 py-3 sm:grid sm:grid-cols-[80px_1fr_1fr_100px_120px] sm:gap-4 text-sm transition-colors hover:bg-zinc-50 cursor-pointer"
+                                        className="flex items-center gap-3 px-5 py-3 sm:grid sm:grid-cols-[80px_1fr_1fr_100px_120px] sm:gap-4 text-sm transition-colors hover:bg-accent cursor-pointer"
                                     >
-                                        <span className="hidden sm:block text-xs text-zinc-400">
+                                        <span className="hidden sm:block text-xs text-muted-foreground">
                                             {formatDate(
                                                 item.date || item.created_at
                                             )}
                                         </span>
                                         <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:flex-none">
-                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100">
+                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent">
                                                 {IconCmp ? (
                                                     <IconCmp
                                                         size={14}
-                                                        className="text-zinc-500"
+                                                        className="text-muted-foreground"
                                                     />
                                                 ) : isTransfer ? (
                                                     <ArrowsLeftRight
                                                         size={14}
-                                                        className="text-zinc-500"
+                                                        className="text-muted-foreground"
                                                     />
                                                 ) : isIncome ? (
                                                     <ArrowDown
                                                         size={14}
-                                                        className="text-zinc-500"
+                                                        className="text-muted-foreground"
                                                     />
                                                 ) : (
                                                     <ArrowUp
                                                         size={14}
-                                                        className="text-zinc-500"
+                                                        className="text-muted-foreground"
                                                     />
                                                 )}
                                             </div>
-                                            <span className="truncate font-medium text-zinc-900">
+                                            <span className="truncate font-medium text-foreground">
                                                 {item.description || item.type}
                                             </span>
                                         </div>
-                                        <span className="hidden sm:block text-zinc-500 truncate">
+                                        <span className="hidden sm:block text-muted-foreground truncate">
                                             {item.vault_name}
                                         </span>
-                                        <span className="hidden sm:block text-xs text-zinc-400">
+                                        <span className="hidden sm:block text-xs text-muted-foreground">
                                             {item.category || "—"}
                                         </span>
                                         <span
                                             className={`text-right font-semibold tabular-nums ${isIncome
                                                 ? "text-emerald-600"
                                                 : isTransfer
-                                                    ? "text-zinc-500"
-                                                    : "text-zinc-900"
+                                                    ? "text-muted-foreground"
+                                                    : "text-foreground"
                                                 }`}
                                         >
                                             {item.amount > 0 ? "+" : ""}
@@ -637,15 +639,15 @@ export default function VaultsPage() {
                                 type="button"
                                 onClick={onLoadMoreActivity}
                                 disabled={isLoadingMoreActivity}
-                                className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/80 transition-all hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 {isLoadingMoreActivity
-                                    ? "Cargando..."
-                                    : "Ver más movimientos"}
+                                    ? t("vaults.loading")
+                                    : t("vaults.loadMore")}
                             </button>
                         ) : (
-                            <span className="text-sm text-zinc-400">
-                                No hay más movimientos.
+                            <span className="text-sm text-muted-foreground">
+                                {t("vaults.noMore")}
                             </span>
                         )}
                     </div>

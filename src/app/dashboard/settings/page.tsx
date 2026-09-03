@@ -100,7 +100,7 @@ export default function AccountSettingsPage() {
                 {[1, 2, 3, 4].map((i) => (
                     <div
                         key={i}
-                        className="h-16 animate-pulse rounded-xl bg-zinc-100"
+                        className="h-16 animate-pulse rounded-xl bg-accent"
                     />
                 ))}
             </div>
@@ -115,25 +115,25 @@ export default function AccountSettingsPage() {
         >
             {/* Section Header */}
             <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                    <User size={20} className="text-zinc-600" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                    <User size={20} className="text-foreground/70" />
                 </div>
                 <div>
-                    <h2 className="text-lg font-semibold text-zinc-900">
+                    <h2 className="text-lg font-semibold text-foreground">
                         {t("account.title")}
                     </h2>
-                    <p className="text-xs text-zinc-400">
+                    <p className="text-xs text-muted-foreground">
                         {t("account.subtitle")}
                     </p>
                 </div>
             </div>
 
             {/* Form */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+            <div className="rounded-2xl border border-border bg-card p-6">
                 <div className="space-y-5">
                     {/* Avatar placeholder */}
                     <div className="flex items-center gap-4">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-900 text-xl font-bold text-white">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-xl font-bold text-primary-foreground">
                             {fullName
                                 .split(" ")
                                 .map((n) => n[0])
@@ -142,48 +142,48 @@ export default function AccountSettingsPage() {
                                 .slice(0, 2) || "?"}
                         </div>
                         <div>
-                            <p className="text-sm font-semibold text-zinc-900">
+                            <p className="text-sm font-semibold text-foreground">
                                 {fullName || "Your Name"}
                             </p>
-                            <p className="text-xs text-zinc-400">{email}</p>
+                            <p className="text-xs text-muted-foreground">{email}</p>
                         </div>
                     </div>
 
                     {/* Full Name */}
                     <div className="space-y-2">
-                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                             {t("account.fullName")}
                         </label>
                         <input
                             type="text"
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
-                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                            className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                         />
                     </div>
 
                     {/* Email (read-only) */}
                     <div className="space-y-2">
-                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                             {t("account.email")}
                         </label>
                         <input
                             type="email"
                             value={email}
                             disabled
-                            className="w-full rounded-xl border border-zinc-200 bg-zinc-100 px-4 py-3 text-sm text-zinc-500 cursor-not-allowed"
+                            className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-muted-foreground cursor-not-allowed"
                         />
                     </div>
 
                     {/* Timezone */}
                     <div className="space-y-2">
-                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                             {t("account.timezone")}
                         </label>
                         <select
                             value={timezone}
                             onChange={(e) => setTimezone(e.target.value)}
-                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors appearance-none"
+                            className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors appearance-none"
                         >
                             {TIMEZONES.map((tz) => (
                                 <option key={tz} value={tz}>
@@ -195,7 +195,7 @@ export default function AccountSettingsPage() {
 
                     {/* Base Currency */}
                     <div className="space-y-2">
-                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                             {t("account.baseCurrency")}
                         </label>
                         <div className="grid grid-cols-2 gap-2">
@@ -205,8 +205,8 @@ export default function AccountSettingsPage() {
                                     type="button"
                                     onClick={() => setBaseCurrency(c)}
                                     className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-all ${baseCurrency === c
-                                        ? "border-zinc-900 bg-zinc-900 text-white"
-                                        : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300"
+                                        ? "border-primary bg-primary text-primary-foreground"
+                                        : "border-border bg-card text-muted-foreground hover:border-ring"
                                         }`}
                                 >
                                     {c === "EUR" ? "€ EUR" : "$ USD"}
@@ -227,7 +227,7 @@ export default function AccountSettingsPage() {
                         disabled={isSaving || !fullName.trim()}
                         className={`flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${saved
                             ? "bg-emerald-600 text-white"
-                            : "bg-zinc-900 text-white hover:bg-zinc-800"
+                            : "bg-primary text-primary-foreground hover:bg-primary/90"
                             }`}
                     >
                         {saved ? (
@@ -249,40 +249,40 @@ export default function AccountSettingsPage() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Link
                     href="/dashboard/settings/security"
-                    className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 transition-all hover:border-zinc-300 hover:shadow-sm"
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-all hover:border-ring hover:shadow-sm"
                 >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-foreground/80">
                         <ShieldCheck size={18} />
                     </div>
                     <div>
-                        <p className="text-xs font-semibold text-zinc-900">Security & Password</p>
-                        <p className="text-[11px] text-zinc-400">Update credentials</p>
+                        <p className="text-xs font-semibold text-foreground">Security & Password</p>
+                        <p className="text-[11px] text-muted-foreground">Update credentials</p>
                     </div>
                 </Link>
 
                 <Link
                     href="/dashboard/settings/profile"
-                    className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 transition-all hover:border-zinc-300 hover:shadow-sm"
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-all hover:border-ring hover:shadow-sm"
                 >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-foreground/80">
                         <UserCircle size={18} />
                     </div>
                     <div>
-                        <p className="text-xs font-semibold text-zinc-900">Public Profile</p>
-                        <p className="text-[11px] text-zinc-400">Bio & tax residency</p>
+                        <p className="text-xs font-semibold text-foreground">Public Profile</p>
+                        <p className="text-[11px] text-muted-foreground">Bio & tax residency</p>
                     </div>
                 </Link>
 
                 <Link
                     href="/dashboard/settings/notifications"
-                    className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 transition-all hover:border-zinc-300 hover:shadow-sm"
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-all hover:border-ring hover:shadow-sm"
                 >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-foreground/80">
                         <Bell size={18} />
                     </div>
                     <div>
-                        <p className="text-xs font-semibold text-zinc-900">Notification Alerts</p>
-                        <p className="text-[11px] text-zinc-400">Bills & vault warnings</p>
+                        <p className="text-xs font-semibold text-foreground">Notification Alerts</p>
+                        <p className="text-[11px] text-muted-foreground">Bills & vault warnings</p>
                     </div>
                 </Link>
             </div>

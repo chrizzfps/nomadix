@@ -320,7 +320,7 @@ export default function SupportPage() {
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-semibold text-white transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
+                                className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
                             >
                                 <PaperPlaneTilt size={15} />
                                 {isSubmitting ? "Enviando..." : t("support.send")}

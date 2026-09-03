@@ -19,6 +19,7 @@ import { SubscriptionRow } from "@/components/subscriptions/subscription-row";
 import { SubscriptionFormModal } from "@/components/subscriptions/subscription-form-modal";
 import { SubscriptionDetailModal } from "@/components/subscriptions/subscription-detail-modal";
 import { ConfirmChargeModal } from "@/components/subscriptions/confirm-charge-modal";
+import { useLanguageStore } from "@/stores/language-store";
 import type { Subscription } from "@/types";
 
 interface VaultOption {
@@ -29,9 +30,9 @@ interface VaultOption {
 
 type StatusFilter = "all" | "active" | "paused" | "canceled";
 
-function formatDbError(message: string) {
+function formatDbError(message: string, t: (key: string) => string) {
     if (message.includes("schema cache") || message.includes("Could not find")) {
-        return "The subscriptions tables aren't set up yet. Run supabase/schema.sql in the Supabase SQL editor, then reload the API schema (Settings → API → Reload schema).";
+        return t("subs.tablesNotSetUp");
     }
     return message;
 }
@@ -41,6 +42,7 @@ export default function SubscriptionsPage() {
     const { displayCurrency, getActiveRate } = useCurrencyStore();
     const runCatchUp = useRemindersStore((s) => s.runCatchUp);
     const reloadReminders = useRemindersStore((s) => s.load);
+    const t = useLanguageStore((s) => s.t);
 
     const [vaults, setVaults] = useState<VaultOption[]>([]);
     const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -64,7 +66,7 @@ export default function SubscriptionsPage() {
         } = await supabase.auth.getUser();
 
         if (authError || !user) {
-            setError("You must be logged in to view subscriptions.");
+            setError(t("subs.mustBeLoggedIn"));
             setIsLoading(false);
             return;
         }
@@ -80,12 +82,12 @@ export default function SubscriptionsPage() {
             ]);
 
         if (vaultError) {
-            setError(formatDbError(vaultError.message));
+            setError(formatDbError(vaultError.message, t));
             setIsLoading(false);
             return;
         }
         if (subError) {
-            setError(formatDbError(subError.message));
+            setError(formatDbError(subError.message, t));
             setIsLoading(false);
             return;
         }
@@ -93,7 +95,7 @@ export default function SubscriptionsPage() {
         setVaults((vaultRows || []) as VaultOption[]);
         setSubscriptions((subRows || []) as Subscription[]);
         setIsLoading(false);
-    }, [supabase]);
+    }, [supabase, t]);
 
     useEffect(() => {
         (async () => {
@@ -171,22 +173,22 @@ export default function SubscriptionsPage() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-6 lg:p-8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Subscriptions</h1>
-                    <p className="mt-1 text-sm text-zinc-400">Recurring payments and income</p>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">{t("subs.title")}</h1>
+                    <p className="mt-1 text-sm text-muted-foreground">{t("subs.subtitle")}</p>
                 </div>
                 <button
                     type="button"
                     onClick={openCreate}
                     disabled={vaults.length === 0}
-                    className="flex items-center gap-2 self-start rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-zinc-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex items-center gap-2 self-start rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <Plus size={16} weight="bold" />
-                    New Subscription
+                    {t("subs.new")}
                 </button>
             </div>
 
             {error && (
-                <div className="mt-6 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
+                <div className="mt-6 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground/70">
                     {error}
                 </div>
             )}
@@ -195,14 +197,14 @@ export default function SubscriptionsPage() {
                 <div className="mt-6 space-y-6">
                     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                         {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="h-24 animate-pulse rounded-2xl bg-zinc-100" />
+                            <div key={i} className="h-24 animate-pulse rounded-2xl bg-accent" />
                         ))}
                     </div>
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-6">
-                        <div className="h-6 w-40 animate-pulse rounded-lg bg-zinc-100" />
+                    <div className="rounded-2xl border border-border bg-card p-6">
+                        <div className="h-6 w-40 animate-pulse rounded-lg bg-accent" />
                         <div className="mt-4 space-y-3">
                             {[1, 2, 3].map((i) => (
-                                <div key={i} className="h-14 animate-pulse rounded-xl bg-zinc-50" />
+                                <div key={i} className="h-14 animate-pulse rounded-xl bg-accent" />
                             ))}
                         </div>
                     </div>
@@ -223,13 +225,13 @@ export default function SubscriptionsPage() {
                     </div>
 
                     <div className="mt-6 flex flex-wrap items-center gap-2">
-                        <div className="flex items-center rounded-lg border border-zinc-200 p-0.5">
+                        <div className="flex items-center rounded-lg border border-border p-0.5">
                             {(
                                 [
-                                    { value: "all", label: "All" },
-                                    { value: "active", label: "Active" },
-                                    { value: "paused", label: "Paused" },
-                                    { value: "canceled", label: "Canceled" },
+                                    { value: "all", label: t("subs.filterAll") },
+                                    { value: "active", label: t("subs.filterActive") },
+                                    { value: "paused", label: t("subs.filterPaused") },
+                                    { value: "canceled", label: t("subs.filterCanceled") },
                                 ] as const
                             ).map((f) => (
                                 <button
@@ -237,8 +239,8 @@ export default function SubscriptionsPage() {
                                     onClick={() => setStatusFilter(f.value)}
                                     className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
                                         statusFilter === f.value
-                                            ? "bg-zinc-900 text-white"
-                                            : "text-zinc-500 hover:text-zinc-700"
+                                            ? "bg-primary text-primary-foreground"
+                                            : "text-muted-foreground hover:text-foreground/80"
                                     }`}
                                 >
                                     {f.label}
@@ -250,9 +252,9 @@ export default function SubscriptionsPage() {
                             <select
                                 value={vaultFilter}
                                 onChange={(e) => setVaultFilter(e.target.value)}
-                                className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600"
+                                className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground/70"
                             >
-                                <option value="all">All vaults</option>
+                                <option value="all">{t("subs.allVaults")}</option>
                                 {vaults.map((v) => (
                                     <option key={v.id} value={v.id}>
                                         {v.name}
@@ -262,24 +264,24 @@ export default function SubscriptionsPage() {
                         )}
                     </div>
 
-                    <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
-                        <div className="hidden sm:grid grid-cols-[1fr_140px_120px_110px_130px] gap-4 border-b border-zinc-100 px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase text-zinc-400">
-                            <span>Subscription</span>
-                            <span>Cycle</span>
-                            <span>Vault</span>
-                            <span>Next charge</span>
-                            <span className="text-right">Amount</span>
+                    <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
+                        <div className="hidden sm:grid grid-cols-[1fr_140px_120px_110px_130px] gap-4 border-b border-border px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
+                            <span>{t("subs.colSubscription")}</span>
+                            <span>{t("subs.colCycle")}</span>
+                            <span>{t("subs.colVault")}</span>
+                            <span>{t("subs.colNextCharge")}</span>
+                            <span className="text-right">{t("subs.colAmount")}</span>
                         </div>
 
-                        <div className="divide-y divide-zinc-50">
+                        <div className="divide-y divide-border">
                             {filtered.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16">
-                                    <Repeat size={40} weight="thin" className="text-zinc-300" />
-                                    <p className="mt-3 text-sm font-semibold text-zinc-400">
-                                        No subscriptions yet
+                                    <Repeat size={40} weight="thin" className="text-muted-foreground" />
+                                    <p className="mt-3 text-sm font-semibold text-muted-foreground">
+                                        {t("subs.emptyTitle")}
                                     </p>
-                                    <p className="mt-1 text-xs text-zinc-300">
-                                        Track Netflix, rent, gym, or any recurring income.
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        {t("subs.emptySubtitle")}
                                     </p>
                                 </div>
                             ) : (

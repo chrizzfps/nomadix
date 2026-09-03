@@ -630,23 +630,23 @@ export function NewTransactionModal({
                             damping: 25,
                             stiffness: 300,
                         }}
-                        className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+                        className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-zinc-900">
+                            <h2 className="text-lg font-semibold text-foreground">
                                 New Transaction
                             </h2>
                             <button
                                 onClick={onClose}
-                                className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground/70"
                             >
                                 <X size={18} weight="bold" />
                             </button>
                         </div>
 
                         {/* Type Tabs */}
-                        <div className="mt-5 flex rounded-xl border border-zinc-200 p-0.5">
+                        <div className="mt-5 flex rounded-xl border border-border p-0.5">
                             {(
                                 [
                                     {
@@ -673,8 +673,8 @@ export function NewTransactionModal({
                                     key={t.value}
                                     onClick={() => setTxType(t.value)}
                                     className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-2 text-[11px] font-semibold transition-all ${txType === t.value
-                                            ? "bg-zinc-900 text-white"
-                                            : "text-zinc-500 hover:text-zinc-700"
+                                            ? "bg-primary text-primary-foreground"
+                                            : "text-muted-foreground hover:text-foreground/80"
                                         }`}
                                 >
                                     {"icon" in t && t.icon && (
@@ -692,7 +692,7 @@ export function NewTransactionModal({
                                 <>
                                     {/* From vault */}
                                     <div className="space-y-2">
-                                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                             From
                                         </label>
                                         <select
@@ -700,7 +700,7 @@ export function NewTransactionModal({
                                             onChange={(e) =>
                                                 setVaultId(e.target.value)
                                             }
-                                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors appearance-none"
+                                            className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors appearance-none"
                                         >
                                             {vaults.map((v) => (
                                                 <option
@@ -721,18 +721,18 @@ export function NewTransactionModal({
 
                                     {/* Arrow */}
                                     <div className="flex justify-center">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent">
                                             <ArrowRight
                                                 size={14}
                                                 weight="bold"
-                                                className="text-zinc-400 rotate-90"
+                                                className="text-muted-foreground rotate-90"
                                             />
                                         </div>
                                     </div>
 
                                     {/* To vault */}
                                     <div className="space-y-2">
-                                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                             To
                                         </label>
                                         <select
@@ -742,7 +742,7 @@ export function NewTransactionModal({
                                                     e.target.value
                                                 )
                                             }
-                                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors appearance-none"
+                                            className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors appearance-none"
                                         >
                                             {vaults
                                                 .filter(
@@ -767,11 +767,11 @@ export function NewTransactionModal({
 
                                     {/* Amount */}
                                     <div className="space-y-2">
-                                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                             Amount to send
                                         </label>
                                         <div className="relative">
-                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-zinc-400">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
                                                 {symbol}
                                             </span>
                                             <input
@@ -783,7 +783,7 @@ export function NewTransactionModal({
                                                 onChange={(e) =>
                                                     setAmount(e.target.value)
                                                 }
-                                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-8 pr-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                className="w-full rounded-xl border border-border bg-accent pl-8 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                             />
                                         </div>
                                     </div>
@@ -798,10 +798,10 @@ export function NewTransactionModal({
                                                     onChange={(e) => setIncludeFee(e.target.checked)}
                                                     className="peer sr-only"
                                                 />
-                                                <div className="h-5 w-9 rounded-full bg-zinc-200 peer-checked:bg-zinc-900 transition-colors" />
-                                                <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+                                                <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
+                                                <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
                                             </div>
-                                            <span className="text-xs font-semibold text-zinc-600">
+                                            <span className="text-xs font-semibold text-foreground/70">
                                                 Incluir comisión / tarifa bancaria
                                             </span>
                                         </label>
@@ -814,11 +814,11 @@ export function NewTransactionModal({
                                                 transition={{ duration: 0.15 }}
                                                 className="space-y-2 overflow-hidden"
                                             >
-                                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                                     Monto de comisión
                                                 </label>
                                                 <div className="relative">
-                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-zinc-400">
+                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
                                                         {symbol}
                                                     </span>
                                                     <input
@@ -828,7 +828,7 @@ export function NewTransactionModal({
                                                         placeholder="0.00"
                                                         value={fee}
                                                         onChange={(e) => setFee(e.target.value)}
-                                                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-8 pr-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                        className="w-full rounded-xl border border-border bg-accent pl-8 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                                     />
                                                 </div>
                                             </motion.div>
@@ -837,24 +837,24 @@ export function NewTransactionModal({
 
                                     {/* Debit Summary Preview */}
                                     {((transferAmount > 0) || (includeFee && parseFloat(fee) > 0)) && (
-                                        <div className="rounded-xl bg-zinc-50 border border-zinc-150 px-4 py-3.5 space-y-2 text-xs">
+                                        <div className="rounded-xl bg-accent border border-border px-4 py-3.5 space-y-2 text-xs">
                                             <div className="flex justify-between">
-                                                <span className="text-zinc-400">Monto a enviar:</span>
-                                                <span className="font-semibold text-zinc-900">
+                                                <span className="text-muted-foreground">Monto a enviar:</span>
+                                                <span className="font-semibold text-foreground">
                                                     {symbol}{transferAmount.toFixed(2)}
                                                 </span>
                                             </div>
                                             {includeFee && parseFloat(fee) > 0 && (
                                                 <div className="flex justify-between">
-                                                    <span className="text-zinc-400">Comisión:</span>
-                                                    <span className="font-semibold text-zinc-900">
+                                                    <span className="text-muted-foreground">Comisión:</span>
+                                                    <span className="font-semibold text-foreground">
                                                         {symbol}{(parseFloat(fee) || 0).toFixed(2)}
                                                     </span>
                                                 </div>
                                             )}
-                                            <div className="flex justify-between border-t border-zinc-200 pt-2 font-bold text-sm">
-                                                <span className="text-zinc-600">Total a descontar de {selectedVault?.name || 'origen'}:</span>
-                                                <span className="text-zinc-900">
+                                            <div className="flex justify-between border-t border-border pt-2 font-bold text-sm">
+                                                <span className="text-foreground/70">Total a descontar de {selectedVault?.name || 'origen'}:</span>
+                                                <span className="text-foreground">
                                                     {symbol}{(transferAmount + (includeFee ? (parseFloat(fee) || 0) : 0)).toFixed(2)}
                                                 </span>
                                             </div>
@@ -865,7 +865,7 @@ export function NewTransactionModal({
                                     {selectedVault &&
                                         transferToVault &&
                                         selectedVault.currency !== transferToVault.currency && (
-                                            <div className="space-y-3 pt-1 border-t border-zinc-100 mt-2">
+                                            <div className="space-y-3 pt-1 border-t border-border mt-2">
                                                 <label className="flex items-center gap-3 cursor-pointer select-none">
                                                     <div className="relative">
                                                         <input
@@ -874,10 +874,10 @@ export function NewTransactionModal({
                                                             onChange={(e) => setUseCustomRate(e.target.checked)}
                                                             className="peer sr-only"
                                                         />
-                                                        <div className="h-5 w-9 rounded-full bg-zinc-200 peer-checked:bg-zinc-900 transition-colors" />
-                                                        <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+                                                        <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
+                                                        <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
                                                     </div>
-                                                    <span className="text-xs font-semibold text-zinc-600">
+                                                    <span className="text-xs font-semibold text-foreground/70">
                                                         Usar tasa de cambio personalizada
                                                     </span>
                                                 </label>
@@ -891,13 +891,13 @@ export function NewTransactionModal({
                                                         className="space-y-3 overflow-hidden pl-1"
                                                     >
                                                         {/* Calculation Mode Tabs */}
-                                                        <div className="flex rounded-lg border border-zinc-200 p-0.5 bg-zinc-50 w-full">
+                                                        <div className="flex rounded-lg border border-border p-0.5 bg-accent w-full">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setCustomRateMode("auto")}
                                                                 className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-all ${customRateMode === "auto"
-                                                                        ? "bg-white text-zinc-900 shadow-sm border border-zinc-200"
-                                                                        : "text-zinc-500 hover:text-zinc-700"
+                                                                        ? "bg-card text-foreground shadow-sm border border-border"
+                                                                        : "text-muted-foreground hover:text-foreground/80"
                                                                     }`}
                                                             >
                                                                 Calcular automático
@@ -906,8 +906,8 @@ export function NewTransactionModal({
                                                                 type="button"
                                                                 onClick={() => setCustomRateMode("manual")}
                                                                 className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-all ${customRateMode === "manual"
-                                                                        ? "bg-white text-zinc-900 shadow-sm border border-zinc-200"
-                                                                        : "text-zinc-500 hover:text-zinc-700"
+                                                                        ? "bg-card text-foreground shadow-sm border border-border"
+                                                                        : "text-muted-foreground hover:text-foreground/80"
                                                                     }`}
                                                             >
                                                                 Tasa manual
@@ -916,11 +916,11 @@ export function NewTransactionModal({
 
                                                         {customRateMode === "auto" ? (
                                                             <div className="space-y-1">
-                                                                <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                                                <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                                                     Monto recibido en {transferToVault.name}
                                                                 </label>
                                                                 <div className="relative">
-                                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-zinc-400">
+                                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
                                                                         {CURRENCY_SYMBOLS[transferToVault.currency]}
                                                                     </span>
                                                                     <input
@@ -930,27 +930,27 @@ export function NewTransactionModal({
                                                                         placeholder="0.00"
                                                                         value={equivalentAmount}
                                                                         onChange={(e) => setEquivalentAmount(e.target.value)}
-                                                                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-8 pr-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                                        className="w-full rounded-xl border border-border bg-accent pl-8 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                                                     />
                                                                 </div>
                                                             </div>
                                                         ) : (
                                                             <div className="space-y-2">
                                                                 <div className="flex items-center justify-between">
-                                                                    <span className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                                                    <span className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                                                         Tasa de cambio aplicada
                                                                     </span>
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => setCustomRateDirection(customRateDirection === "from_to" ? "to_from" : "from_to")}
-                                                                        className="text-[10px] font-semibold text-zinc-500 hover:text-zinc-900 underline underline-offset-2 decoration-dotted"
+                                                                        className="text-[10px] font-semibold text-muted-foreground hover:text-foreground underline underline-offset-2 decoration-dotted"
                                                                     >
                                                                         Cambiar dirección
                                                                     </button>
                                                                 </div>
 
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="text-xs font-bold text-zinc-500 whitespace-nowrap bg-zinc-100 px-2.5 py-2 rounded-lg border border-zinc-200">
+                                                                    <span className="text-xs font-bold text-muted-foreground whitespace-nowrap bg-accent px-2.5 py-2 rounded-lg border border-border">
                                                                         {customRateDirection === "from_to"
                                                                             ? `1 ${selectedVault.currency} =`
                                                                             : `1 ${transferToVault.currency} =`
@@ -964,9 +964,9 @@ export function NewTransactionModal({
                                                                             placeholder="0.0000"
                                                                             value={customRateVal}
                                                                             onChange={(e) => setCustomRateVal(e.target.value)}
-                                                                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                                            className="w-full rounded-xl border border-border bg-accent px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                                                         />
-                                                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-zinc-400">
+                                                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
                                                                             {customRateDirection === "from_to" ? transferToVault.currency : selectedVault.currency}
                                                                         </span>
                                                                     </div>
@@ -976,22 +976,22 @@ export function NewTransactionModal({
 
                                                         {/* Breakdown Box */}
                                                         {transferBreakdown && (
-                                                            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 space-y-2.5 text-xs text-zinc-600 transition-all">
+                                                            <div className="rounded-xl border border-border bg-accent p-4 space-y-2.5 text-xs text-foreground/70 transition-all">
                                                                 <div className="flex justify-between">
-                                                                    <span className="text-zinc-400 font-medium">Tasa oficial:</span>
-                                                                    <span className="font-semibold text-zinc-800">
+                                                                    <span className="text-muted-foreground font-medium">Tasa oficial:</span>
+                                                                    <span className="font-semibold text-foreground">
                                                                         1 {selectedVault.currency} = {convertBetween(1, selectedVault.currency, transferToVault.currency).toFixed(4)} {transferToVault.currency}
                                                                     </span>
                                                                 </div>
                                                                 <div className="flex justify-between">
-                                                                    <span className="text-zinc-400 font-medium">Tasa aplicada:</span>
-                                                                    <span className="font-bold text-zinc-900">
+                                                                    <span className="text-muted-foreground font-medium">Tasa aplicada:</span>
+                                                                    <span className="font-bold text-foreground">
                                                                         1 {selectedVault.currency} = {(transferBreakdown.appliedReceived / (parseFloat(amount) || 1)).toFixed(4)} {transferToVault.currency}
                                                                     </span>
                                                                 </div>
                                                                 {transferBreakdown.differenceDest !== 0 && (
                                                                     <div className="flex justify-between items-center">
-                                                                        <span className="text-zinc-400 font-medium">Diferencia vs oficial:</span>
+                                                                        <span className="text-muted-foreground font-medium">Diferencia vs oficial:</span>
                                                                         <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${transferBreakdown.differenceDest < 0 ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
                                                                             {transferBreakdown.differenceDest < 0 ? '-' : '+'}
                                                                             {CURRENCY_SYMBOLS[transferToVault.currency]}{Math.abs(transferBreakdown.differenceDest).toFixed(2)}
@@ -1001,23 +1001,23 @@ export function NewTransactionModal({
                                                                 )}
                                                                 {includeFee && (parseFloat(fee) || 0) > 0 && (
                                                                     <div className="flex justify-between">
-                                                                        <span className="text-zinc-400 font-medium">Comisión:</span>
-                                                                        <span className="font-semibold text-zinc-800">
+                                                                        <span className="text-muted-foreground font-medium">Comisión:</span>
+                                                                        <span className="font-semibold text-foreground">
                                                                             {CURRENCY_SYMBOLS[selectedVault.currency]}{(parseFloat(fee) || 0).toFixed(2)}
                                                                         </span>
                                                                     </div>
                                                                 )}
                                                                 {transferBreakdown.lossInSource > 0 && (
                                                                     <div className="flex justify-between">
-                                                                        <span className="text-zinc-400 font-medium">Pérdida por tipo de cambio:</span>
+                                                                        <span className="text-muted-foreground font-medium">Pérdida por tipo de cambio:</span>
                                                                         <span className="font-semibold text-amber-600">
                                                                             {CURRENCY_SYMBOLS[selectedVault.currency]}{transferBreakdown.lossInSource.toFixed(2)}
                                                                         </span>
                                                                     </div>
                                                                 )}
-                                                                <div className="flex justify-between border-t border-zinc-200 pt-2 font-bold text-sm">
-                                                                    <span className="text-zinc-700">Costo total operación:</span>
-                                                                    <span className="text-zinc-900">
+                                                                <div className="flex justify-between border-t border-border pt-2 font-bold text-sm">
+                                                                    <span className="text-foreground/80">Costo total operación:</span>
+                                                                    <span className="text-foreground">
                                                                         {CURRENCY_SYMBOLS[selectedVault.currency]}{transferBreakdown.totalCost.toFixed(2)}
                                                                     </span>
                                                                 </div>
@@ -1035,11 +1035,11 @@ export function NewTransactionModal({
                                         transferToVault &&
                                         selectedVault.currency !==
                                         transferToVault.currency && (
-                                            <div className="rounded-xl bg-zinc-50 px-4 py-3 space-y-1">
-                                                <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-zinc-400">
+                                            <div className="rounded-xl bg-accent px-4 py-3 space-y-1">
+                                                <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-muted-foreground">
                                                     Conversion Preview
                                                 </p>
-                                                <p className="text-sm font-semibold text-zinc-900">
+                                                <p className="text-sm font-semibold text-foreground">
                                                     {
                                                         CURRENCY_SYMBOLS[
                                                         selectedVault
@@ -1058,7 +1058,7 @@ export function NewTransactionModal({
                                                         2
                                                     )}
                                                 </p>
-                                                <p className="text-[11px] text-zinc-400">
+                                                <p className="text-[11px] text-muted-foreground">
                                                     Rate: 1{" "}
                                                     {selectedVault.currency} ={" "}
                                                     {convertBetween(
@@ -1075,11 +1075,11 @@ export function NewTransactionModal({
                                 /* ===== MIXED MODE ===== */
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                             Vaults & Amounts
                                         </label>
                                         {/* Mixed currency selector */}
-                                        <div className="flex items-center gap-1 rounded-lg border border-zinc-200 p-0.5">
+                                        <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
                                             {(["EUR", "USD"] as Currency[]).map(
                                                 (cur) => (
                                                     <button
@@ -1092,8 +1092,8 @@ export function NewTransactionModal({
                                                         }
                                                         className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition-all ${mixedCurrency ===
                                                                 cur
-                                                                ? "bg-zinc-900 text-white"
-                                                                : "text-zinc-400 hover:text-zinc-600"
+                                                                ? "bg-primary text-primary-foreground"
+                                                                : "text-muted-foreground hover:text-foreground/70"
                                                             }`}
                                                     >
                                                         {CURRENCY_SYMBOLS[cur]}{" "}
@@ -1141,7 +1141,7 @@ export function NewTransactionModal({
                                                                 e.target.value
                                                             )
                                                         }
-                                                        className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors appearance-none"
+                                                        className="flex-1 rounded-xl border border-border bg-accent px-3 py-2.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors appearance-none"
                                                     >
                                                         {vaults.map((v) => (
                                                             <option
@@ -1160,7 +1160,7 @@ export function NewTransactionModal({
                                                         ))}
                                                     </select>
                                                     <div className="relative w-28">
-                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-zinc-400">
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
                                                             {entrySymbol}
                                                         </span>
                                                         <input
@@ -1179,7 +1179,7 @@ export function NewTransactionModal({
                                                                         .value
                                                                 )
                                                             }
-                                                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-7 pr-2 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                            className="w-full rounded-xl border border-border bg-accent pl-7 pr-2 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                                         />
                                                     </div>
                                                     {mixedEntries.length >
@@ -1191,7 +1191,7 @@ export function NewTransactionModal({
                                                                         idx
                                                                     )
                                                                 }
-                                                                className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-red-500"
+                                                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-red-500"
                                                             >
                                                                 <Trash
                                                                     size={14}
@@ -1201,7 +1201,7 @@ export function NewTransactionModal({
                                                 </div>
                                                 {/* Show conversion hint */}
                                                 {needsConversion && (
-                                                    <p className="pl-1 text-[10px] text-zinc-400">
+                                                    <p className="pl-1 text-[10px] text-muted-foreground">
                                                         ≈{" "}
                                                         {
                                                             CURRENCY_SYMBOLS[
@@ -1223,7 +1223,7 @@ export function NewTransactionModal({
                                         <button
                                             type="button"
                                             onClick={addMixedEntry}
-                                            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-zinc-200 py-2 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-300 hover:text-zinc-600"
+                                            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-ring hover:text-foreground/70"
                                         >
                                             <Plus size={12} weight="bold" />
                                             Add Vault
@@ -1231,11 +1231,11 @@ export function NewTransactionModal({
                                     )}
 
                                     {/* Total */}
-                                    <div className="flex items-center justify-between rounded-xl bg-zinc-50 px-4 py-2.5">
-                                        <span className="text-xs font-semibold tracking-[0.1em] uppercase text-zinc-400">
+                                    <div className="flex items-center justify-between rounded-xl bg-accent px-4 py-2.5">
+                                        <span className="text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
                                             Total ({mixedCurrency})
                                         </span>
-                                        <span className="text-sm font-bold text-zinc-900">
+                                        <span className="text-sm font-bold text-foreground">
                                             {mixedSymbol}
                                             {mixedTotal.toLocaleString(
                                                 "en-US",
@@ -1251,7 +1251,7 @@ export function NewTransactionModal({
                                 /* ===== INCOME / EXPENSE MODE ===== */
                                 <>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                             Vault
                                         </label>
                                         <select
@@ -1259,7 +1259,7 @@ export function NewTransactionModal({
                                             onChange={(e) =>
                                                 setVaultId(e.target.value)
                                             }
-                                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors appearance-none"
+                                            className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors appearance-none"
                                         >
                                             {vaults.map((v) => (
                                                 <option
@@ -1279,11 +1279,11 @@ export function NewTransactionModal({
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                        <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                             Amount
                                         </label>
                                         <div className="relative">
-                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-zinc-400">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
                                                 {symbol}
                                             </span>
                                             <input
@@ -1295,7 +1295,7 @@ export function NewTransactionModal({
                                                 onChange={(e) =>
                                                     setAmount(e.target.value)
                                                 }
-                                                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-8 pr-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                className="w-full rounded-xl border border-border bg-accent pl-8 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                             />
                                         </div>
                                     </div>
@@ -1310,10 +1310,10 @@ export function NewTransactionModal({
                                                         onChange={(e) => setUseCustomRate(e.target.checked)}
                                                         className="peer sr-only"
                                                     />
-                                                    <div className="h-5 w-9 rounded-full bg-zinc-200 peer-checked:bg-zinc-900 transition-colors" />
-                                                    <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+                                                    <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
+                                                    <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
                                                 </div>
-                                                <span className="text-xs font-semibold text-zinc-600">
+                                                <span className="text-xs font-semibold text-foreground/70">
                                                     Usar tasa de cambio personalizada
                                                 </span>
                                             </label>
@@ -1327,13 +1327,13 @@ export function NewTransactionModal({
                                                     className="space-y-3 overflow-hidden pl-1"
                                                 >
                                                     {/* Calculation Mode Tabs */}
-                                                    <div className="flex rounded-lg border border-zinc-200 p-0.5 bg-zinc-50 w-full">
+                                                    <div className="flex rounded-lg border border-border p-0.5 bg-accent w-full">
                                                         <button
                                                             type="button"
                                                             onClick={() => setCustomRateMode("auto")}
                                                             className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-all ${customRateMode === "auto"
-                                                                    ? "bg-white text-zinc-900 shadow-sm border border-zinc-200"
-                                                                    : "text-zinc-500 hover:text-zinc-700"
+                                                                    ? "bg-card text-foreground shadow-sm border border-border"
+                                                                    : "text-muted-foreground hover:text-foreground/80"
                                                                 }`}
                                                         >
                                                             Monto equivalente
@@ -1342,8 +1342,8 @@ export function NewTransactionModal({
                                                             type="button"
                                                             onClick={() => setCustomRateMode("manual")}
                                                             className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-all ${customRateMode === "manual"
-                                                                    ? "bg-white text-zinc-900 shadow-sm border border-zinc-200"
-                                                                    : "text-zinc-500 hover:text-zinc-700"
+                                                                    ? "bg-card text-foreground shadow-sm border border-border"
+                                                                    : "text-muted-foreground hover:text-foreground/80"
                                                                 }`}
                                                         >
                                                             Tasa manual
@@ -1352,11 +1352,11 @@ export function NewTransactionModal({
 
                                                     {customRateMode === "auto" ? (
                                                         <div className="space-y-1">
-                                                            <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                                            <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                                                 Monto equivalente en {selectedVault.currency === "EUR" ? "USD" : "EUR"}
                                                             </label>
                                                             <div className="relative">
-                                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-zinc-400">
+                                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
                                                                     {CURRENCY_SYMBOLS[selectedVault.currency === "EUR" ? "USD" : "EUR"]}
                                                                 </span>
                                                                 <input
@@ -1366,27 +1366,27 @@ export function NewTransactionModal({
                                                                     placeholder="0.00"
                                                                     value={equivalentAmount}
                                                                     onChange={(e) => setEquivalentAmount(e.target.value)}
-                                                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-8 pr-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                                    className="w-full rounded-xl border border-border bg-accent pl-8 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                                                 />
                                                             </div>
                                                         </div>
                                                     ) : (
                                                         <div className="space-y-2">
                                                             <div className="flex items-center justify-between">
-                                                                <span className="text-[11px] font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                                                <span className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                                                     Tasa de cambio aplicada
                                                                 </span>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setCustomRateDirection(customRateDirection === "from_to" ? "to_from" : "from_to")}
-                                                                    className="text-[10px] font-semibold text-zinc-500 hover:text-zinc-900 underline underline-offset-2 decoration-dotted"
+                                                                    className="text-[10px] font-semibold text-muted-foreground hover:text-foreground underline underline-offset-2 decoration-dotted"
                                                                 >
                                                                     Cambiar dirección
                                                                 </button>
                                                             </div>
 
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-xs font-bold text-zinc-500 whitespace-nowrap bg-zinc-100 px-2.5 py-2 rounded-lg border border-zinc-200">
+                                                                <span className="text-xs font-bold text-muted-foreground whitespace-nowrap bg-accent px-2.5 py-2 rounded-lg border border-border">
                                                                     {customRateDirection === "from_to"
                                                                         ? `1 ${selectedVault.currency} =`
                                                                         : `1 ${selectedVault.currency === "EUR" ? "USD" : "EUR"} =`
@@ -1400,9 +1400,9 @@ export function NewTransactionModal({
                                                                         placeholder="0.0000"
                                                                         value={customRateVal}
                                                                         onChange={(e) => setCustomRateVal(e.target.value)}
-                                                                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                                                        className="w-full rounded-xl border border-border bg-accent px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                                                     />
-                                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-zinc-400">
+                                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
                                                                         {customRateDirection === "from_to"
                                                                             ? (selectedVault.currency === "EUR" ? "USD" : "EUR")
                                                                             : selectedVault.currency
@@ -1415,22 +1415,22 @@ export function NewTransactionModal({
 
                                                     {/* Comparison Breakdown Box */}
                                                     {txBreakdown && (
-                                                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 space-y-2.5 text-xs text-zinc-600 transition-all">
+                                                        <div className="rounded-xl border border-border bg-accent p-4 space-y-2.5 text-xs text-foreground/70 transition-all">
                                                             <div className="flex justify-between">
-                                                                <span className="text-zinc-400 font-medium">Tasa oficial:</span>
-                                                                <span className="font-semibold text-zinc-800">
+                                                                <span className="text-muted-foreground font-medium">Tasa oficial:</span>
+                                                                <span className="font-semibold text-foreground">
                                                                     1 {selectedVault.currency} = {convertBetween(1, selectedVault.currency, txBreakdown.oppositeCurrency).toFixed(4)} {txBreakdown.oppositeCurrency}
                                                                 </span>
                                                             </div>
                                                             <div className="flex justify-between">
-                                                                <span className="text-zinc-400 font-medium">Tasa aplicada:</span>
-                                                                <span className="font-bold text-zinc-900">
+                                                                <span className="text-muted-foreground font-medium">Tasa aplicada:</span>
+                                                                <span className="font-bold text-foreground">
                                                                     1 {selectedVault.currency} = {(txBreakdown.appliedEquivalent / (parseFloat(amount) || 1)).toFixed(4)} {txBreakdown.oppositeCurrency}
                                                                 </span>
                                                             </div>
                                                             {txBreakdown.differenceOpposite !== 0 && (
                                                                 <div className="flex justify-between items-center">
-                                                                    <span className="text-zinc-400 font-medium">Diferencia vs oficial:</span>
+                                                                    <span className="text-muted-foreground font-medium">Diferencia vs oficial:</span>
                                                                     <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${txBreakdown.isGain ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
                                                                         {txBreakdown.isGain ? '+' : '-'}
                                                                         {CURRENCY_SYMBOLS[txBreakdown.oppositeCurrency]}{Math.abs(txBreakdown.differenceOpposite).toFixed(2)}
@@ -1449,7 +1449,7 @@ export function NewTransactionModal({
 
                             {/* Description */}
                             <div className="space-y-2">
-                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                     Description
                                     {txType === "mixed" && (
                                         <span className="ml-1 normal-case tracking-normal text-red-400">
@@ -1470,14 +1470,14 @@ export function NewTransactionModal({
                                     onChange={(e) =>
                                         setDescription(e.target.value)
                                     }
-                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                    className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                 />
                             </div>
 
                             {/* Category Quick Select (hide for transfer) */}
                             {txType !== "transfer" && (
                                 <div className="space-y-2">
-                                    <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                    <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                         Category
                                     </label>
                                     <div className="flex flex-wrap gap-1.5">
@@ -1493,8 +1493,8 @@ export function NewTransactionModal({
                                                     )
                                                 }
                                                 className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${category === cat
-                                                        ? "border-zinc-900 bg-zinc-900 text-white"
-                                                        : "border-zinc-200 text-zinc-500 hover:border-zinc-300"
+                                                        ? "border-primary bg-primary text-primary-foreground"
+                                                        : "border-border text-muted-foreground hover:border-ring"
                                                     }`}
                                             >
                                                 {cat}
@@ -1513,7 +1513,7 @@ export function NewTransactionModal({
                         <div className="mt-6 flex gap-3">
                             <button
                                 onClick={onClose}
-                                className="flex-1 rounded-xl border border-zinc-200 py-3 text-sm font-medium text-zinc-600 transition-all hover:bg-zinc-50"
+                                className="flex-1 rounded-xl border border-border py-3 text-sm font-medium text-foreground/70 transition-all hover:bg-accent"
                             >
                                 Cancel
                             </button>
@@ -1529,7 +1529,7 @@ export function NewTransactionModal({
                                         : !amount ||
                                         parseFloat(amount) <= 0)
                                 }
-                                className="flex-1 rounded-xl bg-zinc-900 py-3 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                                className="flex-1 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
                             >
                                 {isLoading
                                     ? "Saving..."

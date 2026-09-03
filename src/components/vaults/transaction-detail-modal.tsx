@@ -179,23 +179,23 @@ export function TransactionDetailModal({
                             damping: 25,
                             stiffness: 300,
                         }}
-                        className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white shadow-2xl"
+                        className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card shadow-2xl"
                     >
                         {/* Header */}
-                        <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
+                        <div className="flex items-center justify-between border-b border-border px-6 py-4">
                             <div className="flex items-center gap-3">
                                 <div
                                     className={`flex h-10 w-10 items-center justify-center rounded-xl ${isIncome
                                             ? "bg-emerald-50"
                                             : isTransfer
-                                                ? "bg-zinc-100"
+                                                ? "bg-accent"
                                                 : "bg-red-50"
                                         }`}
                                 >
                                     {isTransfer ? (
                                         <ArrowsLeftRight
                                             size={20}
-                                            className="text-zinc-600"
+                                            className="text-foreground/70"
                                         />
                                     ) : isIncome ? (
                                         <ArrowDown
@@ -210,10 +210,10 @@ export function TransactionDetailModal({
                                     )}
                                 </div>
                                 <div>
-                                    <h2 className="text-base font-semibold text-zinc-900">
+                                    <h2 className="text-base font-semibold text-foreground">
                                         Transaction Details
                                     </h2>
-                                    <p className="text-[11px] text-zinc-400 capitalize">
+                                    <p className="text-[11px] text-muted-foreground capitalize">
                                         {transaction.type}
                                     </p>
                                 </div>
@@ -223,20 +223,20 @@ export function TransactionDetailModal({
                                     onClose();
                                     setConfirmDelete(false);
                                 }}
-                                className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground/70"
                             >
                                 <X size={18} weight="bold" />
                             </button>
                         </div>
 
                         {/* Amount */}
-                        <div className="px-6 py-5 text-center border-b border-zinc-100">
+                        <div className="px-6 py-5 text-center border-b border-border">
                             <p
                                 className={`text-3xl font-bold tracking-tight ${isIncome
                                         ? "text-emerald-600"
                                         : isTransfer
-                                            ? "text-zinc-600"
-                                            : "text-zinc-900"
+                                            ? "text-foreground/70"
+                                            : "text-foreground"
                                     }`}
                             >
                                 {isIncome ? "+" : isTransfer ? "" : "-"}
@@ -250,30 +250,30 @@ export function TransactionDetailModal({
                                 })}
                             </p>
                             {isTransfer && transaction.fee && transaction.amount < 0 ? (
-                                <p className="mt-1 text-xs text-zinc-400">
+                                <p className="mt-1 text-xs text-muted-foreground">
                                     + {symbol}{transaction.fee.toFixed(2)} comisión ({symbol}{Math.abs(transaction.amount).toFixed(2)} total debitado)
                                 </p>
                             ) : null}
-                            <p className="mt-1 text-sm text-zinc-500">
+                            <p className="mt-1 text-sm text-muted-foreground">
                                 {transaction.description || "No description"}
                             </p>
                         </div>
 
                         {/* Detail Rows */}
-                        <div className="divide-y divide-zinc-50 px-6">
+                        <div className="divide-y divide-border px-6">
                             <div className="flex items-center gap-3 py-3.5">
                                 <CalendarBlank
                                     size={16}
-                                    className="text-zinc-400"
+                                    className="text-muted-foreground"
                                 />
                                 <div className="flex-1">
-                                    <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                         Date
                                     </p>
-                                    <p className="text-sm font-medium text-zinc-700">
+                                    <p className="text-sm font-medium text-foreground/80">
                                         {formattedDate}
                                     </p>
-                                    <p className="text-[11px] text-zinc-400">
+                                    <p className="text-[11px] text-muted-foreground">
                                         {formattedTime}
                                     </p>
                                 </div>
@@ -283,13 +283,13 @@ export function TransactionDetailModal({
                                 <div className="flex items-center gap-3 py-3.5">
                                     <Vault
                                         size={16}
-                                        className="text-zinc-400"
+                                        className="text-muted-foreground"
                                     />
                                     <div className="flex-1">
-                                        <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                             Vault
                                         </p>
-                                        <p className="text-sm font-medium text-zinc-700">
+                                        <p className="text-sm font-medium text-foreground/80">
                                             {transaction.vault_name}
                                         </p>
                                     </div>
@@ -301,13 +301,13 @@ export function TransactionDetailModal({
                                     <div className="flex items-center gap-3 py-3.5">
                                         <CurrencyCircleDollar
                                             size={16}
-                                            className="text-zinc-400"
+                                            className="text-muted-foreground"
                                         />
                                         <div className="flex-1">
-                                            <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                                 Monto Transferido
                                             </p>
-                                            <p className="text-sm font-medium text-zinc-700">
+                                            <p className="text-sm font-medium text-foreground/80">
                                                 {symbol}{(Math.abs(transaction.amount) - transaction.fee).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                                             </p>
                                         </div>
@@ -315,13 +315,13 @@ export function TransactionDetailModal({
                                     <div className="flex items-center gap-3 py-3.5">
                                         <Warning
                                             size={16}
-                                            className="text-zinc-400"
+                                            className="text-muted-foreground"
                                         />
                                         <div className="flex-1">
-                                            <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                                 Comisión Bancaria
                                             </p>
-                                            <p className="text-sm font-medium text-zinc-700">
+                                            <p className="text-sm font-medium text-foreground/80">
                                                 {symbol}{transaction.fee.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                                             </p>
                                         </div>
@@ -329,13 +329,13 @@ export function TransactionDetailModal({
                                     <div className="flex items-center gap-3 py-3.5">
                                         <CurrencyCircleDollar
                                             size={16}
-                                            className="text-zinc-400"
+                                            className="text-muted-foreground"
                                         />
                                         <div className="flex-1">
-                                            <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                                 Total Debitado
                                             </p>
-                                            <p className="text-sm font-medium text-zinc-700">
+                                            <p className="text-sm font-medium text-foreground/80">
                                                 {symbol}{Math.abs(transaction.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                                             </p>
                                         </div>
@@ -343,12 +343,12 @@ export function TransactionDetailModal({
                                 </>
                             ) : (
                                 <div className="flex items-center gap-3 py-3.5">
-                                    <Tag size={16} className="text-zinc-400" />
+                                    <Tag size={16} className="text-muted-foreground" />
                                     <div className="flex-1">
-                                        <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                             Category
                                         </p>
-                                        <p className="text-sm font-medium text-zinc-700">
+                                        <p className="text-sm font-medium text-foreground/80">
                                             {transaction.category || "—"}
                                         </p>
                                     </div>
@@ -358,13 +358,13 @@ export function TransactionDetailModal({
                             <div className="flex items-center gap-3 py-3.5">
                                 <CurrencyCircleDollar
                                     size={16}
-                                    className="text-zinc-400"
+                                    className="text-muted-foreground"
                                 />
                                 <div className="flex-1">
-                                    <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+                                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                         Currency
                                     </p>
-                                    <p className="text-sm font-medium text-zinc-700">
+                                    <p className="text-sm font-medium text-foreground/80">
                                         {transaction.original_currency}
                                     </p>
                                 </div>
@@ -372,17 +372,17 @@ export function TransactionDetailModal({
 
                             {transaction.exchange_rate_at_time && transaction.exchange_rate_at_time > 0 && customRateDetail ? (
                                 <div className="py-3.5 space-y-2">
-                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                                         Exchange Rate
                                     </p>
-                                    <div className="rounded-xl border border-zinc-150 bg-zinc-50 p-3.5 space-y-2 text-xs text-zinc-600">
+                                    <div className="rounded-xl border border-border bg-accent p-3.5 space-y-2 text-xs text-foreground/70">
                                         <div className="flex justify-between">
                                             <span>Moneda origen:</span>
-                                            <span className="font-semibold text-zinc-800">{transaction.original_currency}</span>
+                                            <span className="font-semibold text-foreground">{transaction.original_currency}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span>Tasa aplicada:</span>
-                                            <span className="font-bold text-zinc-900">
+                                            <span className="font-bold text-foreground">
                                                 {transaction.original_currency === "EUR"
                                                     ? `1 EUR = ${(1 / transaction.exchange_rate_at_time).toFixed(4)} USD`
                                                     : `1 USD = ${transaction.exchange_rate_at_time.toFixed(4)} EUR`
@@ -414,7 +414,7 @@ export function TransactionDetailModal({
                                                 </div>
                                             )
                                         )}
-                                        <div className="flex justify-between border-t border-zinc-200 pt-2 font-medium text-zinc-500">
+                                        <div className="flex justify-between border-t border-border pt-2 font-medium text-muted-foreground">
                                             <span>Tasa interna (USD → EUR):</span>
                                             <span>{transaction.exchange_rate_at_time.toFixed(4)}</span>
                                         </div>
@@ -424,7 +424,7 @@ export function TransactionDetailModal({
                         </div>
 
                         {/* Delete Section */}
-                        <div className="border-t border-zinc-100 px-6 py-4">
+                        <div className="border-t border-border px-6 py-4">
                             {!confirmDelete ? (
                                 <button
                                     onClick={() => setConfirmDelete(true)}
@@ -457,7 +457,7 @@ export function TransactionDetailModal({
                                             onClick={() =>
                                                 setConfirmDelete(false)
                                             }
-                                            className="flex-1 rounded-xl border border-zinc-200 py-2.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
+                                            className="flex-1 rounded-xl border border-border py-2.5 text-sm font-medium text-foreground/70 hover:bg-accent"
                                         >
                                             Cancel
                                         </button>

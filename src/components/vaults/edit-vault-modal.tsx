@@ -137,29 +137,29 @@ export function EditVaultModal({
                             damping: 25,
                             stiffness: 300,
                         }}
-                        className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl"
+                        className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-2xl"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
                                     <Vault
                                         size={20}
-                                        className="text-zinc-600"
+                                        className="text-foreground/70"
                                     />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-semibold text-zinc-900">
+                                    <h2 className="text-lg font-semibold text-foreground">
                                         Edit Vault
                                     </h2>
-                                    <p className="text-xs text-zinc-400">
+                                    <p className="text-xs text-muted-foreground">
                                         Update vault details
                                     </p>
                                 </div>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground/70"
                             >
                                 <X size={18} weight="bold" />
                             </button>
@@ -169,7 +169,7 @@ export function EditVaultModal({
                         <div className="mt-6 space-y-5">
                             {/* Name */}
                             <div className="space-y-2">
-                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                     Name
                                 </label>
                                 <input
@@ -177,13 +177,13 @@ export function EditVaultModal({
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     autoFocus
-                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                    className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                 />
                             </div>
 
                             {/* Balance */}
                             <div className="space-y-2">
-                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                     Current Balance
                                 </label>
                                 <input
@@ -193,7 +193,7 @@ export function EditVaultModal({
                                     onChange={(e) =>
                                         setNewBalance(e.target.value)
                                     }
-                                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                                    className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                                 />
                                 {Math.abs(
                                     (parseFloat(newBalance) || 0) -
@@ -212,7 +212,7 @@ export function EditVaultModal({
 
                             {/* Currency */}
                             <div className="space-y-2">
-                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                     Currency
                                 </label>
                                 <div className="grid grid-cols-2 gap-2">
@@ -222,8 +222,8 @@ export function EditVaultModal({
                                             type="button"
                                             onClick={() => setCurrency(c)}
                                             className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-all ${currency === c
-                                                    ? "border-zinc-900 bg-zinc-900 text-white"
-                                                    : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300"
+                                                    ? "border-primary bg-primary text-primary-foreground"
+                                                    : "border-border bg-card text-muted-foreground hover:border-ring"
                                                 }`}
                                         >
                                             {c === "EUR" ? "€ EUR" : "$ USD"}
@@ -234,7 +234,7 @@ export function EditVaultModal({
 
                             {/* Type */}
                             <div className="space-y-2">
-                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-zinc-400">
+                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                     Type
                                 </label>
                                 <div className="grid grid-cols-3 gap-2">
@@ -256,8 +256,8 @@ export function EditVaultModal({
                                             type="button"
                                             onClick={() => setType(t.value)}
                                             className={`rounded-xl border px-3 py-2.5 text-xs font-medium transition-all ${type === t.value
-                                                    ? "border-zinc-900 bg-zinc-900 text-white"
-                                                    : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300"
+                                                    ? "border-primary bg-primary text-primary-foreground"
+                                                    : "border-border bg-card text-muted-foreground hover:border-ring"
                                                 }`}
                                         >
                                             {t.label}
@@ -277,14 +277,14 @@ export function EditVaultModal({
                                         }
                                         className="peer sr-only"
                                     />
-                                    <div className="h-5 w-9 rounded-full bg-zinc-200 peer-checked:bg-zinc-900 transition-colors" />
-                                    <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+                                    <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
+                                    <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-zinc-700">
+                                    <p className="text-sm font-medium text-foreground/80">
                                         Protected Vault
                                     </p>
-                                    <p className="text-[11px] text-zinc-400">
+                                    <p className="text-[11px] text-muted-foreground">
                                         Requires extra confirmation for
                                         withdrawals
                                     </p>
@@ -300,14 +300,14 @@ export function EditVaultModal({
                         <div className="mt-6 flex gap-3">
                             <button
                                 onClick={onClose}
-                                className="flex-1 rounded-xl border border-zinc-200 py-3 text-sm font-medium text-zinc-600 transition-all hover:bg-zinc-50"
+                                className="flex-1 rounded-xl border border-border py-3 text-sm font-medium text-foreground/70 transition-all hover:bg-accent"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving || !name.trim()}
-                                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-zinc-900 py-3 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
                             >
                                 <FloppyDisk size={16} />
                                 {isSaving ? "Saving..." : "Save Changes"}

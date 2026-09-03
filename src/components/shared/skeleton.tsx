@@ -3,7 +3,7 @@
 export function SkeletonLine({ className = "" }: { className?: string }) {
     return (
         <div
-            className={`h-4 animate-pulse rounded-lg bg-zinc-100 ${className}`}
+            className={`h-4 animate-pulse rounded-lg bg-accent ${className}`}
         />
     );
 }
@@ -11,7 +11,7 @@ export function SkeletonLine({ className = "" }: { className?: string }) {
 export function SkeletonCard({ className = "" }: { className?: string }) {
     return (
         <div
-            className={`animate-pulse rounded-2xl bg-zinc-100 ${className}`}
+            className={`animate-pulse rounded-2xl bg-accent ${className}`}
         />
     );
 }
@@ -25,7 +25,7 @@ export function SkeletonCircle({
 }) {
     return (
         <div
-            className={`animate-pulse rounded-full bg-zinc-100 ${className}`}
+            className={`animate-pulse rounded-full bg-accent ${className}`}
             style={{ width: size, height: size }}
         />
     );

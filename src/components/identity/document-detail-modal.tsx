@@ -40,7 +40,7 @@ const typeLabels: Record<DocumentType, string> = {
 
 
 function getExpiryInfo(expiryDate: string | null) {
-    if (!expiryDate) return { label: "No expiry set", color: "text-zinc-400", badge: "bg-zinc-100 text-zinc-500" };
+    if (!expiryDate) return { label: "No expiry set", color: "text-muted-foreground", badge: "bg-accent text-muted-foreground" };
 
     const today = new Date();
     const expiry = new Date(expiryDate);
@@ -140,7 +140,7 @@ export function DocumentDetailModal({
                             damping: 25,
                             stiffness: 300,
                         }}
-                        className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white shadow-2xl max-h-[90vh] overflow-y-auto"
+                        className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card shadow-2xl max-h-[90vh] overflow-y-auto"
                     >
                         {/* Document Preview */}
                         <div className="relative bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 rounded-t-2xl overflow-hidden">
@@ -156,17 +156,17 @@ export function DocumentDetailModal({
                                 </div>
                             ) : isPdf ? (
                                 <div className="flex flex-col items-center justify-center gap-3 py-16">
-                                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
+                                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-card/10">
                                         <FileIcon size={32} className="text-white" />
                                     </div>
-                                    <p className="text-sm font-medium text-zinc-400">
+                                    <p className="text-sm font-medium text-muted-foreground">
                                         PDF Document
                                     </p>
                                     <a
                                         href={doc.file_url!}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/20"
+                                        className="flex items-center gap-2 rounded-xl bg-card/10 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-card/20"
                                     >
                                         <Download size={14} />
                                         Open PDF
@@ -174,10 +174,10 @@ export function DocumentDetailModal({
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center gap-3 py-16">
-                                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
+                                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-card/10">
                                         <FileIcon size={32} className="text-white" />
                                     </div>
-                                    <p className="text-sm font-medium text-zinc-400">
+                                    <p className="text-sm font-medium text-muted-foreground">
                                         {hasFile ? "Document attached" : "No file uploaded"}
                                     </p>
                                 </div>
@@ -193,7 +193,7 @@ export function DocumentDetailModal({
 
                             {/* Type badge */}
                             <div className="absolute left-4 top-4">
-                                <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm">
+                                <span className="rounded-full bg-card/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm">
                                     {typeLabels[doc.type]}
                                 </span>
                             </div>
@@ -203,7 +203,7 @@ export function DocumentDetailModal({
                         <div className="p-6 space-y-5">
                             {/* Title & status */}
                             <div>
-                                <h2 className="text-xl font-bold text-zinc-900">
+                                <h2 className="text-xl font-bold text-foreground">
                                     {doc.title}
                                 </h2>
                                 <div className="mt-2 flex items-center gap-2">
@@ -223,16 +223,16 @@ export function DocumentDetailModal({
 
                             {/* Info Grid */}
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="rounded-xl bg-zinc-50 p-3.5">
-                                    <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-zinc-400">
+                                <div className="rounded-xl bg-accent p-3.5">
+                                    <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-muted-foreground">
                                         Type
                                     </p>
-                                    <p className="mt-1 text-sm font-semibold text-zinc-900">
+                                    <p className="mt-1 text-sm font-semibold text-foreground">
                                         {typeLabels[doc.type]}
                                     </p>
                                 </div>
-                                <div className="rounded-xl bg-zinc-50 p-3.5">
-                                    <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-zinc-400">
+                                <div className="rounded-xl bg-accent p-3.5">
+                                    <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-muted-foreground">
                                         Expiry Date
                                     </p>
                                     <p className={`mt-1 text-sm font-semibold ${expiry.color}`}>
@@ -245,11 +245,11 @@ export function DocumentDetailModal({
                                             : "Not set"}
                                     </p>
                                 </div>
-                                <div className="rounded-xl bg-zinc-50 p-3.5">
-                                    <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-zinc-400">
+                                <div className="rounded-xl bg-accent p-3.5">
+                                    <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-muted-foreground">
                                         Added On
                                     </p>
-                                    <p className="mt-1 text-sm font-semibold text-zinc-900">
+                                    <p className="mt-1 text-sm font-semibold text-foreground">
                                         {new Date(doc.created_at).toLocaleDateString("en-US", {
                                             month: "short",
                                             day: "numeric",
@@ -257,11 +257,11 @@ export function DocumentDetailModal({
                                         })}
                                     </p>
                                 </div>
-                                <div className="rounded-xl bg-zinc-50 p-3.5">
-                                    <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-zinc-400">
+                                <div className="rounded-xl bg-accent p-3.5">
+                                    <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-muted-foreground">
                                         Document ID
                                     </p>
-                                    <p className="mt-1 text-xs font-mono text-zinc-500 truncate">
+                                    <p className="mt-1 text-xs font-mono text-muted-foreground truncate">
                                         {doc.id.slice(0, 12)}...
                                     </p>
                                 </div>
@@ -274,7 +274,7 @@ export function DocumentDetailModal({
                                         href={doc.file_url!}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 py-3 text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-50"
+                                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-medium text-foreground/80 transition-all hover:bg-accent"
                                     >
                                         <Download size={16} />
                                         Download

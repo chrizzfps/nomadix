@@ -12,6 +12,7 @@ import {
 import { TripCard } from "@/components/travel/trip-card";
 import { CreateTripModal } from "@/components/travel/create-trip-modal";
 import { createClient } from "@/lib/supabase/client";
+import { useLanguageStore } from "@/stores/language-store";
 
 interface Trip {
     id: string;
@@ -25,6 +26,7 @@ interface Trip {
 
 export default function TravelPage() {
     const supabase = createClient();
+    const t = useLanguageStore((s) => s.t);
     const [trips, setTrips] = useState<Trip[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -63,19 +65,19 @@ export default function TravelPage() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
-                        Travel
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                        {t("travel.title")}
                     </h1>
-                    <p className="mt-1 text-sm text-zinc-500">
-                        Plan and track your adventures.
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        {t("travel.subtitle")}
                     </p>
                 </div>
                 <button
                     onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-zinc-800 active:scale-[0.98]"
+                    className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
                 >
                     <Plus size={16} weight="bold" />
-                    New Trip
+                    {t("travel.newTrip")}
                 </button>
             </div>
 
@@ -86,37 +88,37 @@ export default function TravelPage() {
                 transition={{ delay: 0.05 }}
                 className="mt-8 grid grid-cols-3 gap-4"
             >
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-center">
-                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                        <MapTrifold size={18} className="text-zinc-600" />
+                <div className="rounded-2xl border border-border bg-card p-4 text-center">
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                        <MapTrifold size={18} className="text-foreground/70" />
                     </div>
-                    <p className="text-2xl font-bold text-zinc-900">
+                    <p className="text-2xl font-bold text-foreground">
                         {trips.length}
                     </p>
-                    <p className="text-[10px] font-medium tracking-wide uppercase text-zinc-400">
-                        Total Trips
+                    <p className="text-[10px] font-medium tracking-wide uppercase text-muted-foreground">
+                        {t("travel.totalTrips")}
                     </p>
                 </div>
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-center">
-                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                        <CalendarBlank size={18} className="text-zinc-600" />
+                <div className="rounded-2xl border border-border bg-card p-4 text-center">
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                        <CalendarBlank size={18} className="text-foreground/70" />
                     </div>
-                    <p className="text-2xl font-bold text-zinc-900">
+                    <p className="text-2xl font-bold text-foreground">
                         {upcomingTrips.length}
                     </p>
-                    <p className="text-[10px] font-medium tracking-wide uppercase text-zinc-400">
-                        Upcoming
+                    <p className="text-[10px] font-medium tracking-wide uppercase text-muted-foreground">
+                        {t("travel.upcoming")}
                     </p>
                 </div>
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-center">
-                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100">
-                        <CurrencyEur size={18} className="text-zinc-600" />
+                <div className="rounded-2xl border border-border bg-card p-4 text-center">
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+                        <CurrencyEur size={18} className="text-foreground/70" />
                     </div>
-                    <p className="text-2xl font-bold text-zinc-900">
+                    <p className="text-2xl font-bold text-foreground">
                         €{totalBudget.toLocaleString()}
                     </p>
-                    <p className="text-[10px] font-medium tracking-wide uppercase text-zinc-400">
-                        Budget Allocated
+                    <p className="text-[10px] font-medium tracking-wide uppercase text-muted-foreground">
+                        {t("travel.budgetAllocated")}
                     </p>
                 </div>
             </motion.div>
@@ -132,7 +134,7 @@ export default function TravelPage() {
                     ? [1, 2, 3].map((i) => (
                         <div
                             key={i}
-                            className="h-44 animate-pulse rounded-2xl bg-zinc-100"
+                            className="h-44 animate-pulse rounded-2xl bg-accent"
                         />
                     ))
                     : trips.map((trip) => (
@@ -151,10 +153,10 @@ export default function TravelPage() {
                 <motion.button
                     whileHover={{ scale: 1.02 }}
                     onClick={() => setShowModal(true)}
-                    className="flex h-44 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-400 transition-colors hover:border-zinc-300 hover:text-zinc-500"
+                    className="flex h-44 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-ring hover:text-muted-foreground"
                 >
                     <Airplane size={24} />
-                    <span className="text-xs font-semibold">Add Trip</span>
+                    <span className="text-xs font-semibold">{t("travel.addTrip")}</span>
                 </motion.button>
             </motion.div>
 

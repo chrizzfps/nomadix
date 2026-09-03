@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import VaultsPage from "@/app/dashboard/vaults/page";
+import { useLanguageStore } from "@/stores/language-store";
 
 jest.mock("@/stores/currency-store", () => ({
     useCurrencyStore: () => ({
@@ -68,16 +69,20 @@ jest.mock("@/lib/supabase/client", () => {
 });
 
 describe("Vaults Recent Activity pagination", () => {
+    beforeEach(() => {
+        useLanguageStore.getState().setLanguage("en");
+    });
+
     it("shows more movements without reloading", async () => {
         const user = userEvent.setup();
         render(<VaultsPage />);
 
         await screen.findByText("Recent Activity");
 
-        expect(screen.getByText("Ver más movimientos")).toBeInTheDocument();
+        expect(screen.getByText("Load more activity")).toBeInTheDocument();
         expect(screen.queryByText("Food Tx 11")).not.toBeInTheDocument();
 
-        await user.click(screen.getByText("Ver más movimientos"));
+        await user.click(screen.getByText("Load more activity"));
 
         await waitFor(() => {
             expect(screen.getByText("Food Tx 11")).toBeInTheDocument();
@@ -93,7 +98,7 @@ describe("Vaults Recent Activity pagination", () => {
         expect(screen.getByText("Food Tx 1")).toBeInTheDocument();
         expect(screen.getByText("Home Tx 2")).toBeInTheDocument();
 
-        await user.click(screen.getByLabelText("Filtrar por categoría"));
+        await user.click(screen.getByLabelText("Filter by category"));
         await user.click(screen.getByRole("button", { name: "Home" }));
 
         expect(screen.queryByText("Food Tx 1")).not.toBeInTheDocument();

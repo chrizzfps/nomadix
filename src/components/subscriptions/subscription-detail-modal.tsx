@@ -18,6 +18,7 @@ import {
 } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
+import { useLanguageStore } from "@/stores/language-store";
 import { CATEGORY_ICON_MAP } from "@/lib/transaction-categories";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import {
@@ -44,9 +45,9 @@ interface SubscriptionDetailModalProps {
 const STATUS_DOT: Record<SubscriptionOccurrence["status"], string> = {
     charged: "bg-emerald-500",
     pending: "bg-amber-500",
-    skipped: "bg-zinc-300",
+    skipped: "bg-muted-foreground",
     failed: "bg-red-500",
-    canceled: "bg-zinc-300",
+    canceled: "bg-muted-foreground",
 };
 
 export function SubscriptionDetailModal({
@@ -60,6 +61,7 @@ export function SubscriptionDetailModal({
 }: SubscriptionDetailModalProps) {
     const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
+    const t = useLanguageStore((s) => s.t);
 
     const [occurrences, setOccurrences] = useState<SubscriptionOccurrence[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -107,7 +109,7 @@ export function SubscriptionDetailModal({
         if (error) {
             addToast(error.message, "error");
         } else {
-            addToast(`${s.name} charged`);
+            addToast(t("subs.toast.charged", { name: s.name }));
             onChanged();
             loadHistory(s.id);
         }
@@ -123,7 +125,7 @@ export function SubscriptionDetailModal({
         if (error) {
             addToast(error.message, "error");
         } else {
-            addToast("Skipped this cycle");
+            addToast(t("subs.toast.skipped"));
             onChanged();
             loadHistory(s.id);
         }
@@ -140,7 +142,7 @@ export function SubscriptionDetailModal({
         if (error) {
             addToast(error.message, "error");
         } else {
-            addToast(nextStatus === "paused" ? "Subscription paused" : "Subscription resumed");
+            addToast(nextStatus === "paused" ? t("subs.toast.paused") : t("subs.toast.resumed"));
             onChanged();
         }
         setBusy(false);
@@ -155,7 +157,7 @@ export function SubscriptionDetailModal({
         if (error) {
             addToast(error.message, "error");
         } else {
-            addToast("Subscription canceled");
+            addToast(t("subs.toast.canceled"));
             onChanged();
             onClose();
         }
@@ -178,9 +180,9 @@ export function SubscriptionDetailModal({
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        className="fixed left-1/2 top-1/2 z-50 flex max-h-[88vh] w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-zinc-200 bg-white shadow-2xl"
+                        className="fixed left-1/2 top-1/2 z-50 flex max-h-[88vh] w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-border bg-card shadow-2xl"
                     >
-                        <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
+                        <div className="flex items-center justify-between border-b border-border px-6 py-4">
                             <div className="flex items-center gap-3">
                                 <div
                                     className="flex h-11 w-11 items-center justify-center rounded-xl"
@@ -190,8 +192,8 @@ export function SubscriptionDetailModal({
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <h2 className="text-lg font-semibold text-zinc-900">{s.name}</h2>
-                                        <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                                        <h2 className="text-lg font-semibold text-foreground">{s.name}</h2>
+                                        <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                                             {s.status}
                                         </span>
                                     </div>
@@ -202,7 +204,7 @@ export function SubscriptionDetailModal({
                             </div>
                             <button
                                 onClick={onClose}
-                                className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground/70"
                             >
                                 <X size={18} />
                             </button>
@@ -212,20 +214,20 @@ export function SubscriptionDetailModal({
                             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                                 {[
                                     {
-                                        label: "Amount",
+                                        label: t("subs.detail.summaryAmount"),
                                         value: `${symbol}${s.amount.toFixed(2)} · ${cycleLabel(s.billing_cycle, s.interval_count, s.custom_interval_days)}`,
                                     },
-                                    { label: "Vault", value: vaultName },
-                                    { label: "Category", value: s.category || "—" },
-                                    { label: "Next charge", value: formatDueDate(s.next_due_date) },
-                                    { label: "Monthly equiv.", value: `${symbol}${monthlyEquivalent(s).toFixed(2)}` },
-                                    { label: "Annualized", value: `${symbol}${annualEquivalent(s).toFixed(2)}` },
+                                    { label: t("subs.detail.summaryVault"), value: vaultName },
+                                    { label: t("subs.detail.summaryCategory"), value: s.category || "—" },
+                                    { label: t("subs.detail.summaryNextCharge"), value: formatDueDate(s.next_due_date) },
+                                    { label: t("subs.detail.summaryMonthlyEq"), value: `${symbol}${monthlyEquivalent(s).toFixed(2)}` },
+                                    { label: t("subs.detail.summaryAnnualized"), value: `${symbol}${annualEquivalent(s).toFixed(2)}` },
                                 ].map((item) => (
                                     <div key={item.label}>
-                                        <p className="text-[11px] font-medium tracking-[0.08em] uppercase text-zinc-400">
+                                        <p className="text-[11px] font-medium tracking-[0.08em] uppercase text-muted-foreground">
                                             {item.label}
                                         </p>
-                                        <p className="mt-0.5 text-sm font-semibold text-zinc-900">
+                                        <p className="mt-0.5 text-sm font-semibold text-foreground">
                                             {item.value}
                                         </p>
                                     </div>
@@ -233,20 +235,22 @@ export function SubscriptionDetailModal({
                             </div>
 
                             {s.fee_mode !== "none" && (
-                                <div className="mt-4 grid grid-cols-3 divide-x divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50/60">
+                                <div className="mt-4 grid grid-cols-3 divide-x divide-border overflow-hidden rounded-xl border border-border bg-accent/60">
                                     {[
-                                        { label: "Subtotal", value: s.amount },
+                                        { label: t("subs.detail.subtotal"), value: s.amount },
                                         {
-                                            label: s.fee_mode === "percent" ? `Fee (${s.fee_value}%)` : "Fee",
+                                            label: s.fee_mode === "percent"
+                                                ? `${t("subs.detail.fee")} (${s.fee_value}%)`
+                                                : t("subs.detail.fee"),
                                             value: feeFor(s.amount, s.fee_mode, s.fee_value),
                                         },
-                                        { label: "Total", value: costPerCycle(s) },
+                                        { label: t("subs.detail.total"), value: costPerCycle(s) },
                                     ].map((col) => (
                                         <div key={col.label} className="px-3 py-2.5 text-center">
-                                            <p className="truncate text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+                                            <p className="truncate text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                                                 {col.label}
                                             </p>
-                                            <p className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-900">
+                                            <p className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
                                                 {symbol}
                                                 {col.value.toFixed(2)}
                                             </p>
@@ -259,43 +263,43 @@ export function SubscriptionDetailModal({
                                 <button
                                     onClick={chargeNow}
                                     disabled={busy || s.status !== "active"}
-                                    className="flex items-center gap-1.5 rounded-xl bg-zinc-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     <CreditCard size={14} />
-                                    Charge now
+                                    {t("subs.detail.chargeNow")}
                                 </button>
                                 <button
                                     onClick={skipCycle}
                                     disabled={busy || s.status !== "active"}
-                                    className="flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3.5 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+                                    className="flex items-center gap-1.5 rounded-xl border border-border px-3.5 py-2 text-xs font-semibold text-foreground/70 hover:bg-accent disabled:opacity-50"
                                 >
                                     <Prohibit size={14} />
-                                    Skip this cycle
+                                    {t("subs.detail.skip")}
                                 </button>
                                 <button
                                     onClick={togglePause}
                                     disabled={busy || s.status === "canceled" || s.status === "ended"}
-                                    className="flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3.5 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+                                    className="flex items-center gap-1.5 rounded-xl border border-border px-3.5 py-2 text-xs font-semibold text-foreground/70 hover:bg-accent disabled:opacity-50"
                                 >
                                     {s.status === "paused" ? <PlayCircle size={14} /> : <PauseCircle size={14} />}
-                                    {s.status === "paused" ? "Resume" : "Pause"}
+                                    {s.status === "paused" ? t("subs.detail.resume") : t("subs.detail.pause")}
                                 </button>
                                 <button
                                     onClick={() => onEdit(s)}
-                                    className="flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3.5 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+                                    className="flex items-center gap-1.5 rounded-xl border border-border px-3.5 py-2 text-xs font-semibold text-foreground/70 hover:bg-accent"
                                 >
                                     <PencilSimple size={14} />
-                                    Edit
+                                    {t("subs.detail.edit")}
                                 </button>
                                 {s.cancel_url && (
                                     <a
                                         href={s.cancel_url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3.5 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+                                        className="flex items-center gap-1.5 rounded-xl border border-border px-3.5 py-2 text-xs font-semibold text-foreground/70 hover:bg-accent"
                                     >
                                         <LinkSimple size={14} />
-                                        Open cancellation page
+                                        {t("subs.detail.openCancelUrl")}
                                     </a>
                                 )}
                                 {s.status !== "canceled" && (
@@ -311,23 +315,23 @@ export function SubscriptionDetailModal({
                                         }`}
                                     >
                                         <XCircle size={14} />
-                                        {confirmingCancel ? "Confirm cancel?" : "Cancel subscription"}
+                                        {confirmingCancel ? t("subs.detail.confirmCancel") : t("subs.detail.cancel")}
                                     </button>
                                 )}
                             </div>
 
                             <div className="mt-6">
-                                <h3 className="text-sm font-semibold text-zinc-900">Payment history</h3>
+                                <h3 className="text-sm font-semibold text-foreground">{t("subs.detail.paymentHistory")}</h3>
                                 {isLoadingHistory ? (
                                     <div className="mt-3 space-y-2">
                                         {[1, 2, 3].map((i) => (
-                                            <div key={i} className="h-10 animate-pulse rounded-xl bg-zinc-50" />
+                                            <div key={i} className="h-10 animate-pulse rounded-xl bg-accent" />
                                         ))}
                                     </div>
                                 ) : occurrences.length === 0 ? (
-                                    <p className="mt-2 text-sm text-zinc-400">No charges yet.</p>
+                                    <p className="mt-2 text-sm text-muted-foreground">{t("subs.detail.noCharges")}</p>
                                 ) : (
-                                    <div className="mt-3 divide-y divide-zinc-50 rounded-2xl border border-zinc-200">
+                                    <div className="mt-3 divide-y divide-border rounded-2xl border border-border">
                                         {occurrences.map((occ) => {
                                             const isSkipped = occ.status === "skipped" || occ.status === "canceled";
                                             const isFailed = occ.status === "failed";
@@ -340,7 +344,7 @@ export function SubscriptionDetailModal({
                                                         <span
                                                             className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[occ.status]}`}
                                                         />
-                                                        <span className="text-zinc-700">{formatDueDate(occ.due_date)}</span>
+                                                        <span className="text-foreground/80">{formatDueDate(occ.due_date)}</span>
                                                         {isFailed && (
                                                             <WarningCircle size={13} className="text-red-500" />
                                                         )}
@@ -354,7 +358,7 @@ export function SubscriptionDetailModal({
                                                     <div className="flex flex-col items-end">
                                                         <span
                                                             className={`font-semibold tabular-nums ${
-                                                                isSkipped ? "text-zinc-300 line-through" : "text-zinc-900"
+                                                                isSkipped ? "text-muted-foreground line-through" : "text-foreground"
                                                             }`}
                                                         >
                                                             {symbol}
@@ -364,8 +368,10 @@ export function SubscriptionDetailModal({
                                                             ).toFixed(2)}
                                                         </span>
                                                         {occ.fee_amount > 0 && (
-                                                            <span className="text-[10px] text-zinc-400">
-                                                                incl. {symbol}{occ.fee_amount.toFixed(2)} fee
+                                                            <span className="text-[10px] text-muted-foreground">
+                                                                {t("subs.detail.inclFee", {
+                                                                    amount: `${symbol}${occ.fee_amount.toFixed(2)}`,
+                                                                })}
                                                             </span>
                                                         )}
                                                     </div>
