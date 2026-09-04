@@ -77,7 +77,7 @@ export function SubscriptionStats({
                     key={c.label}
                     className={`rounded-2xl border p-5 ${
                         c.warning
-                            ? "border-amber-200 bg-amber-50/40"
+                            ? "border-amber-200 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/30"
                             : "border-border bg-card"
                     }`}
                 >
@@ -86,7 +86,7 @@ export function SubscriptionStats({
                     </p>
                     <p
                         className={`mt-2 text-3xl font-bold tracking-tight tabular-nums ${blur} ${
-                            c.warning ? "text-amber-700" : "text-foreground"
+                            c.warning ? "text-amber-700 dark:text-amber-400" : "text-foreground"
                         }`}
                     >
                         {c.value}

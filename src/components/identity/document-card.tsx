@@ -52,7 +52,7 @@ function getExpiryStatus(expiryDate: string | null): {
     urgent: boolean;
 } {
     if (!expiryDate)
-        return { label: "No expiry", color: "text-muted-foreground", urgent: false };
+        return { label: "No expiry", color: "text-white/50", urgent: false };
 
     const today = new Date();
     const expiry = new Date(expiryDate);
@@ -79,7 +79,7 @@ function getExpiryStatus(expiryDate: string | null): {
             month: "short",
             year: "numeric",
         });
-        return { label: formatted, color: "text-muted-foreground", urgent: false };
+        return { label: formatted, color: "text-white/50", urgent: false };
     }
 }
 
@@ -160,7 +160,7 @@ export function DocumentCard({
                             <DotsThree
                                 size={18}
                                 weight="bold"
-                                className="text-muted-foreground"
+                                className="text-white/60"
                             />
                         </button>
 
@@ -207,7 +207,7 @@ export function DocumentCard({
             {/* Expiry */}
             <div className="relative mt-5 flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                    <CalendarBlank size={13} className="text-muted-foreground" />
+                    <CalendarBlank size={13} className="text-white/50" />
                     <span className={`text-xs font-medium ${expiry.color}`}>
                         {expiry.label}
                     </span>
@@ -221,9 +221,9 @@ export function DocumentCard({
                 </div>
                 <div className="flex items-center gap-1">
                     {isPrivacyMode ? (
-                        <EyeSlash size={14} className="text-muted-foreground" />
+                        <EyeSlash size={14} className="text-white/50" />
                     ) : (
-                        <Eye size={14} className="text-muted-foreground" />
+                        <Eye size={14} className="text-white/50" />
                     )}
                 </div>
             </div>

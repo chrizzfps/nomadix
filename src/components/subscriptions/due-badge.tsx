@@ -10,9 +10,9 @@ interface DueBadgeProps {
 }
 
 const TONE_CLASSES: Record<string, string> = {
-    overdue: "border-red-100 bg-red-50 text-red-600",
+    overdue: "border-red-100 bg-red-50 text-red-600 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400",
     today: "border-primary bg-primary text-primary-foreground",
-    urgent: "border-amber-100 bg-amber-50 text-amber-700",
+    urgent: "border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-400",
     soon: "border-border bg-accent text-foreground/70",
     normal: "border-transparent bg-transparent text-muted-foreground",
 };

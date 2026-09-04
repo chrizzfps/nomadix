@@ -166,7 +166,7 @@ export default function IdentityPage() {
 
                 {/* Verified */}
                 <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40">
                         <CheckCircle
                             size={20}
                             weight="fill"

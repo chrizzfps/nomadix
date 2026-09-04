@@ -311,7 +311,7 @@ export function SubscriptionDetailModal({
                                         className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors disabled:opacity-50 ${
                                             confirmingCancel
                                                 ? "bg-red-600 text-white hover:bg-red-700"
-                                                : "border border-red-100 text-red-600 hover:bg-red-50"
+                                                : "border border-red-100 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/40"
                                         }`}
                                     >
                                         <XCircle size={14} />

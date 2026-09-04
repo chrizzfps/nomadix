@@ -47,13 +47,13 @@ function getExpiryInfo(expiryDate: string | null) {
     const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
-        return { label: "Expired", color: "text-red-600", badge: "bg-red-50 text-red-600" };
+        return { label: "Expired", color: "text-red-600", badge: "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400" };
     } else if (diffDays <= 30) {
-        return { label: `Expires in ${diffDays} days`, color: "text-amber-600", badge: "bg-amber-50 text-amber-600" };
+        return { label: `Expires in ${diffDays} days`, color: "text-amber-600", badge: "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400" };
     } else if (diffDays <= 90) {
-        return { label: `Expires in ${Math.ceil(diffDays / 30)} months`, color: "text-amber-500", badge: "bg-amber-50 text-amber-500" };
+        return { label: `Expires in ${Math.ceil(diffDays / 30)} months`, color: "text-amber-500", badge: "bg-amber-50 text-amber-500 dark:bg-amber-950/40 dark:text-amber-400" };
     } else {
-        return { label: "Valid", color: "text-emerald-600", badge: "bg-emerald-50 text-emerald-600" };
+        return { label: "Valid", color: "text-emerald-600", badge: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400" };
     }
 }
 
@@ -213,7 +213,7 @@ export function DocumentDetailModal({
                                         {expiry.label}
                                     </span>
                                     {hasFile && (
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600">
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
                                             <CheckCircle size={12} weight="fill" />
                                             File attached
                                         </span>
@@ -283,7 +283,7 @@ export function DocumentDetailModal({
                                 {!showDeleteConfirm ? (
                                     <button
                                         onClick={() => setShowDeleteConfirm(true)}
-                                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-200 py-3 text-sm font-medium text-red-600 transition-all hover:bg-red-50"
+                                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-200 py-3 text-sm font-medium text-red-600 transition-all hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/40"
                                     >
                                         <Trash size={16} />
                                         Delete
