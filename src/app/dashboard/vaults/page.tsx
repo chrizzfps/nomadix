@@ -7,6 +7,7 @@ import {
     ArrowUp,
     ArrowDown,
     ArrowsLeftRight,
+    ArrowClockwise,
     Armchair,
     Bag,
     Book,
@@ -550,6 +551,7 @@ export default function VaultsPage() {
                                 .map((item) => {
                                 const isIncome = item.type === "income";
                                 const isTransfer = item.type === "transfer";
+                                const isAdjustment = item.type === "adjustment";
                                 const IconCmp =
                                     categoryIcons[item.category || ""];
                                 const currSymbol =
@@ -577,6 +579,11 @@ export default function VaultsPage() {
                                                     />
                                                 ) : isTransfer ? (
                                                     <ArrowsLeftRight
+                                                        size={14}
+                                                        className="text-muted-foreground"
+                                                    />
+                                                ) : isAdjustment ? (
+                                                    <ArrowClockwise
                                                         size={14}
                                                         className="text-muted-foreground"
                                                     />

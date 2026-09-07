@@ -21,6 +21,7 @@ import {
     ArrowUp,
     ArrowDown,
     ArrowsLeftRight,
+    ArrowClockwise,
 } from "@phosphor-icons/react";
 import { CurrencyToggle } from "@/components/shared/currency-toggle";
 import { useCurrencyStore } from "@/stores/currency-store";
@@ -481,6 +482,11 @@ export default function DashboardPage() {
                                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent">
                                             {tx.type === "transfer" ? (
                                                 <ArrowsLeftRight
+                                                    size={18}
+                                                    className="text-foreground/70"
+                                                />
+                                            ) : tx.type === "adjustment" ? (
+                                                <ArrowClockwise
                                                     size={18}
                                                     className="text-foreground/70"
                                                 />

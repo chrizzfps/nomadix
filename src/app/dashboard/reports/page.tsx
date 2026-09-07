@@ -282,6 +282,16 @@ export default function ReportsPage() {
                                     {t("reports.vsLastMonth", { pct: Math.abs(delta).toFixed(0) })}
                                 </p>
                             )}
+                            {ctx.current.adjustmentCount > 0 && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    {t("reports.adjustmentsNote", {
+                                        amount: formatMoney(
+                                            Math.abs(ctx.current.adjustments),
+                                            ctx.currency
+                                        ),
+                                    })}
+                                </p>
+                            )}
                         </div>
                         <div className="rounded-2xl border border-border bg-card p-5">
                             <p className="text-xs font-medium tracking-[0.08em] uppercase text-muted-foreground">

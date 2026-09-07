@@ -86,7 +86,7 @@ export function TransactionEditModal({
 
     const [date, setDate] = useState("");
     const [description, setDescription] = useState("");
-    const [type, setType] = useState<"income" | "expense" | "transfer">("expense");
+    const [type, setType] = useState<"income" | "expense" | "transfer" | "adjustment">("expense");
     const [currency, setCurrency] = useState<"EUR" | "USD">("USD");
     const [amount, setAmount] = useState("");
     const [category, setCategory] = useState("");
@@ -233,8 +233,10 @@ export function TransactionEditModal({
         setDate(toDateInputValue(transaction.date || transaction.created_at));
         setDescription(transaction.description || "");
         setType(
-            transaction.type === "income" || transaction.type === "transfer"
-                ? (transaction.type as "income" | "transfer")
+            transaction.type === "income" ||
+                transaction.type === "transfer" ||
+                transaction.type === "adjustment"
+                ? (transaction.type as "income" | "transfer" | "adjustment")
                 : "expense"
         );
         setCurrency(normalizeCurrency(transaction.original_currency));
@@ -585,6 +587,7 @@ export function TransactionEditModal({
                                     </label>
                                     <select
                                         value={type}
+                                        disabled={type === "adjustment"}
                                         onChange={(e) =>
                                             setType(
                                                 e.target.value as
@@ -593,12 +596,23 @@ export function TransactionEditModal({
                                                     | "transfer"
                                             )
                                         }
-                                        className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                                        className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                                     >
                                         <option value="expense">Expense</option>
                                         <option value="income">Income</option>
                                         <option value="transfer">Transfer</option>
+                                        {type === "adjustment" && (
+                                            <option value="adjustment">
+                                                Adjustment
+                                            </option>
+                                        )}
                                     </select>
+                                    {type === "adjustment" && (
+                                        <p className="text-[11px] text-muted-foreground">
+                                            Balance adjustments keep their type — edit
+                                            amount or delete instead.
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-1.5">

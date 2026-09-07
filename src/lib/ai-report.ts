@@ -34,6 +34,14 @@ export interface MonthPeriodTotals {
     income: number;
     expense: number;
     net: number;
+    /**
+     * Signed total of manual balance corrections ("adjustment" transactions)
+     * in the period. Deliberately NOT part of income/expense/net — it is not
+     * real spending — but reported so the narrative can account for the gap
+     * between `net` and the actual change in net worth instead of ignoring it.
+     */
+    adjustments: number;
+    adjustmentCount: number;
 }
 
 export interface MonthlyReportContext {
@@ -80,6 +88,8 @@ function computePeriodTotals(
 ): MonthPeriodTotals {
     let income = 0;
     let expense = 0;
+    let adjustments = 0;
+    let adjustmentCount = 0;
     for (const t of transactions) {
         if (!isInMonth(t.date, monthISO)) continue;
         const from = vaultCurrencyOf.get(t.vault_id) || t.original_currency;
@@ -90,10 +100,17 @@ function computePeriodTotals(
             t.exchange_rate_at_time,
             usdEurRate
         );
+        // "transfer" falls through on purpose — it moves money between the
+        // user's own vaults. "adjustment" is tracked separately rather than
+        // dropped, so the report can explain the gap it leaves in net worth.
         if (t.type === "expense") expense += Math.abs(converted);
         else if (t.type === "income") income += Math.abs(converted);
+        else if (t.type === "adjustment") {
+            adjustments += converted;
+            adjustmentCount += 1;
+        }
     }
-    return { income, expense, net: income - expense };
+    return { income, expense, net: income - expense, adjustments, adjustmentCount };
 }
 
 export function buildMonthlyReportContext(params: {
@@ -213,6 +230,11 @@ export function buildReportPrompt(
         "You are a concise, honest personal finance assistant inside the Nomadix app. " +
         "You are given already-computed figures for one month — never recompute or " +
         "second-guess them, and never invent numbers that are not in the data. " +
+        "`thisMonth.adjustments` is manual balance corrections (e.g. the user " +
+        "re-synced a vault after not opening the app for a while) — it is NOT " +
+        "income or spending, never call it an expense or add it to spending totals, " +
+        "but if it is non-zero briefly mention it moved net worth outside of normal " +
+        "activity. " +
         `${LANGUAGE_INSTRUCTION[language]} No markdown headers, no emoji. ` +
         "Structure your reply in exactly three parts, each on its own paragraph or list: " +
         "1) a 2-3 sentence summary of the month, " +

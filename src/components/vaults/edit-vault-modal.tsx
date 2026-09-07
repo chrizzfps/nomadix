@@ -92,7 +92,10 @@ export function EditVaultModal({
                     user_id: user.id,
                     vault_id: vault.id,
                     amount: diff,
-                    type: diff > 0 ? "income" : "expense",
+                    // Never "income"/"expense": a correction is not real money
+                    // earned or spent, and typing it as such inflates every report.
+                    // The sign of `amount` still moves the balance either way.
+                    type: "adjustment",
                     original_currency: currency,
                     category: "Adjustment",
                     description: "Balance adjustment",

@@ -6,7 +6,10 @@ export type Currency = "EUR" | "USD";
 
 export type VaultType = "savings" | "checking" | "cash";
 
-export type TransactionType = "income" | "expense" | "transfer";
+// "adjustment" is a manual balance correction on a vault — it moves the vault
+// balance and net worth, but it is never real income or spending, so every
+// income/expense aggregation skips it the same way it skips "transfer".
+export type TransactionType = "income" | "expense" | "transfer" | "adjustment";
 
 export type TransactionStatus = "completed" | "pending" | "failed";
 

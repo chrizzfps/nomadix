@@ -87,6 +87,45 @@ end $$;
 -- Migration: Add fee column to transactions table for vault transfer commissions
 alter table public.transactions add column if not exists fee numeric not null default 0;
 
+-- Migration: introduce the "adjustment" transaction type.
+-- Manual vault balance corrections were previously stored as "income"/"expense",
+-- which made them count as real spending in every monthly report. Backfill the
+-- existing ones to the new type, then (re)pin an explicit allow-list so a typo
+-- in `type` fails fast instead of silently breaking reports again.
+do $$
+begin
+    if to_regclass('public.transactions') is not null then
+        -- Drop first: a pre-existing check constraint on `type` (created
+        -- outside this file, back when the table was first set up) does not
+        -- allow 'adjustment' yet, and would reject the backfill below.
+        alter table public.transactions
+        drop constraint if exists transactions_type_check;
+
+        update public.transactions
+        set type = 'adjustment'
+        where type in ('income', 'expense')
+          and category = 'Adjustment'
+          and description = 'Balance adjustment';
+
+        alter table public.transactions
+        add constraint transactions_type_check
+        check (type in ('income', 'expense', 'transfer', 'adjustment'));
+    end if;
+
+    -- Any cached AI report for a month that contains an adjustment was
+    -- generated with the old (inflated) numbers — drop it so the next visit
+    -- to /dashboard/reports regenerates it with the corrected totals instead
+    -- of silently serving the stale cache.
+    if to_regclass('public.ai_monthly_reports') is not null
+       and to_regclass('public.transactions') is not null then
+        delete from public.ai_monthly_reports r
+        using public.transactions t
+        where t.user_id = r.user_id
+          and t.type = 'adjustment'
+          and left(t.date::text, 7) = r.month;
+    end if;
+end $$;
+
 
 -- ============================================================================
 -- SUBSCRIPTIONS & RECURRING PAYMENTS

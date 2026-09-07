@@ -7,6 +7,7 @@ import {
     ArrowUp,
     ArrowDown,
     ArrowsLeftRight,
+    ArrowClockwise,
     Trash,
     CalendarBlank,
     Tag,
@@ -111,6 +112,7 @@ export function TransactionDetailModal({
 
     const isIncome = transaction.amount > 0;
     const isTransfer = transaction.type === "transfer";
+    const isAdjustment = transaction.type === "adjustment";
     const symbol = CURRENCY_SYMBOLS[transaction.original_currency] || "$";
     const formattedDate = new Date(
         transaction.date || transaction.created_at
@@ -194,6 +196,11 @@ export function TransactionDetailModal({
                                 >
                                     {isTransfer ? (
                                         <ArrowsLeftRight
+                                            size={20}
+                                            className="text-foreground/70"
+                                        />
+                                    ) : isAdjustment ? (
+                                        <ArrowClockwise
                                             size={20}
                                             className="text-foreground/70"
                                         />
