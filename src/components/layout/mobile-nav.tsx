@@ -11,6 +11,7 @@ import {
     Sparkle,
     IdentificationCard,
     Airplane,
+    UsersThree,
     List,
     X,
     GearSix,
@@ -31,6 +32,7 @@ const navItems = [
 
 const moreNavItems = [
     { href: "/dashboard/reports", key: "nav.reports", defaultLabel: "Reports", icon: Sparkle },
+    { href: "/dashboard/friends", key: "nav.friends", defaultLabel: "Friends", icon: UsersThree },
     { href: "/dashboard/identity", key: "nav.identity", defaultLabel: "Identity", icon: IdentificationCard },
 ];
 

@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, X, Tag, CheckCircle, XCircle } from "@phosphor-icons/react";
+import {
+    Plus,
+    X,
+    Tag,
+    CheckCircle,
+    XCircle,
+    Trash,
+    WarningCircle,
+} from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import {
     CATEGORY_ICON_MAP,
@@ -19,6 +27,7 @@ type CategoryRow = {
     icon_key: string | null;
     color: string | null;
     is_active: boolean;
+    is_system: boolean;
     created_at: string;
 };
 
@@ -48,6 +57,15 @@ export default function CategoriesPage() {
     const [formActive, setFormActive] = useState(true);
     const [formSaving, setFormSaving] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
+
+    const [deleteTarget, setDeleteTarget] = useState<CategoryRow | null>(null);
+    const [reassignToId, setReassignToId] = useState("");
+    const [linkedCounts, setLinkedCounts] = useState<{
+        transactions: number;
+        subscriptions: number;
+    } | null>(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
 
     const availableIcons = useMemo(() => {
         return Object.keys(CATEGORY_ICON_MAP)
@@ -91,6 +109,7 @@ export default function CategoriesPage() {
                 icon_key: c.iconKey,
                 color: c.color,
                 is_active: c.isActive,
+                is_system: c.isSystem ?? false,
             }));
 
             const { error: seedError } = await supabase
@@ -263,6 +282,118 @@ export default function CategoriesPage() {
         }
     };
 
+    const reassignOptions = useMemo(() => {
+        if (!deleteTarget) return [];
+        return categories
+            .filter((c) => c.id !== deleteTarget.id)
+            .sort((a, b) => {
+                if (a.is_system !== b.is_system) return a.is_system ? -1 : 1;
+                return a.name.localeCompare(b.name);
+            });
+    }, [categories, deleteTarget]);
+
+    const openDeleteConfirm = async (row: CategoryRow) => {
+        setDeleteTarget(row);
+        setDeleteError(null);
+        setLinkedCounts(null);
+
+        const fallback =
+            categories.find((c) => c.is_system && c.id !== row.id) ||
+            categories.find((c) => c.id !== row.id) ||
+            null;
+        setReassignToId(fallback?.id || "");
+
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const [{ count: txCount }, { count: subCount }] = await Promise.all([
+            supabase
+                .from("transactions")
+                .select("id", { count: "exact", head: true })
+                .eq("user_id", user.id)
+                .eq("category", row.name),
+            supabase
+                .from("subscriptions")
+                .select("id", { count: "exact", head: true })
+                .eq("user_id", user.id)
+                .eq("category", row.name),
+        ]);
+
+        setLinkedCounts({
+            transactions: txCount || 0,
+            subscriptions: subCount || 0,
+        });
+    };
+
+    const closeDeleteModal = () => {
+        setDeleteTarget(null);
+        setLinkedCounts(null);
+        setDeleteError(null);
+        setReassignToId("");
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!deleteTarget) return;
+        const target = categories.find((c) => c.id === reassignToId);
+        if (!target) {
+            setDeleteError("Choose a category to move existing transactions to.");
+            return;
+        }
+
+        setDeleteLoading(true);
+        setDeleteError(null);
+
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+            setDeleteError("You must be logged in.");
+            setDeleteLoading(false);
+            return;
+        }
+
+        const { error: txError } = await supabase
+            .from("transactions")
+            .update({ category: target.name })
+            .eq("user_id", user.id)
+            .eq("category", deleteTarget.name);
+
+        if (txError) {
+            setDeleteError(formatDbError(txError.message));
+            setDeleteLoading(false);
+            return;
+        }
+
+        const { error: subError } = await supabase
+            .from("subscriptions")
+            .update({ category: target.name })
+            .eq("user_id", user.id)
+            .eq("category", deleteTarget.name);
+
+        if (subError) {
+            setDeleteError(formatDbError(subError.message));
+            setDeleteLoading(false);
+            return;
+        }
+
+        const { error: deleteRowError } = await supabase
+            .from("transaction_categories")
+            .delete()
+            .eq("id", deleteTarget.id);
+
+        if (deleteRowError) {
+            setDeleteError(formatDbError(deleteRowError.message));
+            setDeleteLoading(false);
+            return;
+        }
+
+        setCategories((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+        setDeleteLoading(false);
+        closeDeleteModal();
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -313,10 +444,10 @@ export default function CategoriesPage() {
                 </div>
             ) : (
                 <div className="overflow-hidden rounded-2xl border border-border bg-card">
-                    <div className="grid grid-cols-[1fr_120px_80px] gap-3 border-b border-border px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
+                    <div className="grid grid-cols-[1fr_120px_150px] gap-3 border-b border-border px-5 py-3 text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground">
                         <span>Category</span>
                         <span>Status</span>
-                        <span className="text-right">Edit</span>
+                        <span className="text-right">Actions</span>
                     </div>
                     <div className="divide-y divide-border">
                         {categories.length === 0 ? (
@@ -330,7 +461,7 @@ export default function CategoriesPage() {
                                 return (
                                     <div
                                         key={c.id}
-                                        className="grid grid-cols-[1fr_120px_80px] gap-3 px-5 py-3"
+                                        className="grid grid-cols-[1fr_120px_150px] gap-3 px-5 py-3"
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent">
@@ -340,9 +471,16 @@ export default function CategoriesPage() {
                                                 />
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="truncate text-sm font-semibold text-foreground">
-                                                    {c.name}
-                                                </p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <p className="truncate text-sm font-semibold text-foreground">
+                                                        {c.name}
+                                                    </p>
+                                                    {c.is_system && (
+                                                        <span className="shrink-0 rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                            Default
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p className="truncate text-xs text-muted-foreground">
                                                     {c.description || "—"}
                                                 </p>
@@ -365,7 +503,7 @@ export default function CategoriesPage() {
                                                 </>
                                             )}
                                         </button>
-                                        <div className="flex justify-end">
+                                        <div className="flex justify-end gap-2">
                                             <button
                                                 type="button"
                                                 onClick={() => openEdit(c)}
@@ -373,6 +511,16 @@ export default function CategoriesPage() {
                                             >
                                                 Edit
                                             </button>
+                                            {!c.is_system && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openDeleteConfirm(c)}
+                                                    className="inline-flex items-center justify-center rounded-lg border border-border p-1.5 text-foreground/70 hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                                                    aria-label={`Delete ${c.name}`}
+                                                >
+                                                    <Trash size={14} />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -521,6 +669,126 @@ export default function CategoriesPage() {
                                     className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     {formSaving ? "Saving..." : "Save"}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {deleteTarget && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={closeDeleteModal}
+                            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            transition={{
+                                type: "spring",
+                                damping: 25,
+                                stiffness: 300,
+                            }}
+                            className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card shadow-2xl"
+                        >
+                            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+                                <h3 className="text-base font-semibold text-foreground">
+                                    Delete &ldquo;{deleteTarget.name}&rdquo;
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={closeDeleteModal}
+                                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground/70"
+                                >
+                                    <X size={18} weight="bold" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4 px-6 py-5">
+                                {deleteError && (
+                                    <div className="rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground/70">
+                                        {deleteError}
+                                    </div>
+                                )}
+
+                                <div className="flex gap-3 rounded-xl border border-border bg-accent px-4 py-3">
+                                    <WarningCircle
+                                        size={18}
+                                        className="mt-0.5 shrink-0 text-foreground/60"
+                                    />
+                                    <p className="text-sm text-foreground/70">
+                                        {linkedCounts === null ? (
+                                            "Checking linked transactions…"
+                                        ) : linkedCounts.transactions === 0 &&
+                                          linkedCounts.subscriptions === 0 ? (
+                                            "No transactions or subscriptions use this category."
+                                        ) : (
+                                            <>
+                                                <strong>
+                                                    {linkedCounts.transactions}
+                                                </strong>{" "}
+                                                transaction
+                                                {linkedCounts.transactions === 1
+                                                    ? ""
+                                                    : "s"}{" "}
+                                                and{" "}
+                                                <strong>
+                                                    {linkedCounts.subscriptions}
+                                                </strong>{" "}
+                                                subscription
+                                                {linkedCounts.subscriptions === 1
+                                                    ? ""
+                                                    : "s"}{" "}
+                                                use this category. They will be
+                                                moved to the category you pick
+                                                below.
+                                            </>
+                                        )}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
+                                        Move existing transactions to
+                                    </label>
+                                    <select
+                                        value={reassignToId}
+                                        onChange={(e) =>
+                                            setReassignToId(e.target.value)
+                                        }
+                                        className="w-full rounded-xl border border-border bg-accent px-4 py-2.5 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                                    >
+                                        {reassignOptions.map((c) => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.name}
+                                                {c.is_system ? " (default)" : ""}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+                                <button
+                                    type="button"
+                                    onClick={closeDeleteModal}
+                                    className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground/80 hover:bg-accent"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleDeleteConfirm}
+                                    disabled={deleteLoading || !reassignToId}
+                                    className="rounded-xl bg-destructive px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {deleteLoading ? "Deleting..." : "Delete category"}
                                 </button>
                             </div>
                         </motion.div>

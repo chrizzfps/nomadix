@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
     Sliders,
@@ -9,6 +10,7 @@ import {
     ArrowsClockwise,
     Moon,
     CurrencyDollar,
+    CaretRight,
 } from "@phosphor-icons/react";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { useToastStore } from "@/stores/toast-store";
@@ -56,7 +58,6 @@ function ToggleItem({
 const GENERAL_PREFS_KEY = "nomadix_general_preferences";
 
 interface GeneralPrefs {
-    publicProfile: boolean;
     taxAlerts: boolean;
     autoSync: boolean;
     darkMode: boolean;
@@ -64,14 +65,14 @@ interface GeneralPrefs {
 
 function loadGeneralPrefs(): GeneralPrefs {
     if (typeof window === "undefined") {
-        return { publicProfile: false, taxAlerts: true, autoSync: true, darkMode: false };
+        return { taxAlerts: true, autoSync: true, darkMode: false };
     }
     try {
         const raw = localStorage.getItem(GENERAL_PREFS_KEY);
-        if (!raw) return { publicProfile: false, taxAlerts: true, autoSync: true, darkMode: false };
-        return { ...{ publicProfile: false, taxAlerts: true, autoSync: true, darkMode: false }, ...JSON.parse(raw) };
+        if (!raw) return { taxAlerts: true, autoSync: true, darkMode: false };
+        return { ...{ taxAlerts: true, autoSync: true, darkMode: false }, ...JSON.parse(raw) };
     } catch {
-        return { publicProfile: false, taxAlerts: true, autoSync: true, darkMode: false };
+        return { taxAlerts: true, autoSync: true, darkMode: false };
     }
 }
 
@@ -391,13 +392,23 @@ export default function PreferencesPage() {
                 <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-muted-foreground">
                     {t("prefs.generalPrefs")}
                 </h3>
-                <ToggleItem
-                    icon={Globe}
-                    label={t("prefs.publicProfile")}
-                    description={t("prefs.publicProfileDesc")}
-                    checked={prefs.publicProfile}
-                    onChange={(val) => updatePref("publicProfile", val)}
-                />
+                {/* "Public Nomad Profile" used to live here as a toggle that
+                    nothing read. It is now a real feature: username,
+                    friend code and per-vault transfer privacy, all
+                    configured on the Privacy & Friends page. */}
+                <Link
+                    href="/dashboard/settings/privacy"
+                    className="flex items-center justify-between rounded-xl border border-border bg-accent px-4 py-3 transition-colors hover:border-ring"
+                >
+                    <div className="flex items-center gap-3">
+                        <Globe size={18} className="text-foreground/70" />
+                        <div>
+                            <p className="text-sm font-medium text-foreground">{t("prefs.publicProfile")}</p>
+                            <p className="text-xs text-muted-foreground">{t("prefs.publicProfileDesc")}</p>
+                        </div>
+                    </div>
+                    <CaretRight size={16} className="shrink-0 text-muted-foreground" />
+                </Link>
                 <ToggleItem
                     icon={Receipt}
                     label={t("prefs.taxAlerts")}

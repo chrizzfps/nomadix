@@ -14,12 +14,14 @@ import {
     Database,
     Tag,
     Sparkle,
+    UsersThree,
 } from "@phosphor-icons/react";
 import { useLanguageStore } from "@/stores/language-store";
 
 const settingsNav = [
     { href: "/dashboard/settings", key: "settings.account", defaultLabel: "Account", icon: User, exact: true },
     { href: "/dashboard/settings/profile", key: "settings.profile", defaultLabel: "Profile", icon: UserCircle },
+    { href: "/dashboard/settings/privacy", key: "settings.privacy", defaultLabel: "Privacy & Friends", icon: UsersThree },
     { href: "/dashboard/settings/preferences", key: "settings.preferences", defaultLabel: "Preferences", icon: Sliders },
     { href: "/dashboard/settings/categories", key: "settings.categories", defaultLabel: "Categories", icon: Tag },
     { href: "/dashboard/settings/ai", key: "settings.ai", defaultLabel: "AI Assistant", icon: Sparkle },

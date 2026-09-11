@@ -10,6 +10,7 @@ import {
     Sparkle,
     IdentificationCard,
     Airplane,
+    UsersThree,
     GearSix,
     SignOut,
 } from "@phosphor-icons/react";
@@ -24,6 +25,7 @@ const navItems = [
     { href: "/dashboard/expenses", key: "nav.expenses", defaultLabel: "Expenses", icon: Receipt },
     { href: "/dashboard/subscriptions", key: "nav.subscriptions", defaultLabel: "Subscriptions", icon: ArrowsClockwise },
     { href: "/dashboard/reports", key: "nav.reports", defaultLabel: "Reports", icon: Sparkle },
+    { href: "/dashboard/friends", key: "nav.friends", defaultLabel: "Friends", icon: UsersThree },
     { href: "/dashboard/identity", key: "nav.identity", defaultLabel: "Identity", icon: IdentificationCard },
     { href: "/dashboard/travel", key: "nav.travel", defaultLabel: "Travel", icon: Airplane },
 ];

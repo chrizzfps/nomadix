@@ -116,7 +116,6 @@ export function NewTransactionModal({
             "Housing",
             "Food",
             "Transport",
-            "Tech",
             "Technology",
             "Travel",
             "Health",

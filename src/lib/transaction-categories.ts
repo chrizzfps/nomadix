@@ -47,7 +47,6 @@ export type TransactionCategoryKey =
     | "food"
     | "transport"
     | "travel"
-    | "tech"
     | "shopping"
     | "health"
     | "entertainment"
@@ -66,7 +65,8 @@ export type TransactionCategoryKey =
     | "books"
     | "wellness"
     | "sport"
-    | "home";
+    | "home"
+    | "uncategorized";
 
 export type TransactionCategory = {
     key: TransactionCategoryKey;
@@ -75,6 +75,7 @@ export type TransactionCategory = {
     iconKey: string;
     color: string;
     isActive: boolean;
+    isSystem?: boolean;
 };
 
 export const CATEGORY_ICON_MAP: Record<string, React.ElementType> = {
@@ -140,14 +141,6 @@ export const DEFAULT_TRANSACTION_CATEGORIES: TransactionCategory[] = [
         name: "Transport",
         description: "Fuel, parking, public transport, rides.",
         iconKey: "car",
-        color: "#18181b",
-        isActive: true,
-    },
-    {
-        key: "tech",
-        name: "Tech",
-        description: "Devices, subscriptions, and digital services.",
-        iconKey: "desktop",
         color: "#18181b",
         isActive: true,
     },
@@ -226,7 +219,7 @@ export const DEFAULT_TRANSACTION_CATEGORIES: TransactionCategory[] = [
     {
         key: "technology",
         name: "Technology",
-        description: "Gadgets, cables, and cases.",
+        description: "Devices, gadgets, cables, and digital services.",
         iconKey: "desktop",
         color: "#18181b",
         isActive: true,
@@ -262,6 +255,15 @@ export const DEFAULT_TRANSACTION_CATEGORIES: TransactionCategory[] = [
         iconKey: "armchair",
         color: "#18181b",
         isActive: true,
+    },
+    {
+        key: "uncategorized",
+        name: "Uncategorized",
+        description: "Fallback for transactions whose category was deleted.",
+        iconKey: "bag",
+        color: "#71717a",
+        isActive: true,
+        isSystem: true,
     },
 ];
 
