@@ -302,9 +302,14 @@ export interface Transfer {
     kind: TransferKind;
     status: TransferStatus;
     sender_user_id: string;
-    sender_vault_id: string;
+    // Nullable: ON DELETE SET NULL once the vault is deleted. *_vault_name
+    // is the permanent, NOT NULL snapshot taken when the transfer was made
+    // -- read that for display, never join through the id.
+    sender_vault_id: string | null;
+    sender_vault_name: string;
     recipient_user_id: string;
-    recipient_vault_id: string;
+    recipient_vault_id: string | null;
+    recipient_vault_name: string;
     amount_sent: number;
     sent_currency: Currency;
     fee: number;
