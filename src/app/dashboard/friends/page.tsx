@@ -647,6 +647,11 @@ function TransferRow({
                               ? t("transfer.reversibleFor", { hours: reversal.hoursLeft, minutes: reversal.minutesLeft })
                               : new Date(transfer.created_at).toLocaleDateString()}
                     </p>
+                    {transfer.note && (
+                        <p className="truncate text-xs italic text-muted-foreground/80">
+                            &ldquo;{transfer.note}&rdquo;
+                        </p>
+                    )}
                 </div>
             </div>
 

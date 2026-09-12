@@ -30,6 +30,8 @@ export function SendTransferModal({ isOpen, onClose, friend, onSent }: SendTrans
     const [toVaultId, setToVaultId] = useState("");
     const [amount, setAmount] = useState("");
     const [note, setNote] = useState("");
+    const [hasFee, setHasFee] = useState(false);
+    const [fee, setFee] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isSending, setIsSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -44,6 +46,8 @@ export function SendTransferModal({ isOpen, onClose, friend, onSent }: SendTrans
         setError(null);
         setAmount("");
         setNote("");
+        setHasFee(false);
+        setFee("");
         setIsLoading(true);
         (async () => {
             const {
@@ -80,10 +84,18 @@ export function SendTransferModal({ isOpen, onClose, friend, onSent }: SendTrans
         return Number.isFinite(n) ? n : 0;
     }, [amount]);
 
+    const parsedFee = useMemo(() => {
+        if (!hasFee) return 0;
+        const n = parseFloat(fee.replace(",", "."));
+        return Number.isFinite(n) && n > 0 ? n : 0;
+    }, [hasFee, fee]);
+
     const previewReceived = useMemo(() => {
         if (!fromVault || !toVault || parsedAmount <= 0) return null;
         return previewTransferConversion(parsedAmount, fromVault.currency, toVault.currency, activeRate);
     }, [fromVault, toVault, parsedAmount, activeRate]);
+
+    const totalDebited = parsedAmount > 0 ? parsedAmount + parsedFee : 0;
 
     const canSend =
         !!fromVault && !!toVault && parsedAmount > 0 && !isSending && !isLoading;
@@ -97,6 +109,7 @@ export function SendTransferModal({ isOpen, onClose, friend, onSent }: SendTrans
             p_from_vault_id: fromVault.id,
             p_to_vault_id: toVault.vault_id,
             p_amount: parsedAmount,
+            p_fee: parsedFee,
             p_note: note.trim() || null,
             p_client_token: clientToken,
         });
@@ -233,6 +246,45 @@ export function SendTransferModal({ isOpen, onClose, friend, onSent }: SendTrans
                                             {t("transfer.willReceive", {
                                                 name: formatFriendHandle(friend),
                                                 amount: `${CURRENCY_SYMBOLS[toVault.currency]}${previewReceived.toFixed(2)}`,
+                                            })}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="flex cursor-pointer items-center justify-between">
+                                        <span className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
+                                            {t("transfer.includeFee")}
+                                        </span>
+                                        <span className="relative shrink-0">
+                                            <input
+                                                type="checkbox"
+                                                checked={hasFee}
+                                                onChange={(e) => {
+                                                    setHasFee(e.target.checked);
+                                                    if (!e.target.checked) setFee("");
+                                                }}
+                                                className="peer sr-only"
+                                            />
+                                            <span className="block h-5 w-9 rounded-full bg-muted transition-colors peer-checked:bg-primary" />
+                                            <span className="absolute left-0.5 top-0.5 block h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
+                                        </span>
+                                    </label>
+                                    {hasFee && (
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            placeholder="0.00"
+                                            value={fee}
+                                            onChange={(e) => setFee(e.target.value)}
+                                            className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                                        />
+                                    )}
+                                    {hasFee && fromVault && totalDebited > 0 && (
+                                        <p className="text-xs text-muted-foreground">
+                                            {t("transfer.totalDebited", {
+                                                amount: `${CURRENCY_SYMBOLS[fromVault.currency]}${totalDebited.toFixed(2)}`,
                                             })}
                                         </p>
                                     )}

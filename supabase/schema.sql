@@ -4376,3 +4376,417 @@ grant execute on function public.nomadix_settle_up(uuid, uuid, uuid, numeric, te
 -- 4) A tries to delete the settled share -- must be refused:
 -- select public.nomadix_void_share(:'sid'::uuid);  -- expect error, already settled
 -- ============================================================================
+
+-- ============================================================================
+-- SOCIAL LAYER -- PATCH 1: TRANSFER MOVEMENT DESCRIPTIONS USE THE PERSON'S
+-- NAME, NOT THE VAULT'S NAME
+-- ----------------------------------------------------------------------------
+-- Bug found in production use: a friend transfer's default description read
+-- "Sent to <vault name>" / "Received from <vault name>" (e.g. "Sent to
+-- Nickel", where Nickel is the name the recipient gave their vault) instead
+-- of naming the PERSON on the other end. It also let a custom note silently
+-- REPLACE that description, so the movements list lost the "who" entirely
+-- whenever a note was set, and the note itself was then only ever visible
+-- as that overwritten description -- with no room left to show both.
+--
+-- Fix: the description is now unconditionally "Sent to {name}" / "Received
+-- from {name}" for a friend transfer (vault name is still used for an
+-- internal, same-owner transfer, where there is no "person" to name). A
+-- custom note is no longer folded into the description at all -- it lives
+-- ONLY in transfers.note, exactly as already designed, so the UI can (and
+-- now does, see the app-layer changes shipped alongside this patch) render
+-- both side by side instead of one overwriting the other.
+--
+-- create or replace, identical signature -- no client-side change needed
+-- for this function's callers.
+--
+-- Re-runnable: idempotent.
+-- After applying: Supabase -> Settings -> API -> Reload schema
+--                 (or: notify pgrst, 'reload schema';)
+-- ============================================================================
+
+create or replace function public.nomadix_send_transfer(
+    p_from_vault_id uuid,
+    p_to_vault_id   uuid,
+    p_amount        numeric,
+    p_fee           numeric default 0,
+    p_note          text    default null,
+    p_exchange_rate numeric default null,
+    p_client_token  text    default null
+) returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_uid        uuid := auth.uid();
+    v_from       public.vaults%rowtype;
+    v_to         public.vaults%rowtype;
+    v_existing   uuid;
+    v_kind       text;
+    v_rate       numeric := null;
+    v_eur_rate   numeric;
+    v_amount     numeric;
+    v_fee        numeric := round(coalesce(p_fee, 0), 2);
+    v_received   numeric;
+    v_amount_eur numeric;
+    v_balance    numeric;
+    v_group      uuid := gen_random_uuid();
+    v_transfer   uuid;
+    v_out_tx     uuid;
+    v_in_tx      uuid;
+    v_allowed    boolean := false;
+    v_desc_out   text;
+    v_desc_in    text;
+    v_sender_name    text;
+    v_recipient_name text;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+
+    v_amount := round(coalesce(p_amount, 0), 2);
+    if v_amount <= 0 then
+        raise exception 'Amount must be greater than zero'
+            using errcode = 'invalid_parameter_value';
+    end if;
+    if v_fee < 0 then
+        raise exception 'Fee cannot be negative'
+            using errcode = 'invalid_parameter_value';
+    end if;
+    if p_from_vault_id is null or p_to_vault_id is null then
+        raise exception 'Both vaults are required'
+            using errcode = 'invalid_parameter_value';
+    end if;
+    if p_from_vault_id = p_to_vault_id then
+        raise exception 'Source and destination vaults must be different'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    if p_client_token is not null then
+        select id into v_existing
+          from public.transfers
+         where sender_user_id = v_uid and client_token = p_client_token;
+        if found then
+            return v_existing;
+        end if;
+    end if;
+
+    perform 1
+       from public.vaults
+      where id in (p_from_vault_id, p_to_vault_id)
+      order by id
+      for update;
+
+    select * into v_from from public.vaults where id = p_from_vault_id;
+    select * into v_to   from public.vaults where id = p_to_vault_id;
+
+    if v_from.id is null or v_to.id is null then
+        raise exception 'Transfer not allowed' using errcode = 'insufficient_privilege';
+    end if;
+
+    ------------------------------------------------- source authorization
+    if not public.nomadix_can_access_vault(v_from.id, v_uid) then
+        raise exception 'Transfer not allowed' using errcode = 'insufficient_privilege';
+    end if;
+
+    -------------------------------------------- destination authorization
+    if public.nomadix_can_access_vault(v_to.id, v_uid) then
+        v_kind := 'internal';
+    else
+        v_kind := 'friend';
+
+        if not public.nomadix_are_friends(v_uid, v_to.user_id) then
+            raise exception 'Transfer not allowed' using errcode = 'insufficient_privilege';
+        end if;
+
+        if v_to.accepts_transfers_from = 'friends' then
+            v_allowed := true;
+        elsif v_to.accepts_transfers_from = 'allowlist' then
+            select exists (
+                select 1 from public.vault_transfer_allowlist a
+                 where a.vault_id = v_to.id and a.friend_user_id = v_uid
+            ) into v_allowed;
+        else
+            v_allowed := false;
+        end if;
+
+        if not v_allowed then
+            raise exception 'Transfer not allowed' using errcode = 'insufficient_privilege';
+        end if;
+    end if;
+
+    v_eur_rate := public.nomadix_usd_eur_rate(v_uid);
+
+    if v_from.currency = v_to.currency then
+        v_received := v_amount;
+        v_rate     := null;
+    else
+        v_rate := coalesce(nullif(p_exchange_rate, 0), v_eur_rate);
+        if v_rate <= 0 then
+            raise exception 'Invalid exchange rate'
+                using errcode = 'invalid_parameter_value';
+        end if;
+        if v_from.currency = 'USD' then
+            v_received := round(v_amount * v_rate, 2);
+        else
+            v_received := round(v_amount / v_rate, 2);
+        end if;
+    end if;
+
+    if v_received <= 0 then
+        raise exception 'Converted amount rounds to zero'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    v_amount_eur := case
+        when v_from.currency = 'EUR' then v_amount
+        else round(v_amount * coalesce(v_rate, v_eur_rate), 2)
+    end;
+
+    if v_kind = 'friend' then
+        select coalesce(sum(t.amount), 0) into v_balance
+          from public.transactions t
+         where t.vault_id = v_from.id;
+
+        if v_balance < (v_amount + v_fee) then
+            raise exception 'Insufficient funds in the source vault'
+                using errcode = 'check_violation';
+        end if;
+    end if;
+
+    select coalesce(nullif(trim(p.full_name), ''), '@' || p.username, 'A friend')
+      into v_sender_name
+      from public.users_profile p where p.id = v_uid;
+    select coalesce(nullif(trim(p.full_name), ''), '@' || p.username, 'A friend')
+      into v_recipient_name
+      from public.users_profile p where p.id = v_to.user_id;
+
+    -- FIXED: name the PERSON for a friend transfer, not their vault. A
+    -- custom note never overrides this anymore -- it is stored only in
+    -- transfers.note (below), never folded into the transaction description.
+    v_desc_out := case when v_kind = 'internal'
+                       then 'Transfer to ' || v_to.name
+                       else 'Sent to ' || v_recipient_name end;
+    v_desc_in  := case when v_kind = 'internal'
+                       then 'Transfer from ' || v_from.name
+                       else 'Received from ' || v_sender_name end;
+
+    insert into public.transfers (
+        group_id, kind, status,
+        sender_user_id, sender_vault_id, recipient_user_id, recipient_vault_id,
+        amount_sent, sent_currency, fee, amount_received, received_currency,
+        exchange_rate, amount_eur, note, reversible_until, client_token
+    ) values (
+        v_group, v_kind, 'completed',
+        v_uid, v_from.id, v_to.user_id, v_to.id,
+        v_amount, v_from.currency, v_fee, v_received, v_to.currency,
+        v_rate, v_amount_eur, nullif(trim(p_note), ''),
+        case when v_kind = 'friend' then now() + interval '24 hours' end,
+        p_client_token
+    )
+    returning id into v_transfer;
+
+    insert into public.transactions (
+        user_id, vault_id, amount, type, original_currency,
+        exchange_rate_at_time, category, description, date, status, fee,
+        transfer_id, transfer_leg, transfer_group_id
+    ) values (
+        v_uid, v_from.id, -(v_amount + v_fee), 'transfer', v_from.currency,
+        v_rate, null, v_desc_out, current_date, 'completed', v_fee,
+        v_transfer, 'out', v_group
+    )
+    returning id into v_out_tx;
+
+    insert into public.transactions (
+        user_id, vault_id, amount, type, original_currency,
+        exchange_rate_at_time, category, description, date, status, fee,
+        transfer_id, transfer_leg, transfer_group_id
+    ) values (
+        v_to.user_id, v_to.id, v_received, 'transfer', v_to.currency,
+        v_rate, null, v_desc_in, current_date, 'completed', 0,
+        v_transfer, 'in', v_group
+    )
+    returning id into v_in_tx;
+
+    update public.transfers
+       set out_transaction_id = v_out_tx,
+           in_transaction_id  = v_in_tx,
+           updated_at = now()
+     where id = v_transfer;
+
+    return v_transfer;
+end $$;
+
+revoke all on function public.nomadix_send_transfer(uuid, uuid, numeric, numeric, text, numeric, text)
+    from public, anon;
+grant execute on function public.nomadix_send_transfer(uuid, uuid, numeric, numeric, text, numeric, text)
+    to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Backfill: existing friend-transfer legs whose description is literally
+-- "Sent to <vault name>" / "Received from <vault name>" (the old bug) get
+-- rewritten to name the person instead. Only touches rows that still hold
+-- exactly the old auto-generated text -- a transaction whose description
+-- was hand-edited afterward, or that used a custom note, is left alone on
+-- purpose (we cannot safely tell an edited row from an old-format one).
+-- ---------------------------------------------------------------------------
+do $$
+begin
+    if to_regclass('public.transfers') is null or to_regclass('public.transactions') is null then
+        return;
+    end if;
+
+    update public.transactions t
+       set description = 'Sent to ' || coalesce(nullif(trim(p.full_name), ''), '@' || p.username, 'A friend')
+      from public.transfers tr
+      join public.users_profile p on p.id = tr.recipient_user_id
+     where t.id = tr.out_transaction_id
+       and tr.kind = 'friend'
+       and t.description = 'Sent to ' || (select v.name from public.vaults v where v.id = tr.recipient_vault_id);
+
+    update public.transactions t
+       set description = 'Received from ' || coalesce(nullif(trim(p.full_name), ''), '@' || p.username, 'A friend')
+      from public.transfers tr
+      join public.users_profile p on p.id = tr.sender_user_id
+     where t.id = tr.in_transaction_id
+       and tr.kind = 'friend'
+       and t.description = 'Received from ' || (select v.name from public.vaults v where v.id = tr.sender_vault_id);
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_reverse_transfer: same fix -- "Returned to/from {vault name}"
+-- becomes "Returned to/from {person's name}". A reversal is always between
+-- two different people (only 'friend' transfers are reversible), so there
+-- is no internal-transfer branch to preserve here.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_reverse_transfer(
+    p_transfer_id uuid,
+    p_note text default null
+) returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_uid      uuid := auth.uid();
+    v_orig     public.transfers%rowtype;
+    v_from     public.vaults%rowtype; -- original recipient vault -> reversal sender
+    v_to       public.vaults%rowtype; -- original sender vault -> reversal recipient
+    v_balance  numeric;
+    v_reversal uuid;
+    v_out_tx   uuid;
+    v_in_tx    uuid;
+    v_desc_out text;
+    v_desc_in  text;
+    v_returner_name text;
+    v_original_sender_name text;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+
+    select * into v_orig from public.transfers where id = p_transfer_id for update;
+    if not found then
+        raise exception 'Transfer not found' using errcode = 'no_data_found';
+    end if;
+
+    if v_orig.recipient_user_id <> v_uid then
+        raise exception 'Transfer not allowed' using errcode = 'insufficient_privilege';
+    end if;
+    if v_orig.kind <> 'friend' then
+        raise exception 'This transfer cannot be reversed'
+            using errcode = 'invalid_parameter_value';
+    end if;
+    if v_orig.status <> 'completed' then
+        raise exception 'This transfer was already returned' using errcode = '23505';
+    end if;
+    if v_orig.reversible_until is null or v_orig.reversible_until < now() then
+        raise exception 'The 24-hour return window has passed'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    perform 1 from public.vaults
+     where id in (v_orig.sender_vault_id, v_orig.recipient_vault_id)
+     order by id for update;
+
+    select * into v_from from public.vaults where id = v_orig.recipient_vault_id;
+    select * into v_to   from public.vaults where id = v_orig.sender_vault_id;
+
+    select coalesce(sum(t.amount), 0) into v_balance
+      from public.transactions t where t.vault_id = v_from.id;
+    if v_balance < v_orig.amount_received then
+        raise exception 'Insufficient funds to return this transfer'
+            using errcode = 'check_violation';
+    end if;
+
+    select coalesce(nullif(trim(p.full_name), ''), '@' || p.username, 'A friend')
+      into v_returner_name
+      from public.users_profile p where p.id = v_uid;
+    select coalesce(nullif(trim(p.full_name), ''), '@' || p.username, 'A friend')
+      into v_original_sender_name
+      from public.users_profile p where p.id = v_orig.sender_user_id;
+
+    v_desc_out := 'Returned to ' || v_original_sender_name;
+    v_desc_in  := 'Returned from ' || v_returner_name;
+
+    insert into public.transfers (
+        group_id, kind, status,
+        sender_user_id, sender_vault_id, recipient_user_id, recipient_vault_id,
+        amount_sent, sent_currency, fee, amount_received, received_currency,
+        exchange_rate, amount_eur, note, reversal_of_transfer_id
+    ) values (
+        v_orig.group_id, 'reversal', 'completed',
+        v_uid, v_from.id, v_orig.sender_user_id, v_to.id,
+        v_orig.amount_received, v_orig.received_currency,
+        0, v_orig.amount_sent, v_orig.sent_currency,
+        v_orig.exchange_rate, v_orig.amount_eur, nullif(trim(p_note), ''),
+        p_transfer_id
+    )
+    returning id into v_reversal;
+
+    insert into public.transactions (
+        user_id, vault_id, amount, type, original_currency,
+        exchange_rate_at_time, category, description, date, status, fee,
+        transfer_id, transfer_leg, transfer_group_id
+    ) values (
+        v_uid, v_from.id, -v_orig.amount_received, 'transfer', v_from.currency,
+        v_orig.exchange_rate, null, v_desc_out, current_date, 'completed', 0,
+        v_reversal, 'out', v_orig.group_id
+    ) returning id into v_out_tx;
+
+    insert into public.transactions (
+        user_id, vault_id, amount, type, original_currency,
+        exchange_rate_at_time, category, description, date, status, fee,
+        transfer_id, transfer_leg, transfer_group_id
+    ) values (
+        v_orig.sender_user_id, v_to.id, v_orig.amount_sent, 'transfer', v_to.currency,
+        v_orig.exchange_rate, null, v_desc_in, current_date, 'completed', 0,
+        v_reversal, 'in', v_orig.group_id
+    ) returning id into v_in_tx;
+
+    update public.transfers
+       set out_transaction_id = v_out_tx, in_transaction_id = v_in_tx, updated_at = now()
+     where id = v_reversal;
+
+    update public.transfers
+       set status = 'reversed', reversed_at = now(), reversed_by = v_uid, updated_at = now()
+     where id = p_transfer_id;
+
+    return v_reversal;
+exception
+    when unique_violation then
+        raise exception 'This transfer was already returned' using errcode = '23505';
+end $$;
+
+revoke all on function public.nomadix_reverse_transfer(uuid, text) from public, anon;
+grant execute on function public.nomadix_reverse_transfer(uuid, text) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Manual verification:
+-- select public.nomadix_send_transfer('<from-vault>'::uuid, '<to-vault>'::uuid, 10, 0, 'Para la cena');
+-- select description from public.transactions where transfer_id = '<the-returned-id>'::uuid;
+--   -- expect "Sent to <Full Name>" / "Received from <Full Name>", NOT a vault name and NOT "Para la cena"
+-- select note from public.transfers where id = '<the-returned-id>'::uuid;
+--   -- expect "Para la cena" -- the note survives, just no longer overwrites the description
+-- ============================================================================
