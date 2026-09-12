@@ -10,12 +10,16 @@ import {
     ArrowRight,
     PencilSimple,
     Trash,
+    UsersThree,
+    SignOut,
 } from "@phosphor-icons/react";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { useLanguageStore } from "@/stores/language-store";
 import { EditVaultModal } from "./edit-vault-modal";
+import { ShareVaultModal } from "@/components/social/share-vault-modal";
 
 interface VaultCardProps {
     id: string;
@@ -24,6 +28,8 @@ interface VaultCardProps {
     currency: string;
     type: "savings" | "checking" | "cash";
     isProtected?: boolean;
+    isShared?: boolean;
+    isOwner?: boolean;
     onClick?: () => void;
     onUpdated?: () => void;
 }
@@ -67,17 +73,23 @@ export function VaultCard({
     currency,
     type,
     isProtected = false,
+    isShared = false,
+    isOwner = true,
     onClick,
     onUpdated,
 }: VaultCardProps) {
     const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
+    const t = useLanguageStore((s) => s.t);
     const symbol = CURRENCY_SYMBOLS[currency] || "$";
     const gradient = typeGradients[type] || typeGradients.checking;
 
     const [menuOpen, setMenuOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [confirmLeave, setConfirmLeave] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
+    const [showShare, setShowShare] = useState(false);
+    const [isLeaving, setIsLeaving] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
     // Close menu on click outside
@@ -117,6 +129,20 @@ export function VaultCard({
         setConfirmDelete(false);
     };
 
+    const handleLeave = async () => {
+        setIsLeaving(true);
+        const { error } = await supabase.rpc("nomadix_leave_shared_vault", { p_vault_id: id });
+        setIsLeaving(false);
+        if (error) {
+            addToast(error.message || t("sharedVault.leaveFailed"), "error");
+        } else {
+            addToast(t("sharedVault.leftVault"));
+            onUpdated?.();
+        }
+        setMenuOpen(false);
+        setConfirmLeave(false);
+    };
+
     return (
         <>
             <motion.div
@@ -152,6 +178,15 @@ export function VaultCard({
                         </span>
                     </div>
                     <div className="flex items-center gap-1.5">
+                        {isShared && (
+                            <span
+                                title={t("sharedVault.badge")}
+                                className="flex items-center gap-1 rounded-full bg-card/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                            >
+                                <UsersThree size={11} weight="bold" />
+                                {t("sharedVault.badge")}
+                            </span>
+                        )}
                         {isProtected && (
                             <ShieldCheck
                                 size={16}
@@ -199,29 +234,7 @@ export function VaultCard({
                                         className="absolute right-0 top-8 z-50 w-40 overflow-hidden rounded-xl border border-border bg-card shadow-xl"
                                         onClick={(e) => e.stopPropagation()}
                                     >
-                                        {!confirmDelete ? (
-                                            <>
-                                                <button
-                                                    onClick={() => {
-                                                        setMenuOpen(false);
-                                                        setShowEdit(true);
-                                                    }}
-                                                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent"
-                                                >
-                                                    <PencilSimple size={15} />
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    onClick={() =>
-                                                        setConfirmDelete(true)
-                                                    }
-                                                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
-                                                >
-                                                    <Trash size={15} />
-                                                    Delete
-                                                </button>
-                                            </>
-                                        ) : (
+                                        {confirmDelete ? (
                                             <div className="p-3">
                                                 <p className="text-xs font-medium text-foreground/80">
                                                     Delete this vault?
@@ -250,6 +263,73 @@ export function VaultCard({
                                                     </button>
                                                 </div>
                                             </div>
+                                        ) : confirmLeave ? (
+                                            <div className="p-3">
+                                                <p className="text-xs font-medium text-foreground/80">
+                                                    {t("sharedVault.confirmLeave")}
+                                                </p>
+                                                <div className="mt-3 flex gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            setConfirmLeave(false);
+                                                            setMenuOpen(false);
+                                                        }}
+                                                        className="flex-1 rounded-lg border border-border py-1.5 text-xs font-medium text-foreground/70 hover:bg-accent"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        onClick={handleLeave}
+                                                        disabled={isLeaving}
+                                                        className="flex-1 rounded-lg bg-red-600 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                                                    >
+                                                        {t("sharedVault.leaveAction")}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    onClick={() => {
+                                                        setMenuOpen(false);
+                                                        setShowEdit(true);
+                                                    }}
+                                                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent"
+                                                >
+                                                    <PencilSimple size={15} />
+                                                    Edit
+                                                </button>
+                                                {isOwner && !isShared && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setMenuOpen(false);
+                                                            setShowShare(true);
+                                                        }}
+                                                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent"
+                                                    >
+                                                        <UsersThree size={15} />
+                                                        {t("sharedVault.shareAction")}
+                                                    </button>
+                                                )}
+                                                {isShared && (
+                                                    <button
+                                                        onClick={() => setConfirmLeave(true)}
+                                                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent"
+                                                    >
+                                                        <SignOut size={15} />
+                                                        {t("sharedVault.leaveAction")}
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() =>
+                                                        setConfirmDelete(true)
+                                                    }
+                                                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                                                >
+                                                    <Trash size={15} />
+                                                    Delete
+                                                </button>
+                                            </>
                                         )}
                                     </motion.div>
                                 )}
@@ -300,6 +380,15 @@ export function VaultCard({
                     is_protected: isProtected,
                     balance,
                 }}
+            />
+
+            {/* Share Modal */}
+            <ShareVaultModal
+                isOpen={showShare}
+                onClose={() => setShowShare(false)}
+                vaultId={id}
+                vaultName={name}
+                onShared={() => onUpdated?.()}
             />
         </>
     );

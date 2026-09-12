@@ -1935,9 +1935,18 @@ create table if not exists public.transfers (
         check (status in ('completed','reversed')),
 
     sender_user_id     uuid not null references auth.users(id) on delete cascade,
-    sender_vault_id    uuid not null references public.vaults(id) on delete restrict,
+    -- Nullable + ON DELETE SET NULL, not RESTRICT: a vault that was ever
+    -- part of a transfer must not become permanently undeletable. The
+    -- ledger row itself is what's permanent -- amount_sent/sent_currency
+    -- etc. are already frozen on it -- so losing the FK loses nothing but
+    -- the ability to re-look-up the vault's current name/icon after it is
+    -- gone. nomadix_guard_vault_delete still refuses the delete while a
+    -- transfer through this vault is inside its reversible window or
+    -- while it has a live co-owner; once neither is true, deleting the
+    -- vault is safe and this is what makes that actually possible.
+    sender_vault_id    uuid references public.vaults(id) on delete set null,
     recipient_user_id  uuid not null references auth.users(id) on delete cascade,
-    recipient_vault_id uuid not null references public.vaults(id) on delete restrict,
+    recipient_vault_id uuid references public.vaults(id) on delete set null,
 
     -- Unsigned magnitudes; the sign lives only in public.transactions (same
     -- convention as public.subscriptions.amount).
@@ -2771,4 +2780,1599 @@ create trigger vaults_guard_delete_trg
 -- 4) Deleting one leg of a friend transfer is refused; an internal
 --    transfer's legs cascade together:
 -- delete from public.transactions where id = '<one-leg-id>'::uuid; -- expect error
+-- ============================================================================
+
+-- ============================================================================
+-- SOCIAL LAYER -- PHASE 3: SHARED VAULTS (RLS WIDENING)
+-- ----------------------------------------------------------------------------
+-- Full design rationale: docs/social-layer-sql-design.md
+--
+-- This is the one phase that widens RLS on tables this file does not own
+-- (vaults, transactions). Everything below is ADDITIVE: new permissive
+-- policies OR into what already exists, plus two RESTRICTIVE policies that
+-- close a pre-existing hole (any authenticated user could insert a
+-- transactions row against a stranger's vault_id). Nothing is dropped.
+--
+-- MANDATORY BEFORE APPLYING: run this audit in the SQL editor and read the
+-- output. It decides whether the additive path below is safe.
+--
+--   select tablename, policyname, permissive, roles, cmd, qual, with_check
+--     from pg_policies
+--    where schemaname = 'public' and tablename in ('vaults','transactions','users_profile')
+--    order by tablename, policyname;
+--
+--   select relname, relrowsecurity, relforcerowsecurity
+--     from pg_class
+--    where relname in ('vaults','transactions') and relnamespace = 'public'::regnamespace;
+--
+-- Two things must hold, or STOP and read docs/social-layer-sql-design.md §3
+-- before continuing:
+--   1. every existing policy on those tables is 'PERMISSIVE'
+--   2. relforcerowsecurity = false on both vaults and transactions
+--      (otherwise the SECURITY DEFINER helpers below stop bypassing RLS
+--       and silently deny legitimate access instead of granting it)
+--
+-- Re-runnable: every statement is idempotent.
+-- After applying: Supabase -> Settings -> API -> Reload schema
+--                 (or: notify pgrst, 'reload schema';)
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- _nomadix_policy_backup: snapshot of the audit above, so the exact old
+-- policy definitions survive even if someone later drops them by hand.
+-- No RLS policies at all -- only the SQL-editor superuser role can read it.
+-- ---------------------------------------------------------------------------
+create table if not exists public._nomadix_policy_backup (
+    captured_at timestamptz not null default now(),
+    schemaname text not null,
+    tablename  text not null,
+    policyname text not null,
+    permissive text,
+    roles      text,
+    cmd        text,
+    qual       text,
+    with_check text,
+    primary key (tablename, policyname, captured_at)
+);
+
+alter table public._nomadix_policy_backup enable row level security;
+
+do $$
+begin
+    if to_regclass('public.vaults') is not null then
+        insert into public._nomadix_policy_backup
+            (schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check)
+        select schemaname, tablename, policyname, permissive, roles::text, cmd, qual, with_check
+          from pg_policies
+         where schemaname = 'public' and tablename in ('vaults','transactions','users_profile')
+        on conflict (tablename, policyname, captured_at) do nothing;
+    end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- vault_members: shared vaults, capped at exactly 2 users declaratively.
+-- Slot 1 is always the owner, slot 2 the single co-owner. The two partial
+-- unique indexes below -- not a counting trigger -- are what enforce the
+-- cap, atomically, even under concurrent invites.
+-- ---------------------------------------------------------------------------
+create table if not exists public.vault_members (
+    id uuid primary key default gen_random_uuid(),
+    vault_id uuid not null references public.vaults(id) on delete cascade,
+    user_id  uuid not null references auth.users(id) on delete cascade,
+
+    member_slot smallint not null check (member_slot in (1, 2)),
+    role text not null default 'member' check (role in ('owner','member')),
+    status text not null default 'invited'
+        check (status in ('invited','active','declined','left','removed')),
+
+    invited_by uuid references auth.users(id) on delete set null,
+    invited_at timestamptz not null default now(),
+    joined_at  timestamptz,
+    left_at    timestamptz,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+
+    constraint vault_members_owner_slot
+        check (role <> 'owner' or member_slot = 1),
+    -- One-way implication, not an iff: an 'active' row must have joined_at
+    -- set, but a 'left'/'declined'/'removed' row keeps its historical
+    -- joined_at (or lack of one) rather than being forced to clear it.
+    constraint vault_members_joined_shape
+        check (status <> 'active' or joined_at is not null)
+);
+
+-- Idempotency #1: the same person cannot be invited twice, and cannot hold
+-- two live rows on one vault.
+create unique index if not exists vault_members_live_user_uidx
+    on public.vault_members (vault_id, user_id)
+    where status in ('invited','active');
+
+-- Idempotency #2: THIS enforces "exactly 2 users". Only two slots exist and
+-- only live rows hold one, so a third invite has nowhere to go.
+create unique index if not exists vault_members_live_slot_uidx
+    on public.vault_members (vault_id, member_slot)
+    where status in ('invited','active');
+
+create index if not exists vault_members_user_idx
+    on public.vault_members (user_id, status);
+
+-- ---------------------------------------------------------------------------
+-- nomadix_is_vault_member: reads public.vault_members ONLY -- never
+-- public.vaults. This is what the vaults SELECT policy below calls; a
+-- policy on vaults whose expression reads vaults through RLS again raises
+-- 42P17 "infinite recursion detected in policy for relation vaults".
+-- SECURITY DEFINER so it bypasses vault_members' own RLS (which itself
+-- calls this function) -- that mutual reference is only safe because the
+-- definer read is not RLS-checked.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_is_vault_member(
+    p_vault_id uuid,
+    p_user_id  uuid default auth.uid()
+) returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+    select p_user_id is not null
+       and exists (
+           select 1 from public.vault_members m
+            where m.vault_id = p_vault_id
+              and m.user_id  = p_user_id
+              and m.status   = 'active'
+       );
+$$;
+
+revoke all on function public.nomadix_is_vault_member(uuid, uuid) from public, anon;
+grant execute on function public.nomadix_is_vault_member(uuid, uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_can_access_vault: reads public.vaults AND public.vault_members.
+-- True when the caller owns the vault OR is an active co-owner. Because it
+-- reads public.vaults, it MUST NOT be used in any policy ON public.vaults --
+-- that is exactly the recursion the split into two helpers avoids. It is
+-- used in the transactions policies below, and to widen nomadix_send_transfer
+-- so a co-owner can transact from a shared vault.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_can_access_vault(
+    p_vault_id uuid,
+    p_user_id  uuid default auth.uid()
+) returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+    select p_user_id is not null
+       and (
+           exists (select 1 from public.vaults v
+                    where v.id = p_vault_id and v.user_id = p_user_id)
+        or exists (select 1 from public.vault_members m
+                    where m.vault_id = p_vault_id
+                      and m.user_id  = p_user_id
+                      and m.status   = 'active')
+       );
+$$;
+
+revoke all on function public.nomadix_can_access_vault(uuid, uuid) from public, anon;
+grant execute on function public.nomadix_can_access_vault(uuid, uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- RLS on vault_members itself: my own rows, plus the partner's row on a
+-- vault I am an active member of. The second clause deliberately uses the
+-- DEFINER helper -- an inline self-referencing EXISTS here is exactly the
+-- expression that raises 42P17 on vault_members.
+-- ---------------------------------------------------------------------------
+alter table public.vault_members enable row level security;
+
+do $$
+begin
+    begin
+        create policy "vault_members_select" on public.vault_members
+        for select to authenticated
+        using (user_id = auth.uid()
+               or public.nomadix_is_vault_member(vault_id, auth.uid()));
+    exception when duplicate_object then null; end;
+end $$;
+
+drop trigger if exists vault_members_touch_trg on public.vault_members;
+create trigger vault_members_touch_trg
+    before update on public.vault_members
+    for each row execute function public.nomadix_touch_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- vaults / transactions: additive RLS. Nothing pre-existing is dropped.
+-- Reversal, if ever needed: drop the four named policies below.
+-- ---------------------------------------------------------------------------
+do $$
+begin
+    if to_regclass('public.vaults') is null then
+        raise notice 'vaults missing; skipping shared-vault RLS';
+        return;
+    end if;
+
+    alter table public.vaults enable row level security;
+
+    -- Widen SELECT: an active co-owner can read the vault row. ORs with
+    -- whatever the dashboard's existing policy already grants the owner.
+    begin
+        create policy "vaults_select_shared_member" on public.vaults
+        as permissive for select to authenticated
+        using (public.nomadix_is_vault_member(id, auth.uid()));
+    exception when duplicate_object then null; end;
+
+    -- Deliberately NO update/delete policy for members here: renaming,
+    -- recoloring, closing and deleting a shared vault stay owner-only.
+end $$;
+
+do $$
+begin
+    if to_regclass('public.transactions') is null then
+        raise notice 'transactions missing; skipping shared-vault RLS';
+        return;
+    end if;
+
+    alter table public.transactions enable row level security;
+
+    -- Widen SELECT/UPDATE/DELETE to rows in a vault the caller co-owns,
+    -- including rows whose user_id is the partner's.
+    begin
+        create policy "transactions_select_shared_vault" on public.transactions
+        as permissive for select to authenticated
+        using (public.nomadix_can_access_vault(vault_id, auth.uid()));
+    exception when duplicate_object then null; end;
+
+    begin
+        create policy "transactions_update_shared_vault" on public.transactions
+        as permissive for update to authenticated
+        using      (public.nomadix_can_access_vault(vault_id, auth.uid()))
+        with check (public.nomadix_can_access_vault(vault_id, auth.uid()));
+    exception when duplicate_object then null; end;
+
+    begin
+        create policy "transactions_delete_shared_vault" on public.transactions
+        as permissive for delete to authenticated
+        using (public.nomadix_can_access_vault(vault_id, auth.uid()));
+    exception when duplicate_object then null; end;
+
+    -- RESTRICTIVE (ANDed with every permissive policy): closes a hole that
+    -- exists today regardless of this feature -- with only the dashboard's
+    -- `auth.uid() = user_id` on INSERT, any authenticated user can insert a
+    -- transactions row pointing at a stranger's vault_id. This is exactly
+    -- the guard shared vaults also need, so one policy does both jobs.
+    -- Verify before shipping that nomadix_can_access_vault is true on every
+    -- existing insert path (create-vault-modal.tsx, new-transaction-modal.tsx,
+    -- onboarding/page.tsx -- all insert against the caller's own vault, so
+    -- all three remain unaffected). pg_cron runs nomadix_charge_occurrence
+    -- as `postgres` via a SECURITY DEFINER function, bypassing RLS entirely,
+    -- so the subscription charger is unaffected too.
+    begin
+        create policy "transactions_insert_must_own_vault" on public.transactions
+        as restrictive for insert to authenticated
+        with check (public.nomadix_can_access_vault(vault_id, auth.uid()));
+    exception when duplicate_object then null; end;
+
+    begin
+        create policy "transactions_update_must_own_vault" on public.transactions
+        as restrictive for update to authenticated
+        with check (public.nomadix_can_access_vault(vault_id, auth.uid()));
+    exception when duplicate_object then null; end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- vaults: is_shared/shared_at, denormalized from vault_members and kept
+-- honest by a trigger. Justification: the vault list renders on every
+-- dashboard load; without this, every render needs a vault_members join or
+-- a second round trip for what is pure presentation (a "Shared" badge).
+-- ---------------------------------------------------------------------------
+do $$
+begin
+    if to_regclass('public.vaults') is null then return; end if;
+    alter table public.vaults
+        add column if not exists is_shared boolean not null default false,
+        add column if not exists shared_at timestamptz;
+end $$;
+
+create or replace function public.nomadix_sync_vault_is_shared()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_vault uuid := coalesce(new.vault_id, old.vault_id);
+    v_active_count integer;
+begin
+    select count(*) into v_active_count
+      from public.vault_members m
+     where m.vault_id = v_vault and m.status = 'active';
+
+    update public.vaults v
+       set is_shared = v_active_count > 1,
+           shared_at = case
+               when v_active_count > 1 and v.shared_at is null then now()
+               when v_active_count <= 1 then null
+               else v.shared_at end,
+           updated_at = now()
+     where v.id = v_vault;
+
+    return coalesce(new, old);
+end $$;
+
+drop trigger if exists vault_members_sync_shared_trg on public.vault_members;
+create trigger vault_members_sync_shared_trg
+    after insert or update or delete on public.vault_members
+    for each row execute function public.nomadix_sync_vault_is_shared();
+
+-- ---------------------------------------------------------------------------
+-- nomadix_guard_vault_delete: extended (create or replace, same name as
+-- Phase 2) to also refuse deleting a vault that still has a live co-owner,
+-- and -- found empirically while testing this phase -- a vault that was
+-- EVER shared and still carries an 'internal' transfer whose other leg now
+-- lives solely in a different person's vault. Without this second check,
+-- deleting vault A cascades (via transactions.vault_id ON DELETE CASCADE)
+-- to delete A's leg of that internal transfer, which the transfer-leg
+-- guard then treats as "delete my own internal transfer" and cascades
+-- again to silently delete the SIBLING leg sitting in vault B -- destroying
+-- transaction history in another user's vault as a side effect of a
+-- delete they never asked for or saw. The Phase 2 reversible-transfer
+-- check is preserved verbatim.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_guard_vault_delete()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+    if exists (
+        select 1 from public.vault_members m
+         where m.vault_id = OLD.id
+           and m.status in ('active','invited')
+           and m.user_id <> OLD.user_id
+    ) then
+        raise exception 'This vault is shared -- ask the co-owner to leave first, or dissolve it'
+            using errcode = 'foreign_key_violation';
+    end if;
+
+    if exists (
+        select 1 from public.transfers t
+         where (t.sender_vault_id = OLD.id or t.recipient_vault_id = OLD.id)
+           and t.status = 'completed'
+           and t.kind = 'friend'
+           and t.reversible_until is not null
+           and t.reversible_until > now()
+    ) then
+        raise exception 'This vault has a transfer that can still be returned -- wait 24 hours or resolve it first'
+            using errcode = 'foreign_key_violation';
+    end if;
+
+    if exists (
+        select 1 from public.transfers t
+          join public.vaults ov
+            on ov.id = case when t.sender_vault_id = OLD.id
+                            then t.recipient_vault_id else t.sender_vault_id end
+         where (t.sender_vault_id = OLD.id or t.recipient_vault_id = OLD.id)
+           and t.kind = 'internal'
+           and ov.user_id <> OLD.user_id
+    ) then
+        raise exception 'This vault has shared transfer history with a vault owned by someone else -- it cannot be deleted'
+            using errcode = 'foreign_key_violation';
+    end if;
+
+    return OLD;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_send_transfer: extended (create or replace, identical signature)
+-- to authorize via nomadix_can_access_vault instead of the Phase 2
+-- owner-only nomadix_owns_vault, so an active co-owner can send FROM a
+-- shared vault, and a transfer INTO a shared vault I co-own is 'internal'
+-- (no reversal window, no friendship check) just like it already is for a
+-- vault I own outright. Every other line is unchanged from Phase 2.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_send_transfer(
+    p_from_vault_id uuid,
+    p_to_vault_id   uuid,
+    p_amount        numeric,
+    p_fee           numeric default 0,
+    p_note          text    default null,
+    p_exchange_rate numeric default null,
+    p_client_token  text    default null
+) returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_uid        uuid := auth.uid();
+    v_from       public.vaults%rowtype;
+    v_to         public.vaults%rowtype;
+    v_existing   uuid;
+    v_kind       text;
+    v_rate       numeric := null;
+    v_eur_rate   numeric;
+    v_amount     numeric;
+    v_fee        numeric := round(coalesce(p_fee, 0), 2);
+    v_received   numeric;
+    v_amount_eur numeric;
+    v_balance    numeric;
+    v_group      uuid := gen_random_uuid();
+    v_transfer   uuid;
+    v_out_tx     uuid;
+    v_in_tx      uuid;
+    v_allowed    boolean := false;
+    v_desc_out   text;
+    v_desc_in    text;
+    v_sender_name text;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+
+    v_amount := round(coalesce(p_amount, 0), 2);
+    if v_amount <= 0 then
+        raise exception 'Amount must be greater than zero'
+            using errcode = 'invalid_parameter_value';
+    end if;
+    if v_fee < 0 then
+        raise exception 'Fee cannot be negative'
+            using errcode = 'invalid_parameter_value';
+    end if;
+    if p_from_vault_id is null or p_to_vault_id is null then
+        raise exception 'Both vaults are required'
+            using errcode = 'invalid_parameter_value';
+    end if;
+    if p_from_vault_id = p_to_vault_id then
+        raise exception 'Source and destination vaults must be different'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    if p_client_token is not null then
+        select id into v_existing
+          from public.transfers
+         where sender_user_id = v_uid and client_token = p_client_token;
+        if found then
+            return v_existing;
+        end if;
+    end if;
+
+    perform 1
+       from public.vaults
+      where id in (p_from_vault_id, p_to_vault_id)
+      order by id
+      for update;
+
+    select * into v_from from public.vaults where id = p_from_vault_id;
+    select * into v_to   from public.vaults where id = p_to_vault_id;
+
+    if v_from.id is null or v_to.id is null then
+        raise exception 'Transfer not allowed' using errcode = 'insufficient_privilege';
+    end if;
+
+    ------------------------------------------------- source authorization
+    -- Widened in Phase 3: an active co-owner may send from a shared vault.
+    if not public.nomadix_can_access_vault(v_from.id, v_uid) then
+        raise exception 'Transfer not allowed' using errcode = 'insufficient_privilege';
+    end if;
+
+    -------------------------------------------- destination authorization
+    if public.nomadix_can_access_vault(v_to.id, v_uid) then
+        -- A vault I own outright OR co-own: internal, no reversal window.
+        v_kind := 'internal';
+    else
+        v_kind := 'friend';
+
+        if not public.nomadix_are_friends(v_uid, v_to.user_id) then
+            raise exception 'Transfer not allowed' using errcode = 'insufficient_privilege';
+        end if;
+
+        if v_to.accepts_transfers_from = 'friends' then
+            v_allowed := true;
+        elsif v_to.accepts_transfers_from = 'allowlist' then
+            select exists (
+                select 1 from public.vault_transfer_allowlist a
+                 where a.vault_id = v_to.id and a.friend_user_id = v_uid
+            ) into v_allowed;
+        else
+            v_allowed := false;
+        end if;
+
+        if not v_allowed then
+            raise exception 'Transfer not allowed' using errcode = 'insufficient_privilege';
+        end if;
+    end if;
+
+    v_eur_rate := public.nomadix_usd_eur_rate(v_uid);
+
+    if v_from.currency = v_to.currency then
+        v_received := v_amount;
+        v_rate     := null;
+    else
+        v_rate := coalesce(nullif(p_exchange_rate, 0), v_eur_rate);
+        if v_rate <= 0 then
+            raise exception 'Invalid exchange rate'
+                using errcode = 'invalid_parameter_value';
+        end if;
+        if v_from.currency = 'USD' then
+            v_received := round(v_amount * v_rate, 2);
+        else
+            v_received := round(v_amount / v_rate, 2);
+        end if;
+    end if;
+
+    if v_received <= 0 then
+        raise exception 'Converted amount rounds to zero'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    v_amount_eur := case
+        when v_from.currency = 'EUR' then v_amount
+        else round(v_amount * coalesce(v_rate, v_eur_rate), 2)
+    end;
+
+    if v_kind = 'friend' then
+        select coalesce(sum(t.amount), 0) into v_balance
+          from public.transactions t
+         where t.vault_id = v_from.id;
+
+        if v_balance < (v_amount + v_fee) then
+            raise exception 'Insufficient funds in the source vault'
+                using errcode = 'check_violation';
+        end if;
+    end if;
+
+    select coalesce(nullif(trim(p.full_name), ''), '@' || p.username, 'A friend')
+      into v_sender_name
+      from public.users_profile p where p.id = v_uid;
+
+    v_desc_out := coalesce(nullif(trim(p_note), ''),
+                  case when v_kind = 'internal'
+                       then 'Transfer to ' || v_to.name
+                       else 'Sent to ' || v_to.name end);
+    v_desc_in  := coalesce(nullif(trim(p_note), ''),
+                  case when v_kind = 'internal'
+                       then 'Transfer from ' || v_from.name
+                       else 'Received from ' || v_sender_name end);
+
+    insert into public.transfers (
+        group_id, kind, status,
+        sender_user_id, sender_vault_id, recipient_user_id, recipient_vault_id,
+        amount_sent, sent_currency, fee, amount_received, received_currency,
+        exchange_rate, amount_eur, note, reversible_until, client_token
+    ) values (
+        v_group, v_kind, 'completed',
+        v_uid, v_from.id, v_to.user_id, v_to.id,
+        v_amount, v_from.currency, v_fee, v_received, v_to.currency,
+        v_rate, v_amount_eur, nullif(trim(p_note), ''),
+        case when v_kind = 'friend' then now() + interval '24 hours' end,
+        p_client_token
+    )
+    returning id into v_transfer;
+
+    insert into public.transactions (
+        user_id, vault_id, amount, type, original_currency,
+        exchange_rate_at_time, category, description, date, status, fee,
+        transfer_id, transfer_leg, transfer_group_id
+    ) values (
+        v_uid, v_from.id, -(v_amount + v_fee), 'transfer', v_from.currency,
+        v_rate, null, v_desc_out, current_date, 'completed', v_fee,
+        v_transfer, 'out', v_group
+    )
+    returning id into v_out_tx;
+
+    insert into public.transactions (
+        user_id, vault_id, amount, type, original_currency,
+        exchange_rate_at_time, category, description, date, status, fee,
+        transfer_id, transfer_leg, transfer_group_id
+    ) values (
+        v_to.user_id, v_to.id, v_received, 'transfer', v_to.currency,
+        v_rate, null, v_desc_in, current_date, 'completed', 0,
+        v_transfer, 'in', v_group
+    )
+    returning id into v_in_tx;
+
+    update public.transfers
+       set out_transaction_id = v_out_tx,
+           in_transaction_id  = v_in_tx,
+           updated_at = now()
+     where id = v_transfer;
+
+    return v_transfer;
+end $$;
+
+revoke all on function public.nomadix_send_transfer(uuid, uuid, numeric, numeric, text, numeric, text)
+    from public, anon;
+grant execute on function public.nomadix_send_transfer(uuid, uuid, numeric, numeric, text, numeric, text)
+    to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_share_vault: owner-only. Backfills the owner's own slot-1 row
+-- (vaults created before this feature have no vault_members row at all),
+-- then invites the friend into slot 2. Idempotency comes entirely from
+-- vault_members_live_slot_uidx / vault_members_live_user_uidx -- a second
+-- invite hits the index and its id is returned instead of erroring.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_share_vault(
+    p_vault_id uuid,
+    p_friend_id uuid
+) returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_uid uuid := auth.uid();
+    v_vault public.vaults%rowtype;
+    v_existing uuid;
+    v_member_id uuid;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+
+    select * into v_vault from public.vaults where id = p_vault_id for update;
+    if not found or v_vault.user_id <> v_uid then
+        raise exception 'Vault not found' using errcode = 'no_data_found';
+    end if;
+    if p_friend_id is null or p_friend_id = v_uid then
+        raise exception 'Invalid friend' using errcode = 'invalid_parameter_value';
+    end if;
+    if not public.nomadix_are_friends(v_uid, p_friend_id) then
+        raise exception 'Not friends' using errcode = 'insufficient_privilege';
+    end if;
+
+    select id into v_existing
+      from public.vault_members
+     where vault_id = p_vault_id and user_id = p_friend_id
+       and status in ('invited','active');
+    if found then
+        return v_existing;
+    end if;
+
+    insert into public.vault_members (vault_id, user_id, member_slot, role, status, joined_at)
+    values (p_vault_id, v_uid, 1, 'owner', 'active', now())
+    on conflict do nothing;
+
+    insert into public.vault_members (vault_id, user_id, member_slot, role, status, invited_by)
+    values (p_vault_id, p_friend_id, 2, 'member', 'invited', v_uid)
+    returning id into v_member_id;
+
+    return v_member_id;
+exception
+    when unique_violation then
+        raise exception 'This vault already has a co-owner or a pending invite'
+            using errcode = '23505';
+end $$;
+
+revoke all on function public.nomadix_share_vault(uuid, uuid) from public, anon;
+grant execute on function public.nomadix_share_vault(uuid, uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_respond_vault_share: the invitee accepts or declines. Idempotent
+-- per state -- accepting an already-active membership is a no-op.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_respond_vault_share(
+    p_member_id uuid,
+    p_action text
+) returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_uid uuid := auth.uid();
+    v_row public.vault_members%rowtype;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+    if p_action not in ('accept','decline') then
+        raise exception 'Unknown action' using errcode = 'invalid_parameter_value';
+    end if;
+
+    select * into v_row from public.vault_members where id = p_member_id for update;
+    if not found or v_row.user_id <> v_uid then
+        raise exception 'Invite not found' using errcode = 'no_data_found';
+    end if;
+
+    if v_row.status <> 'invited' then
+        return; -- idempotent no-op
+    end if;
+
+    if p_action = 'accept' then
+        update public.vault_members
+           set status = 'active', joined_at = now(), updated_at = now()
+         where id = p_member_id;
+    else
+        update public.vault_members
+           set status = 'declined', updated_at = now()
+         where id = p_member_id;
+    end if;
+end $$;
+
+revoke all on function public.nomadix_respond_vault_share(uuid, text) from public, anon;
+grant execute on function public.nomadix_respond_vault_share(uuid, text) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_leave_shared_vault: the non-owner leaving keeps the vault with
+-- the owner and reassigns the leaver's own transactions to the owner (the
+-- money stays in the vault; deleting those rows would corrupt the
+-- balance). The owner leaving transfers ownership to the co-owner instead.
+-- Both branches refuse while a transfer into/out of the vault is still
+-- inside its 24h reversal window, same as deleting the vault outright.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_leave_shared_vault(p_vault_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_uid uuid := auth.uid();
+    v_vault public.vaults%rowtype;
+    v_my_row public.vault_members%rowtype;
+    v_other_row public.vault_members%rowtype;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+
+    select * into v_vault from public.vaults where id = p_vault_id for update;
+    if not found then
+        raise exception 'Vault not found' using errcode = 'no_data_found';
+    end if;
+
+    select * into v_my_row from public.vault_members
+     where vault_id = p_vault_id and user_id = v_uid and status = 'active'
+     for update;
+    if not found then
+        raise exception 'You are not a member of this vault' using errcode = 'insufficient_privilege';
+    end if;
+
+    if exists (
+        select 1 from public.transfers t
+         where (t.sender_vault_id = p_vault_id or t.recipient_vault_id = p_vault_id)
+           and t.status = 'completed'
+           and t.kind = 'friend'
+           and t.reversible_until is not null
+           and t.reversible_until > now()
+    ) then
+        raise exception 'A transfer involving this vault can still be returned -- try again after the 24-hour window'
+            using errcode = 'foreign_key_violation';
+    end if;
+
+    if v_my_row.role = 'member' then
+        update public.vault_members
+           set status = 'left', left_at = now(), updated_at = now()
+         where id = v_my_row.id;
+
+        update public.transactions
+           set user_id = v_vault.user_id
+         where vault_id = p_vault_id and user_id = v_uid;
+    else
+        select * into v_other_row from public.vault_members
+         where vault_id = p_vault_id and user_id <> v_uid and status = 'active'
+         for update;
+        if not found then
+            raise exception 'No co-owner to transfer this vault to -- delete it instead'
+                using errcode = 'invalid_parameter_value';
+        end if;
+
+        update public.vaults set user_id = v_other_row.user_id, updated_at = now()
+         where id = p_vault_id;
+
+        update public.vault_members
+           set role = 'owner', member_slot = 1, updated_at = now()
+         where id = v_other_row.id;
+
+        update public.vault_members
+           set status = 'left', left_at = now(), updated_at = now()
+         where id = v_my_row.id;
+
+        update public.transactions
+           set user_id = v_other_row.user_id
+         where vault_id = p_vault_id and user_id = v_uid;
+    end if;
+end $$;
+
+revoke all on function public.nomadix_leave_shared_vault(uuid) from public, anon;
+grant execute on function public.nomadix_leave_shared_vault(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Manual verification (run as two different authenticated test users, A and
+-- B, already friends per Phase 1):
+--
+-- 1) A shares a vault, B accepts:
+-- select public.nomadix_share_vault('<A-vault>'::uuid, '<B-uuid>'::uuid) as mid \gset
+-- select public.nomadix_respond_vault_share(:'mid'::uuid, 'accept');  -- run as B
+--
+-- 2) B can now see and transact in A's vault:
+-- select * from public.vaults where id = '<A-vault>'::uuid;           -- run as B, expect 1 row
+-- insert into public.transactions (user_id, vault_id, amount, type, original_currency)
+--   values ('<B-uuid>'::uuid, '<A-vault>'::uuid, -5, 'expense', 'EUR'); -- run as B, expect success
+--
+-- 3) A stranger cannot insert into that vault:
+-- insert into public.transactions (user_id, vault_id, amount, type, original_currency)
+--   values ('<stranger-uuid>'::uuid, '<A-vault>'::uuid, -5, 'expense', 'EUR'); -- expect RLS denial
+--
+-- 4) B leaves; A keeps the vault and B's transactions:
+-- select public.nomadix_leave_shared_vault('<A-vault>'::uuid);  -- run as B
+-- select is_shared from public.vaults where id = '<A-vault>'::uuid;  -- expect false
+-- ============================================================================
+
+-- ============================================================================
+-- SOCIAL LAYER -- PHASE 4: SPLITS + SETTLE-UP
+-- ----------------------------------------------------------------------------
+-- Full design rationale: docs/social-layer-sql-design.md
+--
+-- Splits an expense/income in a NON-shared vault with a friend, accumulates
+-- a signed net balance per friend pair in frozen EUR, and settles it with a
+-- real transfer via the same nomadix_send_transfer used for everything else
+-- -- settle-up gets no privileged bypass of the recipient's privacy
+-- settings. "Settled" is derived from settlement_allocations, never stored
+-- on the share row, so a partial payment needs no row splitting.
+--
+-- Re-runnable: every statement is idempotent.
+-- After applying: Supabase -> Settings -> API -> Reload schema
+--                 (or: notify pgrst, 'reload schema';)
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- transaction_shares: one row per (expense/income, friend) split.
+-- pair_low/pair_high/creditor_user_id are STORED generated columns so the
+-- net-balance view below is a plain GROUP BY with no CASE in the join keys.
+-- ---------------------------------------------------------------------------
+create table if not exists public.transaction_shares (
+    id uuid primary key default gen_random_uuid(),
+    transaction_id uuid not null references public.transactions(id) on delete cascade,
+
+    owner_user_id        uuid not null references auth.users(id) on delete cascade,
+    counterparty_user_id uuid not null references auth.users(id) on delete cascade,
+
+    direction text not null
+        check (direction in ('owed_to_owner','owed_by_owner')),
+    split_mode text not null check (split_mode in ('equal','amount','percent')),
+    split_value numeric(14,4),
+
+    total_amount     numeric(14,2) not null check (total_amount > 0),
+    share_amount     numeric(14,2) not null check (share_amount >= 0),
+    currency         text not null check (currency in ('EUR','USD')),
+    exchange_rate    numeric,
+    share_amount_eur numeric(14,2) not null check (share_amount_eur >= 0),
+
+    status text not null default 'active'
+        check (status in ('active','void','rejected')),
+    note text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+
+    pair_low  uuid generated always as
+        (case when owner_user_id < counterparty_user_id
+              then owner_user_id else counterparty_user_id end) stored,
+    pair_high uuid generated always as
+        (case when owner_user_id < counterparty_user_id
+              then counterparty_user_id else owner_user_id end) stored,
+    creditor_user_id uuid generated always as
+        (case when direction = 'owed_to_owner'
+              then owner_user_id else counterparty_user_id end) stored,
+
+    constraint transaction_shares_distinct_parties
+        check (owner_user_id <> counterparty_user_id),
+    constraint transaction_shares_split_value
+        check ((split_mode  = 'equal'  and split_value is null)
+            or (split_mode  = 'amount' and split_value > 0)
+            or (split_mode  = 'percent' and split_value > 0 and split_value <= 100)),
+    constraint transaction_shares_within_total
+        check (share_amount <= total_amount),
+
+    -- Idempotency key: ONE share per (transaction, friend). Re-submitting
+    -- the split sheet is an upsert, not a duplicate debt.
+    unique (transaction_id, counterparty_user_id)
+);
+
+create index if not exists transaction_shares_pair_active_idx
+    on public.transaction_shares (pair_low, pair_high)
+    where status = 'active';
+create index if not exists transaction_shares_counterparty_idx
+    on public.transaction_shares (counterparty_user_id, status, created_at desc);
+create index if not exists transaction_shares_owner_idx
+    on public.transaction_shares (owner_user_id, status, created_at desc);
+
+alter table public.transaction_shares enable row level security;
+
+do $$
+begin
+    -- Both parties read the share -- that IS the point of a split. It does
+    -- not expose the transaction row itself, only this row's own amounts.
+    -- No write policies: every mutation goes through the RPCs below.
+    begin
+        create policy "transaction_shares_select_party" on public.transaction_shares
+        for select to authenticated
+        using (auth.uid() in (owner_user_id, counterparty_user_id));
+    exception when duplicate_object then null; end;
+end $$;
+
+drop trigger if exists transaction_shares_touch_trg on public.transaction_shares;
+create trigger transaction_shares_touch_trg
+    before update on public.transaction_shares
+    for each row execute function public.nomadix_touch_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- transactions: share linkage. Points at the most recently created active
+-- share for quick lookup/badge rendering; a transaction can in principle
+-- carry more than one transaction_shares row (split with several friends),
+-- but the app only ever creates one per transaction today.
+-- ---------------------------------------------------------------------------
+do $$
+begin
+    if to_regclass('public.transactions') is null then return; end if;
+    alter table public.transactions add column if not exists share_id uuid;
+    begin
+        alter table public.transactions
+            add constraint transactions_share_id_fkey
+            foreign key (share_id) references public.transaction_shares(id)
+            on delete set null;
+    exception when duplicate_object then null; end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- settlements + settlement_allocations: one settle-up produces one
+-- settlements row (linked 1:1 to the real transfers row that moved the
+-- money) and N allocations against specific shares, oldest-first. Why
+-- allocations instead of flipping transaction_shares.status: a partial
+-- settle-up must not require mutating or splitting a share row. "Settled"
+-- is DERIVED: coalesce(sum(allocations.amount_eur),0) >= share_amount_eur.
+-- ---------------------------------------------------------------------------
+create table if not exists public.settlements (
+    id uuid primary key default gen_random_uuid(),
+    payer_user_id uuid not null references auth.users(id) on delete cascade,
+    payee_user_id uuid not null references auth.users(id) on delete cascade,
+
+    amount_eur numeric(14,2) not null check (amount_eur > 0),
+    net_eur_at_settlement numeric(14,2) not null,
+    transfer_id uuid not null references public.transfers(id) on delete restrict,
+
+    note text,
+    created_at timestamptz not null default now(),
+
+    pair_low  uuid generated always as
+        (case when payer_user_id < payee_user_id
+              then payer_user_id else payee_user_id end) stored,
+    pair_high uuid generated always as
+        (case when payer_user_id < payee_user_id
+              then payee_user_id else payer_user_id end) stored,
+
+    constraint settlements_distinct_parties
+        check (payer_user_id <> payee_user_id),
+
+    -- Idempotency key: one settlement per transfer. Combined with
+    -- transfers.client_token this makes settle-up safely retryable
+    -- end to end.
+    unique (transfer_id)
+);
+
+create index if not exists settlements_pair_idx
+    on public.settlements (pair_low, pair_high, created_at desc);
+
+alter table public.settlements enable row level security;
+
+do $$
+begin
+    begin
+        create policy "settlements_select_party" on public.settlements
+        for select to authenticated
+        using (auth.uid() in (payer_user_id, payee_user_id));
+    exception when duplicate_object then null; end;
+end $$;
+
+create table if not exists public.settlement_allocations (
+    settlement_id uuid not null references public.settlements(id) on delete cascade,
+    share_id uuid not null references public.transaction_shares(id) on delete cascade,
+    amount_eur numeric(14,2) not null check (amount_eur > 0),
+    created_at timestamptz not null default now(),
+    -- Idempotency key: a settlement can touch a share at most once, so the
+    -- allocation loop is safe to re-run.
+    primary key (settlement_id, share_id)
+);
+
+create index if not exists settlement_allocations_share_idx
+    on public.settlement_allocations (share_id);
+
+alter table public.settlement_allocations enable row level security;
+
+do $$
+begin
+    -- Inline EXISTS on settlements is safe here (no cycle): settlements'
+    -- own policy does not reference settlement_allocations.
+    begin
+        create policy "settlement_allocations_select_party"
+        on public.settlement_allocations
+        for select to authenticated
+        using (exists (
+            select 1 from public.settlements s
+             where s.id = settlement_id
+               and auth.uid() in (s.payer_user_id, s.payee_user_id)
+        ));
+    exception when duplicate_object then null; end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_guard_vault_delete: extended again (create or replace, same name
+-- as Phases 2-3) to also refuse deleting a vault with unsettled shared
+-- expenses. All earlier checks -- including the Phase 3 cross-owner
+-- internal-transfer check -- are preserved verbatim.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_guard_vault_delete()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+    if exists (
+        select 1 from public.vault_members m
+         where m.vault_id = OLD.id
+           and m.status in ('active','invited')
+           and m.user_id <> OLD.user_id
+    ) then
+        raise exception 'This vault is shared -- ask the co-owner to leave first, or dissolve it'
+            using errcode = 'foreign_key_violation';
+    end if;
+
+    if exists (
+        select 1 from public.transfers t
+         where (t.sender_vault_id = OLD.id or t.recipient_vault_id = OLD.id)
+           and t.status = 'completed'
+           and t.kind = 'friend'
+           and t.reversible_until is not null
+           and t.reversible_until > now()
+    ) then
+        raise exception 'This vault has a transfer that can still be returned -- wait 24 hours or resolve it first'
+            using errcode = 'foreign_key_violation';
+    end if;
+
+    if exists (
+        select 1 from public.transfers t
+          join public.vaults ov
+            on ov.id = case when t.sender_vault_id = OLD.id
+                            then t.recipient_vault_id else t.sender_vault_id end
+         where (t.sender_vault_id = OLD.id or t.recipient_vault_id = OLD.id)
+           and t.kind = 'internal'
+           and ov.user_id <> OLD.user_id
+    ) then
+        raise exception 'This vault has shared transfer history with a vault owned by someone else -- it cannot be deleted'
+            using errcode = 'foreign_key_violation';
+    end if;
+
+    if exists (
+        select 1 from public.transaction_shares s
+          join public.transactions t on t.id = s.transaction_id
+         where t.vault_id = OLD.id and s.status = 'active'
+    ) then
+        raise exception 'This vault has unsettled shared expenses -- settle or void them first'
+            using errcode = 'foreign_key_violation';
+    end if;
+
+    return OLD;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_guard_share_delete: closes the gap the design doc flagged as an
+-- open edge case -- transaction_shares.transaction_id is ON DELETE CASCADE
+-- (deleting the expense correctly kills an un-paid debt with it), but that
+-- same cascade would silently destroy a share that was ALREADY settled.
+-- This refuses the delete outright in that one case; the expense must be
+-- kept (or the settlement reasoned about) instead of quietly losing the
+-- paid record.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_guard_share_delete()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+    if exists (
+        select 1 from public.transaction_shares s
+          join public.settlement_allocations a on a.share_id = s.id
+         where s.transaction_id = OLD.id
+    ) then
+        raise exception 'This expense has an already-settled shared split -- it cannot be deleted'
+            using errcode = 'foreign_key_violation';
+    end if;
+    return OLD;
+end $$;
+
+do $$
+begin
+    if to_regclass('public.transactions') is null then return; end if;
+    drop trigger if exists transactions_guard_share_delete on public.transactions;
+    create trigger transactions_guard_share_delete
+        before delete on public.transactions
+        for each row execute function public.nomadix_guard_share_delete();
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- friend_net_balances: security_invoker view (PG15+; Supabase runs 15/17),
+-- so RLS on transaction_shares/settlements applies as the caller -- it
+-- leaks nothing those tables do not already permit. Two rows per pair (one
+-- per perspective) so the client filters on viewer_id = auth.uid() and
+-- reads a signed number with no CASE. net_eur > 0 => the friend owes the
+-- viewer. A materialized view was rejected: matviews have no RLS in
+-- Postgres, and staleness here is a money bug (settle-up sizes a real
+-- transfer from the net), not a UX wrinkle -- volume is trivial regardless
+-- (tens of friends, hundreds of shares).
+-- ---------------------------------------------------------------------------
+create or replace view public.friend_net_balances
+with (security_invoker = true) as
+with obligations as (
+    select s.pair_low, s.pair_high,
+           sum(case when s.creditor_user_id = s.pair_low
+                    then  s.share_amount_eur
+                    else -s.share_amount_eur end) as net_low,
+           count(*) as share_count,
+           max(s.created_at) as last_activity
+      from public.transaction_shares s
+     where s.status = 'active'
+     group by s.pair_low, s.pair_high
+),
+payments as (
+    select st.pair_low, st.pair_high,
+           sum(case when st.payer_user_id = st.pair_low
+                    then  st.amount_eur
+                    else -st.amount_eur end) as net_low,
+           0::bigint as share_count,
+           max(st.created_at) as last_activity
+      from public.settlements st
+     group by st.pair_low, st.pair_high
+),
+merged as (
+    select pair_low, pair_high,
+           sum(net_low) as net_low,
+           sum(share_count) as share_count,
+           max(last_activity) as last_activity
+      from (select * from obligations
+            union all
+            select * from payments) z
+     group by pair_low, pair_high
+)
+select m.pair_low  as viewer_id,
+       m.pair_high as friend_id,
+       round(m.net_low, 2) as net_eur,
+       m.share_count,
+       m.last_activity
+  from merged m
+union all
+select m.pair_high,
+       m.pair_low,
+       round(-m.net_low, 2),
+       m.share_count,
+       m.last_activity
+  from merged m;
+
+revoke all on public.friend_net_balances from public, anon;
+grant select on public.friend_net_balances to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_friend_net_eur: the authoritative net for ONE pair, from the
+-- caller's perspective, computed fresh under lock inside settle-up (the
+-- view above is for listing; this is for the one place that must be exact
+-- to the cent at the instant it commits).
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_friend_net_eur(p_friend_id uuid)
+returns numeric
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+    with pair as (
+        select case when auth.uid() < p_friend_id then auth.uid() else p_friend_id end as lo,
+               case when auth.uid() < p_friend_id then p_friend_id else auth.uid() end as hi
+    ),
+    obligations as (
+        select coalesce(sum(
+                   case when s.creditor_user_id = auth.uid()
+                        then  s.share_amount_eur
+                        else -s.share_amount_eur end), 0) as net
+          from public.transaction_shares s, pair
+         where s.pair_low = pair.lo and s.pair_high = pair.hi
+           and s.status = 'active'
+    ),
+    payments as (
+        select coalesce(sum(
+                   case when st.payer_user_id = auth.uid()
+                        then  st.amount_eur
+                        else -st.amount_eur end), 0) as net
+          from public.settlements st, pair
+         where st.pair_low = pair.lo and st.pair_high = pair.hi
+    )
+    select round((select net from obligations) + (select net from payments), 2)
+     where auth.uid() is not null and p_friend_id is not null;
+$$;
+
+revoke all on function public.nomadix_friend_net_eur(uuid) from public, anon;
+grant execute on function public.nomadix_friend_net_eur(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_create_share: splits an expense or income with a friend.
+-- Rejects a transfer/adjustment (splitting a transfer would double-count;
+-- an adjustment is a correction, not spending), a shared vault's expense
+-- (the co-owner already sees the full amount -- a three-way obligation is
+-- out of scope), and a split that rounds to zero. Upserts on
+-- (transaction_id, counterparty_user_id) so re-submitting the split sheet
+-- edits in place -- UNLESS the existing share already has a settlement
+-- allocation against it, in which case the update is refused: a paid debt
+-- cannot be silently redefined.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_create_share(
+    p_transaction_id uuid,
+    p_friend_id uuid,
+    p_split_mode text,
+    p_split_value numeric default null,
+    p_note text default null
+) returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_uid uuid := auth.uid();
+    v_tx public.transactions%rowtype;
+    v_vault public.vaults%rowtype;
+    v_total numeric;
+    v_share numeric;
+    v_direction text;
+    v_rate numeric;
+    v_share_eur numeric;
+    v_share_id uuid;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+    if p_friend_id is null or p_friend_id = v_uid then
+        raise exception 'Invalid friend' using errcode = 'invalid_parameter_value';
+    end if;
+    if p_split_mode not in ('equal','amount','percent') then
+        raise exception 'Unknown split mode' using errcode = 'invalid_parameter_value';
+    end if;
+    if not public.nomadix_are_friends(v_uid, p_friend_id) then
+        raise exception 'Not friends' using errcode = 'insufficient_privilege';
+    end if;
+
+    select * into v_tx from public.transactions where id = p_transaction_id for update;
+    if not found or v_tx.user_id <> v_uid then
+        raise exception 'Transaction not found' using errcode = 'no_data_found';
+    end if;
+    if v_tx.type not in ('expense','income') then
+        raise exception 'Only expenses and income can be split'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    select * into v_vault from public.vaults where id = v_tx.vault_id;
+    if v_vault.is_shared then
+        raise exception 'This vault is already shared with a co-owner -- splitting it with someone else is not supported'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    v_total := abs(v_tx.amount);
+
+    if p_split_mode = 'amount' and (p_split_value is null or p_split_value <= 0 or p_split_value > v_total) then
+        raise exception 'Split amount must be between 0 and the transaction total'
+            using errcode = 'invalid_parameter_value';
+    end if;
+    if p_split_mode = 'percent' and (p_split_value is null or p_split_value <= 0 or p_split_value > 100) then
+        raise exception 'Split percent must be between 0 and 100'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    v_share := case p_split_mode
+        when 'equal'   then round(v_total / 2.0, 2)
+        when 'amount'  then round(p_split_value, 2)
+        when 'percent' then round(v_total * p_split_value / 100.0, 2)
+    end;
+
+    if v_share <= 0 then
+        raise exception 'Split rounds to zero' using errcode = 'invalid_parameter_value';
+    end if;
+
+    v_direction := case when v_tx.type = 'expense' then 'owed_to_owner' else 'owed_by_owner' end;
+
+    v_rate := public.nomadix_usd_eur_rate(v_uid);
+    v_share_eur := case when v_tx.original_currency = 'EUR' then v_share
+                        else round(v_share * v_rate, 2) end;
+
+    insert into public.transaction_shares (
+        transaction_id, owner_user_id, counterparty_user_id, direction,
+        split_mode, split_value, total_amount, share_amount, currency,
+        exchange_rate, share_amount_eur, note
+    ) values (
+        p_transaction_id, v_uid, p_friend_id, v_direction,
+        p_split_mode, case when p_split_mode = 'equal' then null else p_split_value end,
+        v_total, v_share, v_tx.original_currency,
+        case when v_tx.original_currency = 'EUR' then null else v_rate end,
+        v_share_eur, nullif(trim(p_note), '')
+    )
+    on conflict (transaction_id, counterparty_user_id) do update
+       set direction        = excluded.direction,
+           split_mode       = excluded.split_mode,
+           split_value      = excluded.split_value,
+           total_amount     = excluded.total_amount,
+           share_amount     = excluded.share_amount,
+           currency         = excluded.currency,
+           exchange_rate    = excluded.exchange_rate,
+           share_amount_eur = excluded.share_amount_eur,
+           note             = excluded.note,
+           status           = 'active',
+           updated_at       = now()
+     where not exists (
+            select 1 from public.settlement_allocations a
+             where a.share_id = public.transaction_shares.id
+       )
+    returning id into v_share_id;
+
+    if v_share_id is null then
+        raise exception 'This share was already settled -- void it and create a new one instead'
+            using errcode = 'check_violation';
+    end if;
+
+    update public.transactions set share_id = v_share_id where id = p_transaction_id;
+
+    return v_share_id;
+end $$;
+
+revoke all on function public.nomadix_create_share(uuid, uuid, text, numeric, text) from public, anon;
+grant execute on function public.nomadix_create_share(uuid, uuid, text, numeric, text) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_void_share / nomadix_reject_share: void is owner-side ("never
+-- mind"), reject is counterparty-side ("that wasn't mine"). Both refuse if
+-- the share already has a settlement allocation -- a paid debt cannot be
+-- un-agreed, it must be settled in the other direction instead. Both are
+-- idempotent (only 'active' rows change).
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_void_share(p_share_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_uid uuid := auth.uid();
+    v_row public.transaction_shares%rowtype;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+    select * into v_row from public.transaction_shares where id = p_share_id for update;
+    if not found or v_row.owner_user_id <> v_uid then
+        raise exception 'Share not found' using errcode = 'no_data_found';
+    end if;
+    if v_row.status <> 'active' then
+        return;
+    end if;
+    if exists (select 1 from public.settlement_allocations where share_id = p_share_id) then
+        raise exception 'This share was already settled -- it cannot be voided'
+            using errcode = 'check_violation';
+    end if;
+    update public.transaction_shares set status = 'void', updated_at = now() where id = p_share_id;
+end $$;
+
+revoke all on function public.nomadix_void_share(uuid) from public, anon;
+grant execute on function public.nomadix_void_share(uuid) to authenticated;
+
+create or replace function public.nomadix_reject_share(p_share_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_uid uuid := auth.uid();
+    v_row public.transaction_shares%rowtype;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+    select * into v_row from public.transaction_shares where id = p_share_id for update;
+    if not found or v_row.counterparty_user_id <> v_uid then
+        raise exception 'Share not found' using errcode = 'no_data_found';
+    end if;
+    if v_row.status <> 'active' then
+        return;
+    end if;
+    if exists (select 1 from public.settlement_allocations where share_id = p_share_id) then
+        raise exception 'This share was already settled -- it cannot be rejected'
+            using errcode = 'check_violation';
+    end if;
+    update public.transaction_shares set status = 'rejected', updated_at = now() where id = p_share_id;
+end $$;
+
+revoke all on function public.nomadix_reject_share(uuid) from public, anon;
+grant execute on function public.nomadix_reject_share(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_settle_up: converts what I OWE a friend into a real transfer,
+-- then allocates the payment across their outstanding claims oldest-first.
+-- Deliberately one-directional -- you can only settle a debt YOU owe. There
+-- is no branch that debits the friend's vault. To collect, the UI sends a
+-- nudge; the friend calls this function.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_settle_up(
+    p_friend_id     uuid,
+    p_from_vault_id uuid,
+    p_to_vault_id   uuid,
+    p_amount_eur    numeric default null,
+    p_client_token  text    default null
+) returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_uid        uuid := auth.uid();
+    v_lo         uuid;
+    v_hi         uuid;
+    v_net        numeric;
+    v_pay_eur    numeric;
+    v_from_cur   text;
+    v_to_owner   uuid;
+    v_rate       numeric;
+    v_send_amt   numeric;
+    v_transfer   uuid;
+    v_settlement uuid;
+    v_moved_eur  numeric;
+    v_remaining  numeric;
+    v_take       numeric;
+    r            record;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+    if p_friend_id is null or p_friend_id = v_uid then
+        raise exception 'Invalid friend' using errcode = 'invalid_parameter_value';
+    end if;
+    if not public.nomadix_are_friends(v_uid, p_friend_id) then
+        raise exception 'Not friends' using errcode = 'insufficient_privilege';
+    end if;
+
+    v_lo := case when v_uid < p_friend_id then v_uid else p_friend_id end;
+    v_hi := case when v_uid < p_friend_id then p_friend_id else v_uid end;
+
+    -- Serialize the whole pair for this transaction. Row locks on
+    -- transaction_shares alone are not enough: two concurrent settle-ups
+    -- could both see "I owe 100" when there are zero share rows and only
+    -- settlements (the prepayment case). Released automatically at
+    -- commit/rollback.
+    perform pg_advisory_xact_lock(
+        hashtextextended(v_lo::text || ':' || v_hi::text, 42)
+    );
+
+    perform 1
+       from public.transaction_shares s
+      where s.pair_low = v_lo and s.pair_high = v_hi
+        and s.status = 'active'
+      order by s.id
+      for update;
+
+    v_net := public.nomadix_friend_net_eur(p_friend_id);
+
+    if v_net is null or v_net >= -0.005 then
+        raise exception 'Nothing to settle with this friend'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    v_pay_eur := round(least(coalesce(p_amount_eur, -v_net), -v_net), 2);
+    if v_pay_eur <= 0 then
+        raise exception 'Settlement amount must be greater than zero'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    select v.user_id into v_to_owner from public.vaults v where v.id = p_to_vault_id;
+    if v_to_owner is distinct from p_friend_id then
+        raise exception 'Destination vault does not belong to this friend'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    select v.currency into v_from_cur from public.vaults v where v.id = p_from_vault_id;
+    if v_from_cur is null then
+        raise exception 'Source vault not found' using errcode = 'no_data_found';
+    end if;
+
+    v_rate := public.nomadix_usd_eur_rate(v_uid);
+    v_send_amt := case
+        when v_from_cur = 'EUR' then v_pay_eur
+        else round(v_pay_eur / v_rate, 2)
+    end;
+    if v_send_amt <= 0 then
+        raise exception 'Settlement amount rounds to zero'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    -- Reuse the one code path that knows how to authorize and book a
+    -- transfer -- it re-validates friendship, the destination's
+    -- accepts_transfers_from policy, funds and FX. Settling up gets no
+    -- bypass of the recipient's privacy settings.
+    v_transfer := public.nomadix_send_transfer(
+        p_from_vault_id, p_to_vault_id, v_send_amt, 0, 'Settle up', null, p_client_token
+    );
+
+    -- Retry short-circuit: if send_transfer returned a pre-existing
+    -- transfer (same client_token), the settlement for it already exists.
+    select id into v_settlement from public.settlements where transfer_id = v_transfer;
+    if found then
+        return v_settlement;
+    end if;
+
+    -- A settlement is never reversible: a "return" would un-pay debts
+    -- whose allocations have already been written.
+    update public.transfers
+       set kind = 'settlement', reversible_until = null, updated_at = now()
+     where id = v_transfer;
+
+    -- Book the payment at the EUR value the transfer actually moved, not
+    -- the requested value, so rounding can never drift the ledger.
+    select amount_eur into v_moved_eur from public.transfers where id = v_transfer;
+
+    insert into public.settlements (
+        payer_user_id, payee_user_id, amount_eur, net_eur_at_settlement, transfer_id, note
+    ) values (
+        v_uid, p_friend_id, v_moved_eur, v_net, v_transfer, 'Settle up'
+    )
+    returning id into v_settlement;
+
+    v_remaining := v_moved_eur;
+
+    for r in
+        select s.id,
+               s.share_amount_eur
+             - coalesce((select sum(a.amount_eur)
+                           from public.settlement_allocations a
+                          where a.share_id = s.id), 0) as outstanding
+          from public.transaction_shares s
+         where s.pair_low = v_lo and s.pair_high = v_hi
+           and s.status = 'active'
+           and s.creditor_user_id = p_friend_id
+         order by s.created_at asc, s.id asc
+    loop
+        exit when v_remaining <= 0;
+        continue when r.outstanding <= 0;
+
+        v_take := least(v_remaining, r.outstanding);
+
+        insert into public.settlement_allocations (settlement_id, share_id, amount_eur)
+        values (v_settlement, r.id, round(v_take, 2))
+        on conflict (settlement_id, share_id) do nothing;
+
+        v_remaining := round(v_remaining - v_take, 2);
+    end loop;
+
+    -- v_remaining > 0 here means I overpaid relative to the itemized
+    -- claims (possible when the net was moved by a prior direct transfer).
+    -- Intentional: the leftover shows up as a positive net (a credit)
+    -- instead of being lost.
+
+    return v_settlement;
+end $$;
+
+revoke all on function public.nomadix_settle_up(uuid, uuid, uuid, numeric, text) from public, anon;
+grant execute on function public.nomadix_settle_up(uuid, uuid, uuid, numeric, text) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Manual verification (run as two different authenticated test users, A and
+-- B, already friends per Phase 1, with a normal EUR expense of 100.00
+-- owned by A in a NON-shared vault):
+--
+-- 1) A splits it 50/50 with B:
+-- select public.nomadix_create_share('<tx-id>'::uuid, '<B-uuid>'::uuid, 'equal') as sid \gset
+-- select * from public.friend_net_balances where friend_id = '<B-uuid>'::uuid; -- run as A, expect -50.00
+-- select * from public.friend_net_balances where friend_id = '<A-uuid>'::uuid; -- run as B, expect +50.00
+--
+-- 2) B settles the full 50:
+-- select public.nomadix_settle_up('<A-uuid>'::uuid, '<B-vault>'::uuid, '<A-vault>'::uuid) as settle_id \gset -- run as B
+-- select * from public.friend_net_balances where friend_id = '<A-uuid>'::uuid; -- run as B, expect 0.00
+--
+-- 3) B tries to settle again with nothing owed -- expect the clean error:
+-- select public.nomadix_settle_up('<A-uuid>'::uuid, '<B-vault>'::uuid, '<A-vault>'::uuid);
+--
+-- 4) A tries to delete the settled share -- must be refused:
+-- select public.nomadix_void_share(:'sid'::uuid);  -- expect error, already settled
 -- ============================================================================

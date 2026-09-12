@@ -16,6 +16,7 @@ import type {
     FriendSummary,
     FriendshipDirection,
     FriendshipStatus,
+    SplitMode,
     VaultTransferPolicy,
 } from "@/types";
 
@@ -217,4 +218,62 @@ export function transferDirectionLabel(
     viewerId: string
 ): "sent" | "received" {
     return transfer.sender_user_id === viewerId ? "sent" : "received";
+}
+
+// ============================================
+// Phase 4 — splits + settle-up
+// ============================================
+
+// Client-side preview of the split amount — EXACT mirror of the
+// computation in nomadix_create_share() (supabase/schema.sql). The server
+// always recomputes and is the source of truth; this only lets the split
+// form show a live preview before the round trip.
+export function previewSplitAmount(
+    total: number,
+    mode: SplitMode,
+    value: number | null
+): number {
+    const magnitude = Math.abs(total);
+    if (mode === "equal") return round2(magnitude / 2);
+    if (mode === "amount") return round2(value ?? 0);
+    // percent
+    return round2((magnitude * (value ?? 0)) / 100);
+}
+
+export function validateSplitValue(
+    total: number,
+    mode: SplitMode,
+    value: number | null
+): string | null {
+    const magnitude = Math.abs(total);
+    if (mode === "equal") return null;
+    if (mode === "amount") {
+        if (value === null || value <= 0 || value > magnitude) {
+            return "Must be between 0 and the transaction total.";
+        }
+        return null;
+    }
+    // percent
+    if (value === null || value <= 0 || value > 100) {
+        return "Must be between 0 and 100.";
+    }
+    return null;
+}
+
+// Formats a friend_net_balances.net_eur value into a signed, currency-free
+// EUR label plus which way the money flows — the two pieces every
+// balances-tab row needs. Positive => the friend owes the viewer.
+export interface NetBalanceLabel {
+    absAmount: number;
+    owesYou: boolean; // false when it's zero, too — check `isSettled` first
+    isSettled: boolean;
+}
+
+export function describeNetBalance(netEur: number): NetBalanceLabel {
+    const rounded = round2(netEur);
+    return {
+        absAmount: Math.abs(rounded),
+        owesYou: rounded > 0,
+        isSettled: Math.abs(rounded) < 0.005,
+    };
 }

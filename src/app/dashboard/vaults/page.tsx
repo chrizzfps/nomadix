@@ -23,17 +23,20 @@ import {
     Coffee,
     Heart,
     Car,
+    UsersThree,
 } from "@phosphor-icons/react";
 import { VaultCard } from "@/components/vaults/vault-card";
 import { CreateVaultModal } from "@/components/vaults/create-vault-modal";
 import { NewTransactionModal } from "@/components/vaults/new-transaction-modal";
 import { TransactionEditModal } from "@/components/vaults/transaction-edit-modal";
+import { SplitExpenseModal } from "@/components/social/split-expense-modal";
 import { CurrencyToggle } from "@/components/shared/currency-toggle";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { CURRENCY_SYMBOLS, TRANSACTION_CATEGORIES } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { convertTransactionAmount } from "@/lib/currency-helpers";
 import { useLanguageStore } from "@/stores/language-store";
+import { useToastStore } from "@/stores/toast-store";
 
 interface VaultData {
     id: string;
@@ -42,6 +45,15 @@ interface VaultData {
     type: "savings" | "checking" | "cash";
     is_protected: boolean;
     balance: number;
+    is_shared?: boolean;
+    isOwner?: boolean;
+}
+
+interface PendingVaultInvite {
+    memberId: string;
+    vaultId: string;
+    vaultName: string;
+    ownerName: string;
 }
 
 interface TransactionData {
@@ -84,12 +96,15 @@ export default function VaultsPage() {
     const supabase = createClient();
     const { displayCurrency, convert, loadRate, getActiveRate } = useCurrencyStore();
     const t = useLanguageStore((s) => s.t);
+    const addToast = useToastStore((s) => s.addToast);
     const symbol = CURRENCY_SYMBOLS[displayCurrency];
 
     const ACTIVITY_PAGE_SIZE = 10;
 
     const [vaults, setVaults] = useState<VaultData[]>([]);
     const [transactions, setTransactions] = useState<TransactionData[]>([]);
+    const [pendingInvites, setPendingInvites] = useState<PendingVaultInvite[]>([]);
+    const [respondingInviteId, setRespondingInviteId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [activityError, setActivityError] = useState<string | null>(null);
     const [isLoadingMoreActivity, setIsLoadingMoreActivity] = useState(false);
@@ -98,6 +113,7 @@ export default function VaultsPage() {
     const [showCreateVault, setShowCreateVault] = useState(false);
     const [showNewTransaction, setShowNewTransaction] = useState(false);
     const [selectedTx, setSelectedTx] = useState<TransactionData | null>(null);
+    const [splitTarget, setSplitTarget] = useState<TransactionData | null>(null);
     const [activityFilter, setActivityFilter] = useState<
         "all" | "income" | "expense" | "transfer"
     >("all");
@@ -121,14 +137,14 @@ export default function VaultsPage() {
             return;
         }
 
-        // Fetch vaults
+        // Fetch vaults I own
         const { data: vaultRows, error: vaultError } = await supabase
             .from("vaults")
             .select("*")
             .eq("user_id", user.id)
             .order("created_at", { ascending: true });
 
-        // Fetch all transactions
+        // Fetch all MY transactions
         const { data: txRows, error: txError } = await supabase
             .from("transactions")
             .select("*")
@@ -139,27 +155,107 @@ export default function VaultsPage() {
             setActivityError("Unable to load activity. Please try again.");
         }
 
+        // Shared vaults (Phase 3): a vault I co-own but don't own outright
+        // never has user_id = me, so it is invisible to the queries above
+        // even though RLS lets me read it. Find those via my active
+        // memberships, then fetch each vault + its transactions
+        // individually (not `.in()`) -- a person co-owns at most a
+        // handful of vaults, so N+1 here is a deliberate, small trade-off
+        // for not needing a dedicated RPC just to list them.
+        const { data: memberRows } = await supabase
+            .from("vault_members")
+            .select("vault_id, status, role")
+            .eq("user_id", user.id);
+
+        const myOwnedIds = new Set((vaultRows || []).map((v) => v.id));
+        const coOwnedVaultIds = (memberRows || [])
+            .filter((m) => m.status === "active" && m.role === "member" && !myOwnedIds.has(m.vault_id))
+            .map((m) => m.vault_id);
+
+        const coOwnedVaults: typeof vaultRows = [];
+        for (const vid of coOwnedVaultIds) {
+            const { data: v } = await supabase.from("vaults").select("*").eq("id", vid).single();
+            if (v) coOwnedVaults.push(v);
+        }
+
+        // Vaults I own outright that ARE shared still need the co-owner's
+        // own transactions -- my `.eq("user_id", user.id)` query above
+        // only ever returns rows I personally created.
+        const ownedSharedIds = (vaultRows || [])
+            .filter((v) => v.is_shared)
+            .map((v) => v.id);
+
+        const supplementalTx: typeof txRows = [];
+        for (const vid of [...ownedSharedIds, ...coOwnedVaultIds]) {
+            const { data } = await supabase
+                .from("transactions")
+                .select("*")
+                .eq("vault_id", vid)
+                .order("created_at", { ascending: false });
+            if (data) supplementalTx.push(...data);
+        }
+
+        const allVaultRows = [...(vaultRows || []), ...coOwnedVaults];
+        const seenTxIds = new Set<string>();
+        const allTxRows = [...(txRows || []), ...supplementalTx].filter((tx) => {
+            if (seenTxIds.has(tx.id)) return false;
+            seenTxIds.add(tx.id);
+            return true;
+        });
+
+        // Pending invites: vaults someone shared with me that I have not
+        // answered yet.
+        const { data: inviteRows } = await supabase
+            .from("vault_members")
+            .select("id, vault_id")
+            .eq("user_id", user.id)
+            .eq("status", "invited");
+
+        const invites: PendingVaultInvite[] = [];
+        for (const inv of inviteRows || []) {
+            const { data: v } = await supabase
+                .from("vaults")
+                .select("name, user_id")
+                .eq("id", inv.vault_id)
+                .single();
+            if (!v) continue;
+            const { data: owner } = await supabase
+                .from("users_profile")
+                .select("full_name")
+                .eq("id", v.user_id)
+                .single();
+            invites.push({
+                memberId: inv.id,
+                vaultId: inv.vault_id,
+                vaultName: v.name,
+                ownerName: owner?.full_name || "",
+            });
+        }
+        setPendingInvites(invites);
+
         // Build vault name lookup
         const vaultMap = new Map<string, string>();
-        (vaultRows || []).forEach((v) => vaultMap.set(v.id, v.name));
+        allVaultRows.forEach((v) => vaultMap.set(v.id, v.name));
 
         // Compute balances per vault
         const balanceMap = new Map<string, number>();
-        (txRows || []).forEach((tx) => {
+        allTxRows.forEach((tx) => {
             const prev = balanceMap.get(tx.vault_id) || 0;
             balanceMap.set(tx.vault_id, prev + Number(tx.amount));
         });
 
-        const enrichedVaults: VaultData[] = (vaultRows || []).map((v) => ({
+        const enrichedVaults: VaultData[] = allVaultRows.map((v) => ({
             id: v.id,
             name: v.name,
             currency: v.currency,
             type: v.type as "savings" | "checking" | "cash",
             is_protected: v.is_protected,
             balance: balanceMap.get(v.id) || 0,
+            is_shared: !!v.is_shared,
+            isOwner: v.user_id === user.id,
         }));
 
-        const enrichedTx: TransactionData[] = (txRows || []).map((tx) => ({
+        const enrichedTx: TransactionData[] = allTxRows.map((tx) => ({
             ...tx,
             amount: Number(tx.amount),
             vault_name: vaultMap.get(tx.vault_id) || "Unknown",
@@ -292,6 +388,22 @@ export default function VaultsPage() {
         });
     };
 
+    const respondToInvite = async (memberId: string, action: "accept" | "decline") => {
+        setRespondingInviteId(memberId);
+        const { error } = await supabase.rpc("nomadix_respond_vault_share", {
+            p_member_id: memberId,
+            p_action: action,
+        });
+        setRespondingInviteId(null);
+        if (error) {
+            addToast(error.message, "error");
+            return;
+        }
+        addToast(t(action === "accept" ? "sharedVault.accepted" : "sharedVault.declined"));
+        setPendingInvites((prev) => prev.filter((inv) => inv.memberId !== memberId));
+        if (action === "accept") loadData();
+    };
+
     if (isLoading) {
         return (
             <div className="p-6 lg:p-8 space-y-6">
@@ -339,6 +451,46 @@ export default function VaultsPage() {
                 </div>
             </div>
 
+            {/* Pending shared-vault invites */}
+            {pendingInvites.length > 0 && (
+                <div className="mt-6 space-y-2">
+                    {pendingInvites.map((inv) => (
+                        <div
+                            key={inv.memberId}
+                            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent text-foreground/70">
+                                    <UsersThree size={18} />
+                                </div>
+                                <p className="text-sm text-foreground">
+                                    {t("sharedVault.pendingInvite", {
+                                        name: inv.ownerName || "?",
+                                        vault: inv.vaultName,
+                                    })}
+                                </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                                <button
+                                    onClick={() => respondToInvite(inv.memberId, "accept")}
+                                    disabled={respondingInviteId === inv.memberId}
+                                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50"
+                                >
+                                    {t("sharedVault.accept")}
+                                </button>
+                                <button
+                                    onClick={() => respondToInvite(inv.memberId, "decline")}
+                                    disabled={respondingInviteId === inv.memberId}
+                                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground/70 transition-colors hover:bg-accent disabled:opacity-50"
+                                >
+                                    {t("sharedVault.decline")}
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {/* Vault Cards Grid */}
             <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {vaults.map((vault, i) => (
@@ -355,6 +507,8 @@ export default function VaultsPage() {
                             currency={vault.currency}
                             type={vault.type}
                             isProtected={vault.is_protected}
+                            isShared={vault.is_shared}
+                            isOwner={vault.isOwner !== false}
                             onUpdated={loadData}
                         />
                     </motion.div>
@@ -602,6 +756,18 @@ export default function VaultsPage() {
                                             <span className="truncate font-medium text-foreground">
                                                 {item.description || item.type}
                                             </span>
+                                            {!isTransfer && !isAdjustment && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSplitTarget(item);
+                                                    }}
+                                                    title={t("split.action")}
+                                                    className="shrink-0 rounded-lg p-1.5 text-muted-foreground/50 transition-colors hover:bg-card hover:text-foreground"
+                                                >
+                                                    <UsersThree size={14} />
+                                                </button>
+                                            )}
                                         </div>
                                         <span className="hidden sm:block text-muted-foreground truncate">
                                             {item.vault_name}
@@ -690,6 +856,19 @@ export default function VaultsPage() {
                 }}
                 transaction={selectedTx}
             />
+            {splitTarget && (
+                <SplitExpenseModal
+                    isOpen={!!splitTarget}
+                    onClose={() => setSplitTarget(null)}
+                    transaction={{
+                        id: splitTarget.id,
+                        amount: splitTarget.amount,
+                        original_currency: splitTarget.original_currency,
+                        description: splitTarget.description,
+                    }}
+                    onSplit={loadData}
+                />
+            )}
         </div>
     );
 }

@@ -15,6 +15,8 @@ function makeVault(overrides: Partial<Vault>): Vault {
         updated_at: "2026-01-01T00:00:00Z",
         accepts_transfers_from: "nobody",
         transfer_note: null,
+        is_shared: false,
+        shared_at: null,
         ...overrides,
     };
 }
@@ -37,6 +39,7 @@ function makeTx(overrides: Partial<Transaction>): Transaction {
         transfer_id: null,
         transfer_leg: null,
         transfer_group_id: null,
+        share_id: null,
         ...overrides,
     };
 }

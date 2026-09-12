@@ -20,7 +20,9 @@ import { useToastStore } from "@/stores/toast-store";
 import { useLanguageStore } from "@/stores/language-store";
 import { AddFriendModal } from "@/components/social/add-friend-modal";
 import { SendTransferModal } from "@/components/social/send-transfer-modal";
+import { SettleUpModal } from "@/components/social/settle-up-modal";
 import {
+    describeNetBalance,
     friendInitials,
     formatFriendHandle,
     groupFriendSummaries,
@@ -28,7 +30,7 @@ import {
     transferDirectionLabel,
 } from "@/lib/social";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
-import type { FriendSummary, Transfer } from "@/types";
+import type { FriendNetBalance, FriendSummary, Transfer } from "@/types";
 
 type Tab = "friends" | "requests" | "balances";
 
@@ -49,6 +51,8 @@ export default function FriendsPage() {
     const [transfers, setTransfers] = useState<Transfer[]>([]);
     const [returningId, setReturningId] = useState<string | null>(null);
     const [sendTarget, setSendTarget] = useState<FriendSummary | null>(null);
+    const [balances, setBalances] = useState<FriendNetBalance[]>([]);
+    const [settleTarget, setSettleTarget] = useState<{ friend: FriendSummary; amountOwedEur: number } | null>(null);
     // Set when a remove/block was refused for having a non-zero net
     // balance — the RPC's outstanding-balance error becomes an inline
     // "remove anyway" offer instead of a dead-end toast.
@@ -68,6 +72,7 @@ export default function FriendsPage() {
             { data: rows, error: friendsError },
             { data: profile },
             { data: transferRows, error: transfersError },
+            { data: balanceRows, error: balancesError },
         ] = await Promise.all([
             supabase.rpc("nomadix_list_friends"),
             supabase.from("users_profile").select("friend_code").eq("id", user.id).single(),
@@ -77,6 +82,7 @@ export default function FriendsPage() {
                 .or(`sender_user_id.eq.${user.id},recipient_user_id.eq.${user.id}`)
                 .order("created_at", { ascending: false })
                 .limit(15),
+            supabase.from("friend_net_balances").select("*").eq("viewer_id", user.id),
         ]);
 
         if (friendsError) {
@@ -88,6 +94,11 @@ export default function FriendsPage() {
             addToast(transfersError.message, "error");
         } else {
             setTransfers((transferRows as Transfer[]) || []);
+        }
+        if (balancesError) {
+            addToast(balancesError.message, "error");
+        } else {
+            setBalances((balanceRows as FriendNetBalance[]) || []);
         }
         setFriendCode(profile?.friend_code ?? null);
         setIsLoading(false);
@@ -207,7 +218,11 @@ export default function FriendsPage() {
                     [
                         { key: "friends" as const, label: t("friends.tabFriends"), badge: groups.friends.length },
                         { key: "requests" as const, label: t("friends.tabRequests"), badge: requestCount },
-                        { key: "balances" as const, label: t("friends.tabBalances"), badge: 0 },
+                        {
+                            key: "balances" as const,
+                            label: t("friends.tabBalances"),
+                            badge: balances.filter((b) => !describeNetBalance(b.net_eur).isSettled).length,
+                        },
                     ]
                 ).map((tabItem) => (
                     <button
@@ -319,9 +334,46 @@ export default function FriendsPage() {
                         )}
                     </div>
                 )
+            ) : balances.length === 0 ? (
+                <EmptyState title={t("balances.allSettled")} description="" />
             ) : (
-                <div className="rounded-2xl border border-dashed border-border p-8 text-center">
-                    <p className="text-sm text-muted-foreground">{t("friends.balancesComingSoon")}</p>
+                <div className="divide-y divide-border rounded-2xl border border-border bg-card shadow-sm">
+                    {balances.map((b) => {
+                        const friend = friends.find((f) => f.friend_id === b.friend_id);
+                        const { absAmount, owesYou, isSettled } = describeNetBalance(b.net_eur);
+                        if (isSettled || !friend) return null;
+                        return (
+                            <div key={b.friend_id} className="flex items-center justify-between gap-3 p-4">
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                                        {friendInitials(friend.full_name || friend.username || "?")}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-medium text-foreground">
+                                            {t(owesYou ? "balances.owesYou" : "balances.youOwe", {
+                                                name: formatFriendHandle(friend),
+                                            })}
+                                        </p>
+                                        <p
+                                            className={`text-sm font-semibold ${
+                                                owesYou ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
+                                            }`}
+                                        >
+                                            €{absAmount.toFixed(2)}
+                                        </p>
+                                    </div>
+                                </div>
+                                {!owesYou && (
+                                    <button
+                                        onClick={() => setSettleTarget({ friend, amountOwedEur: absAmount })}
+                                        className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90"
+                                    >
+                                        {t("balances.settleUp")}
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
@@ -364,6 +416,20 @@ export default function FriendsPage() {
                         full_name: sendTarget.full_name,
                     }}
                     onSent={loadData}
+                />
+            )}
+
+            {settleTarget && (
+                <SettleUpModal
+                    isOpen={!!settleTarget}
+                    onClose={() => setSettleTarget(null)}
+                    friend={{
+                        friend_id: settleTarget.friend.friend_id,
+                        username: settleTarget.friend.username,
+                        full_name: settleTarget.friend.full_name,
+                    }}
+                    amountOwedEur={settleTarget.amountOwedEur}
+                    onSettled={loadData}
                 />
             )}
         </motion.div>

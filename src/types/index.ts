@@ -59,6 +59,10 @@ export interface Vault {
     // Social layer (Phase 2)
     accepts_transfers_from: VaultTransferPolicy;
     transfer_note: string | null;
+    // Social layer (Phase 3) — denormalized from vault_members, kept
+    // honest by nomadix_sync_vault_is_shared().
+    is_shared: boolean;
+    shared_at: string | null;
 }
 
 export interface Transaction {
@@ -79,6 +83,9 @@ export interface Transaction {
     transfer_id: string | null;
     transfer_leg: TransferLeg | null;
     transfer_group_id: string | null;
+    // Social layer (Phase 4) — points at the most recently created active
+    // split, if any. See transaction_shares below.
+    share_id: string | null;
 }
 
 export interface Document {
@@ -333,4 +340,103 @@ export interface TransferWithParties extends Transfer {
     sender_vault: Pick<Vault, "name" | "currency" | "icon">;
     recipient_vault: Pick<Vault, "name" | "currency" | "icon">;
     counterparty: Pick<FriendSummary, "username" | "full_name" | "avatar_url">;
+}
+
+// ============================================
+// Social layer — Phase 3: shared vaults
+// ============================================
+
+export type VaultMemberRole = "owner" | "member";
+export type VaultMemberStatus = "invited" | "active" | "declined" | "left" | "removed";
+
+// Mirrors public.vault_members. Slot 1 is always the owner, slot 2 the
+// single co-owner — a vault can never have more than two live rows.
+export interface VaultMember {
+    id: string;
+    vault_id: string;
+    user_id: string;
+    member_slot: 1 | 2;
+    role: VaultMemberRole;
+    status: VaultMemberStatus;
+    invited_by: string | null;
+    invited_at: string;
+    joined_at: string | null;
+    left_at: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SharedVault extends VaultWithBalance {
+    members: VaultMember[];
+    partner: Pick<FriendSummary, "friend_id" | "username" | "full_name" | "avatar_url"> | null;
+}
+
+// ============================================
+// Social layer — Phase 4: splits + settle-up
+// ============================================
+
+export type SplitMode = "equal" | "amount" | "percent";
+export type ShareDirection = "owed_to_owner" | "owed_by_owner";
+export type ShareStatus = "active" | "void" | "rejected";
+
+// Mirrors public.transaction_shares. pair_low/pair_high/creditor_user_id
+// are stored generated columns — read-only from the client's perspective.
+export interface TransactionShare {
+    id: string;
+    transaction_id: string;
+    owner_user_id: string;
+    counterparty_user_id: string;
+    direction: ShareDirection;
+    split_mode: SplitMode;
+    split_value: number | null;
+    total_amount: number;
+    share_amount: number;
+    currency: Currency;
+    exchange_rate: number | null;
+    share_amount_eur: number;
+    status: ShareStatus;
+    note: string | null;
+    created_at: string;
+    updated_at: string;
+    readonly pair_low: string;
+    readonly pair_high: string;
+    readonly creditor_user_id: string;
+}
+
+// Mirrors public.settlements — one row per settle-up, linked 1:1 to the
+// real transfers row that moved the money.
+export interface Settlement {
+    id: string;
+    payer_user_id: string;
+    payee_user_id: string;
+    amount_eur: number;
+    net_eur_at_settlement: number;
+    transfer_id: string;
+    note: string | null;
+    created_at: string;
+    readonly pair_low: string;
+    readonly pair_high: string;
+}
+
+// Mirrors public.settlement_allocations — which shares a settlement paid,
+// and how much of each (partial settle-ups need no share row splitting).
+export interface SettlementAllocation {
+    settlement_id: string;
+    share_id: string;
+    amount_eur: number;
+    created_at: string;
+}
+
+// Return row of the friend_net_balances view. NOT a table — two rows per
+// friend pair, one per perspective. net_eur > 0 means the friend owes you.
+export interface FriendNetBalance {
+    viewer_id: string;
+    friend_id: string;
+    net_eur: number;
+    share_count: number;
+    last_activity: string;
+}
+
+export interface TransactionWithShare extends Transaction {
+    share: TransactionShare | null;
 }
