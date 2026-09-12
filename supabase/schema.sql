@@ -3498,8 +3498,9 @@ grant execute on function public.nomadix_respond_vault_share(uuid, text) to auth
 -- the owner and reassigns the leaver's own transactions to the owner (the
 -- money stays in the vault; deleting those rows would corrupt the
 -- balance). The owner leaving transfers ownership to the co-owner instead.
--- Both branches refuse while a transfer into/out of the vault is still
--- inside its 24h reversal window, same as deleting the vault outright.
+-- Unlike deleting the vault, leaving never removes the vault or its
+-- transactions, so a pending 24h-reversible transfer is unaffected and
+-- does not need to block either branch.
 -- ---------------------------------------------------------------------------
 create or replace function public.nomadix_leave_shared_vault(p_vault_id uuid)
 returns void
@@ -3527,18 +3528,6 @@ begin
      for update;
     if not found then
         raise exception 'You are not a member of this vault' using errcode = 'insufficient_privilege';
-    end if;
-
-    if exists (
-        select 1 from public.transfers t
-         where (t.sender_vault_id = p_vault_id or t.recipient_vault_id = p_vault_id)
-           and t.status = 'completed'
-           and t.kind = 'friend'
-           and t.reversible_until is not null
-           and t.reversible_until > now()
-    ) then
-        raise exception 'A transfer involving this vault can still be returned -- try again after the 24-hour window'
-            using errcode = 'foreign_key_violation';
     end if;
 
     if v_my_row.role = 'member' then
