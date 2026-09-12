@@ -204,33 +204,27 @@ export default function VaultsPage() {
         });
 
         // Pending invites: vaults someone shared with me that I have not
-        // answered yet.
-        const { data: inviteRows } = await supabase
-            .from("vault_members")
-            .select("id, vault_id")
-            .eq("user_id", user.id)
-            .eq("status", "invited");
+        // answered yet. Read via RPC, not a direct `vaults` select -- RLS
+        // only lets an ACTIVE member read the vault row, and an invite I
+        // haven't answered yet is still 'invited', so a direct select
+        // would silently return nothing for it.
+        const { data: inviteRows } = await supabase.rpc(
+            "nomadix_list_pending_vault_invites"
+        );
 
-        const invites: PendingVaultInvite[] = [];
-        for (const inv of inviteRows || []) {
-            const { data: v } = await supabase
-                .from("vaults")
-                .select("name, user_id")
-                .eq("id", inv.vault_id)
-                .single();
-            if (!v) continue;
-            const { data: owner } = await supabase
-                .from("users_profile")
-                .select("full_name")
-                .eq("id", v.user_id)
-                .single();
-            invites.push({
-                memberId: inv.id,
-                vaultId: inv.vault_id,
-                vaultName: v.name,
-                ownerName: owner?.full_name || "",
-            });
-        }
+        const invites: PendingVaultInvite[] = (
+            (inviteRows || []) as {
+                member_id: string;
+                vault_id: string;
+                vault_name: string;
+                owner_name: string | null;
+            }[]
+        ).map((inv) => ({
+            memberId: inv.member_id,
+            vaultId: inv.vault_id,
+            vaultName: inv.vault_name,
+            ownerName: inv.owner_name || "",
+        }));
         setPendingInvites(invites);
 
         // Build vault name lookup

@@ -4790,3 +4790,62 @@ grant execute on function public.nomadix_reverse_transfer(uuid, text) to authent
 -- select note from public.transfers where id = '<the-returned-id>'::uuid;
 --   -- expect "Para la cena" -- the note survives, just no longer overwrites the description
 -- ============================================================================
+
+-- ============================================================================
+-- SOCIAL LAYER -- PATCH 2: PENDING VAULT-SHARE INVITES ARE VISIBLE TO THE
+-- INVITEE
+-- ----------------------------------------------------------------------------
+-- Bug found in production use: an invited (not yet 'active') co-owner could
+-- never see the invite banner for a shared vault. src/app/dashboard/vaults/
+-- page.tsx built that banner by SELECTing the vaults row directly to read
+-- its name -- but the Phase 3 policy "vaults_select_shared_member" (via
+-- nomadix_is_vault_member) only grants read access once status = 'active'.
+-- An 'invited' row got 0 rows back, the client's `if (!v) continue;`
+-- silently dropped it, and the invite never rendered -- even though
+-- nomadix_share_vault had inserted it correctly.
+--
+-- Fix: a narrow SECURITY DEFINER RPC, same pattern as nomadix_list_friends /
+-- nomadix_list_transferable_vaults -- returns only what the invite banner
+-- needs (vault name, currency, owner name), never balance or is_protected,
+-- and deliberately does NOT touch nomadix_is_vault_member (still
+-- 'active'-only, correct for every access-control call site that isn't
+-- this one read).
+--
+-- Re-runnable: idempotent.
+-- After applying: Supabase -> Settings -> API -> Reload schema
+--                 (or: notify pgrst, 'reload schema';)
+-- ============================================================================
+
+create or replace function public.nomadix_list_pending_vault_invites()
+returns table (
+    member_id      uuid,
+    vault_id       uuid,
+    vault_name     text,
+    vault_currency text,
+    owner_id       uuid,
+    owner_name     text
+)
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+    select m.id, v.id, v.name, v.currency, v.user_id,
+           coalesce(nullif(trim(p.full_name), ''), '@' || p.username, 'A friend')
+      from public.vault_members m
+      join public.vaults v on v.id = m.vault_id
+      left join public.users_profile p on p.id = v.user_id
+     where auth.uid() is not null
+       and m.user_id = auth.uid()
+       and m.status = 'invited';
+$$;
+
+revoke all on function public.nomadix_list_pending_vault_invites() from public, anon;
+grant execute on function public.nomadix_list_pending_vault_invites() to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Manual verification (run as the invited user, B, with a pending invite
+-- from A that B has not yet accepted or declined):
+-- select * from public.nomadix_list_pending_vault_invites();
+--   -- expect one row: the vault's name/currency and A's name, no balance
+-- ============================================================================
