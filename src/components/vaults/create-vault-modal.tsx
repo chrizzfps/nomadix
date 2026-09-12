@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Vault } from "@phosphor-icons/react";
+import { X, Vault, UsersThree } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
-import type { Currency } from "@/types";
+import { friendInitials, formatFriendHandle } from "@/lib/social";
+import type { Currency, FriendSummary } from "@/types";
 
 interface CreateVaultModalProps {
     isOpen: boolean;
@@ -28,6 +29,22 @@ export function CreateVaultModal({
     const [initialAmount, setInitialAmount] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const [shareEnabled, setShareEnabled] = useState(false);
+    const [friends, setFriends] = useState<FriendSummary[]>([]);
+    const [friendsLoading, setFriendsLoading] = useState(false);
+    const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        setFriendsLoading(true);
+        (async () => {
+            const { data } = await supabase.rpc("nomadix_list_friends");
+            setFriends(((data as FriendSummary[]) || []).filter((f) => f.status === "accepted"));
+            setFriendsLoading(false);
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
 
     const handleCreate = async () => {
         if (!name.trim()) {
@@ -76,13 +93,29 @@ export function CreateVaultModal({
             });
         }
 
+        if (shareEnabled && selectedFriendId) {
+            const { error: shareError } = await supabase.rpc("nomadix_share_vault", {
+                p_vault_id: insertedVault.id,
+                p_friend_id: selectedFriendId,
+            });
+            if (shareError) {
+                addToast(shareError.message || "Vault created, but the invite failed.", "error");
+            } else {
+                addToast("Vault created and invite sent.");
+            }
+        }
+
         setName("");
         setCurrency("EUR");
         setType("checking");
+        setShareEnabled(false);
+        setSelectedFriendId(null);
         setIsProtected(false);
         setInitialAmount("");
         setIsLoading(false);
-        addToast("Vault created successfully");
+        if (!shareEnabled || !selectedFriendId) {
+            addToast("Vault created successfully");
+        }
         onCreated();
         onClose();
     };
@@ -236,6 +269,67 @@ export function CreateVaultModal({
                                     </p>
                                 </div>
                             </label>
+
+                            {/* Share Toggle */}
+                            <div className="space-y-3 rounded-xl border border-border bg-accent/40 p-3">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            checked={shareEnabled}
+                                            onChange={(e) => {
+                                                setShareEnabled(e.target.checked);
+                                                if (!e.target.checked) setSelectedFriendId(null);
+                                            }}
+                                            className="peer sr-only"
+                                        />
+                                        <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
+                                        <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <UsersThree size={16} className="text-foreground/60" />
+                                        <div>
+                                            <p className="text-sm font-medium text-foreground/80">
+                                                Share with a friend
+                                            </p>
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Invite a friend to co-own this vault
+                                            </p>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                {shareEnabled && (
+                                    <div className="space-y-1.5">
+                                        {friendsLoading ? (
+                                            <div className="h-11 animate-pulse rounded-lg bg-accent" />
+                                        ) : friends.length === 0 ? (
+                                            <p className="py-2 text-center text-xs text-muted-foreground">
+                                                You have no friends yet — add one first from the Friends page.
+                                            </p>
+                                        ) : (
+                                            friends.map((f) => (
+                                                <button
+                                                    key={f.friend_id}
+                                                    type="button"
+                                                    onClick={() => setSelectedFriendId(f.friend_id)}
+                                                    className={`flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors ${selectedFriendId === f.friend_id
+                                                        ? "border-primary bg-primary/10"
+                                                        : "border-border bg-card hover:border-ring"
+                                                        }`}
+                                                >
+                                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                                                        {friendInitials(f.full_name || f.username || "?")}
+                                                    </div>
+                                                    <span className="text-sm font-medium text-foreground">
+                                                        {formatFriendHandle(f)}
+                                                    </span>
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+                                )}
+                            </div>
 
                             {error && (
                                 <p className="text-sm text-red-500">{error}</p>
