@@ -2613,9 +2613,15 @@ grant execute on function public.nomadix_reverse_transfer(uuid, text) to authent
 -- ---------------------------------------------------------------------------
 -- nomadix_guard_transfer_leg: makes a transfer leg immutable except through
 -- the RPCs above, and makes deleting one leg of a linked transfer either
--- impossible (cross-user -- points at Return instead) or a full cascade
--- (internal -- removes the sibling leg and the transfers row atomically).
--- Legacy rows (transfer_id is null) pass straight through, untouched.
+-- impossible (cross-user, still outstanding -- points at Return instead),
+-- allowed (cross-user, already resolved: the 'friend' transfer was
+-- reversed, or this IS a reversal's own closing leg -- nothing left to
+-- protect, so a vault delete's cascade is free to remove it), or a full
+-- cascade (internal -- removes the sibling leg and the transfers row
+-- atomically). Legacy rows (transfer_id is null) pass straight through,
+-- untouched. A 'settlement' leg's status is always 'completed' (settle-up
+-- is deliberately never reversible) so it stays permanently protected --
+-- the same as an outstanding, un-reversed 'friend' transfer.
 -- ---------------------------------------------------------------------------
 create or replace function public.nomadix_guard_transfer_leg()
 returns trigger
@@ -2623,7 +2629,8 @@ language plpgsql
 set search_path = public, pg_temp
 as $$
 declare
-    v_kind text;
+    v_kind   text;
+    v_status text;
 begin
     if TG_OP = 'UPDATE' then
         if OLD.transfer_id is null then
@@ -2659,12 +2666,18 @@ begin
             return OLD;
         end if;
 
-        select kind into v_kind from public.transfers where id = OLD.transfer_id;
+        select kind, status into v_kind, v_status from public.transfers where id = OLD.transfer_id;
 
         -- v_kind is null when the transfers row is already gone -- the
         -- sibling leg's own cascade (see the AFTER trigger below) got here
         -- first in the same statement. Nothing left to refuse; let it pass.
-        if v_kind is not null and v_kind <> 'internal' then
+        -- Otherwise, only an outstanding ('completed') friend/settlement
+        -- transfer is refused -- one that was already reversed, or a
+        -- reversal's own leg, has nothing left for "use Return" to act on.
+        if v_kind is not null
+           and v_kind in ('friend', 'settlement')
+           and v_status = 'completed'
+        then
             raise exception 'A transfer between two people cannot be deleted -- use Return instead'
                 using errcode = 'insufficient_privilege';
         end if;
