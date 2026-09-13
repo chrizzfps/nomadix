@@ -516,13 +516,91 @@ export default function VaultsPage() {
         <div className="p-6 lg:p-8">
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                        {t("vaults.title")}
+                <div className="flex items-center gap-3">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                        {t("vaults.myVaults")}
                     </h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        {t("vaults.subtitle")}
-                    </p>
+                    {vaults.length > 0 && (
+                        <span className="inline-flex items-center justify-center rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                            {vaults.length}
+                        </span>
+                    )}
+
+                    {/* View Options (3-dots contextual menu) */}
+                    {vaults.length > 0 && (
+                        <div className="relative" ref={viewOptionsRef}>
+                            <button
+                                type="button"
+                                onClick={() => setViewOptionsMenuOpen((prev) => !prev)}
+                                className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
+                                    viewOptionsMenuOpen
+                                        ? "border-border bg-accent text-foreground"
+                                        : "border-transparent text-muted-foreground hover:border-border hover:bg-card hover:text-foreground"
+                                }`}
+                                aria-label={t("vaults.viewOptions")}
+                                title={t("vaults.viewOptions")}
+                            >
+                                <DotsThree size={20} weight="bold" />
+                            </button>
+
+                            <AnimatePresence>
+                                {viewOptionsMenuOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="absolute left-0 top-9 z-40 w-56 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-lg"
+                                    >
+                                        <div className="border-b border-border/50 px-2.5 py-1.5">
+                                            <p className="text-xs font-semibold text-foreground">
+                                                {t("vaults.visibleLimitTitle")}
+                                            </p>
+                                            <p className="text-[10px] text-muted-foreground">
+                                                {t("vaults.visibleLimitDesc")}
+                                            </p>
+                                        </div>
+                                        <div className="mt-1 space-y-0.5">
+                                            {(
+                                                [
+                                                    { value: 4, label: t("vaults.optionOneRow"), badge: null },
+                                                    { value: 8, label: t("vaults.optionTwoRows"), badge: t("vaults.defaultBadge") },
+                                                    { value: 12, label: t("vaults.optionThreeRows"), badge: null },
+                                                    { value: "all", label: t("vaults.optionAll"), badge: null },
+                                                ] as const
+                                            ).map((opt) => {
+                                                const isSelected = visibleLimit === opt.value;
+                                                return (
+                                                    <button
+                                                        key={String(opt.value)}
+                                                        type="button"
+                                                        onClick={() => handleSelectLimit(opt.value)}
+                                                        className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
+                                                            isSelected
+                                                                ? "bg-accent font-semibold text-foreground"
+                                                                : "text-foreground/70 hover:bg-accent/60 hover:text-foreground"
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <span>{opt.label}</span>
+                                                            {opt.badge && (
+                                                                <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                                                                    {opt.badge}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {isSelected && (
+                                                            <Check size={14} weight="bold" className="shrink-0 text-primary" />
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-3">
                     <CurrencyToggle />
@@ -583,94 +661,6 @@ export default function VaultsPage() {
                 </div>
             )}
 
-            {/* Vaults Section Header & View Options */}
-            {vaults.length > 0 && (
-                <div className="mt-8 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            {t("vaults.myVaults")}
-                        </h2>
-                        <span className="inline-flex items-center justify-center rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                            {vaults.length}
-                        </span>
-                    </div>
-
-                    {/* View Options (3-dots contextual menu) */}
-                    <div className="relative" ref={viewOptionsRef}>
-                        <button
-                            type="button"
-                            onClick={() => setViewOptionsMenuOpen((prev) => !prev)}
-                            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
-                                viewOptionsMenuOpen
-                                    ? "border-border bg-accent text-foreground"
-                                    : "border-transparent text-muted-foreground hover:border-border hover:bg-card hover:text-foreground"
-                            }`}
-                            aria-label={t("vaults.viewOptions")}
-                            title={t("vaults.viewOptions")}
-                        >
-                            <DotsThree size={20} weight="bold" />
-                        </button>
-
-                        <AnimatePresence>
-                            {viewOptionsMenuOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                                    transition={{ duration: 0.15 }}
-                                    className="absolute right-0 top-9 z-40 w-56 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-lg"
-                                >
-                                    <div className="border-b border-border/50 px-2.5 py-1.5">
-                                        <p className="text-xs font-semibold text-foreground">
-                                            {t("vaults.visibleLimitTitle")}
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground">
-                                            {t("vaults.visibleLimitDesc")}
-                                        </p>
-                                    </div>
-                                    <div className="mt-1 space-y-0.5">
-                                        {(
-                                            [
-                                                { value: 4, label: t("vaults.optionOneRow"), badge: null },
-                                                { value: 8, label: t("vaults.optionTwoRows"), badge: t("vaults.defaultBadge") },
-                                                { value: 12, label: t("vaults.optionThreeRows"), badge: null },
-                                                { value: "all", label: t("vaults.optionAll"), badge: null },
-                                            ] as const
-                                        ).map((opt) => {
-                                            const isSelected = visibleLimit === opt.value;
-                                            return (
-                                                <button
-                                                    key={String(opt.value)}
-                                                    type="button"
-                                                    onClick={() => handleSelectLimit(opt.value)}
-                                                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
-                                                        isSelected
-                                                            ? "bg-accent font-semibold text-foreground"
-                                                            : "text-foreground/70 hover:bg-accent/60 hover:text-foreground"
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center gap-2">
-                                                        <span>{opt.label}</span>
-                                                        {opt.badge && (
-                                                            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                                                                {opt.badge}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    {isSelected && (
-                                                        <Check size={14} weight="bold" className="shrink-0 text-primary" />
-                                                    )}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                </div>
-            )}
-
             {/* Vault Cards Grid */}
             {(() => {
                 const limitCount = visibleLimit === "all" ? vaults.length : visibleLimit;
@@ -680,7 +670,7 @@ export default function VaultsPage() {
 
                 return (
                     <>
-                        <div className={`${vaults.length > 0 ? "mt-3" : "mt-8"} grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4`}>
+                        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                             {displayedVaults.map((vault, i) => (
                                 <motion.div
                                     key={vault.id}
