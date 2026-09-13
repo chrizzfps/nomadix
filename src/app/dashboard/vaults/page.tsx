@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     Plus,
     ArrowUp,
@@ -26,6 +26,10 @@ import {
     Car,
     UsersThree,
     HourglassMedium,
+    DotsThree,
+    CaretDown,
+    CaretUp,
+    Check,
 } from "@phosphor-icons/react";
 import { VaultCard } from "@/components/vaults/vault-card";
 import { CreateVaultModal } from "@/components/vaults/create-vault-modal";
@@ -130,6 +134,54 @@ export default function VaultsPage() {
     const [categoryFilterOpen, setCategoryFilterOpen] = useState(false);
     const [categoryQuery, setCategoryQuery] = useState("");
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+    type VaultsVisibleLimit = 4 | 8 | 12 | "all";
+    const DEFAULT_VAULTS_VISIBLE_LIMIT: VaultsVisibleLimit = 8;
+    const STORAGE_KEY_VAULTS_LIMIT = "nomadix_vaults_visible_limit";
+
+    const [visibleLimit, setVisibleLimit] = useState<VaultsVisibleLimit>(DEFAULT_VAULTS_VISIBLE_LIMIT);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [viewOptionsMenuOpen, setViewOptionsMenuOpen] = useState(false);
+    const viewOptionsRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY_VAULTS_LIMIT);
+            if (saved === "4" || saved === "8" || saved === "12" || saved === "all") {
+                setVisibleLimit(saved === "all" ? "all" : (Number(saved) as 4 | 8 | 12));
+            }
+        } catch {
+            // Ignore localStorage errors
+        }
+    }, []);
+
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (
+                viewOptionsRef.current &&
+                !viewOptionsRef.current.contains(e.target as Node)
+            ) {
+                setViewOptionsMenuOpen(false);
+            }
+        }
+        if (viewOptionsMenuOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [viewOptionsMenuOpen]);
+
+    const handleSelectLimit = (limit: VaultsVisibleLimit) => {
+        setVisibleLimit(limit);
+        setIsExpanded(false);
+        setViewOptionsMenuOpen(false);
+        try {
+            localStorage.setItem(STORAGE_KEY_VAULTS_LIMIT, String(limit));
+        } catch {
+            // Ignore localStorage errors
+        }
+    };
 
     const loadData = useCallback(async () => {
         setActivityError(null);
@@ -531,36 +583,165 @@ export default function VaultsPage() {
                 </div>
             )}
 
+            {/* Vaults Section Header & View Options */}
+            {vaults.length > 0 && (
+                <div className="mt-8 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            {t("vaults.myVaults")}
+                        </h2>
+                        <span className="inline-flex items-center justify-center rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                            {vaults.length}
+                        </span>
+                    </div>
+
+                    {/* View Options (3-dots contextual menu) */}
+                    <div className="relative" ref={viewOptionsRef}>
+                        <button
+                            type="button"
+                            onClick={() => setViewOptionsMenuOpen((prev) => !prev)}
+                            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
+                                viewOptionsMenuOpen
+                                    ? "border-border bg-accent text-foreground"
+                                    : "border-transparent text-muted-foreground hover:border-border hover:bg-card hover:text-foreground"
+                            }`}
+                            aria-label={t("vaults.viewOptions")}
+                            title={t("vaults.viewOptions")}
+                        >
+                            <DotsThree size={20} weight="bold" />
+                        </button>
+
+                        <AnimatePresence>
+                            {viewOptionsMenuOpen && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="absolute right-0 top-9 z-40 w-56 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-lg"
+                                >
+                                    <div className="border-b border-border/50 px-2.5 py-1.5">
+                                        <p className="text-xs font-semibold text-foreground">
+                                            {t("vaults.visibleLimitTitle")}
+                                        </p>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            {t("vaults.visibleLimitDesc")}
+                                        </p>
+                                    </div>
+                                    <div className="mt-1 space-y-0.5">
+                                        {(
+                                            [
+                                                { value: 4, label: t("vaults.optionOneRow"), badge: null },
+                                                { value: 8, label: t("vaults.optionTwoRows"), badge: t("vaults.defaultBadge") },
+                                                { value: 12, label: t("vaults.optionThreeRows"), badge: null },
+                                                { value: "all", label: t("vaults.optionAll"), badge: null },
+                                            ] as const
+                                        ).map((opt) => {
+                                            const isSelected = visibleLimit === opt.value;
+                                            return (
+                                                <button
+                                                    key={String(opt.value)}
+                                                    type="button"
+                                                    onClick={() => handleSelectLimit(opt.value)}
+                                                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
+                                                        isSelected
+                                                            ? "bg-accent font-semibold text-foreground"
+                                                            : "text-foreground/70 hover:bg-accent/60 hover:text-foreground"
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{opt.label}</span>
+                                                        {opt.badge && (
+                                                            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                                                                {opt.badge}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {isSelected && (
+                                                        <Check size={14} weight="bold" className="shrink-0 text-primary" />
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                </div>
+            )}
+
             {/* Vault Cards Grid */}
-            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {vaults.map((vault, i) => (
-                    <motion.div
-                        key={vault.id}
-                        initial={{ opacity: 0, y: 15 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                    >
-                        <VaultCard
-                            id={vault.id}
-                            name={vault.name}
-                            balance={vault.balance}
-                            currency={vault.currency}
-                            type={vault.type}
-                            isProtected={vault.is_protected}
-                            isShared={vault.is_shared}
-                            isOwner={vault.isOwner !== false}
-                            receivableCount={vault.receivableCount}
-                            receivableOverdueCount={vault.receivableOverdueCount}
-                            onClick={
-                                !isLiquidVault(vault.type)
-                                    ? () => router.push(`/dashboard/receivables?vault=${vault.id}`)
-                                    : undefined
-                            }
-                            onUpdated={loadData}
-                        />
-                    </motion.div>
-                ))}
-            </div>
+            {(() => {
+                const limitCount = visibleLimit === "all" ? vaults.length : visibleLimit;
+                const isVaultsTruncated = visibleLimit !== "all" && vaults.length > limitCount;
+                const displayedVaults = isExpanded || !isVaultsTruncated ? vaults : vaults.slice(0, limitCount);
+                const hiddenVaultsCount = Math.max(0, vaults.length - limitCount);
+
+                return (
+                    <>
+                        <div className={`${vaults.length > 0 ? "mt-3" : "mt-8"} grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4`}>
+                            {displayedVaults.map((vault, i) => (
+                                <motion.div
+                                    key={vault.id}
+                                    initial={{ opacity: 0, y: 15 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: Math.min(i * 0.03, 0.3) }}
+                                >
+                                    <VaultCard
+                                        id={vault.id}
+                                        name={vault.name}
+                                        balance={vault.balance}
+                                        currency={vault.currency}
+                                        type={vault.type}
+                                        isProtected={vault.is_protected}
+                                        isShared={vault.is_shared}
+                                        isOwner={vault.isOwner !== false}
+                                        receivableCount={vault.receivableCount}
+                                        receivableOverdueCount={vault.receivableOverdueCount}
+                                        onClick={
+                                            !isLiquidVault(vault.type)
+                                                ? () => router.push(`/dashboard/receivables?vault=${vault.id}`)
+                                                : undefined
+                                        }
+                                        onUpdated={loadData}
+                                    />
+                                </motion.div>
+                            ))}
+                        </div>
+
+                        {/* Show More / Show Less Toggle Button */}
+                        {isVaultsTruncated && (
+                            <div className="mt-4 flex justify-center">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsExpanded((prev) => !prev)}
+                                    className="group flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground/80 shadow-xs transition-all hover:border-border/80 hover:bg-accent hover:text-foreground active:scale-[0.98]"
+                                >
+                                    <span>
+                                        {isExpanded
+                                            ? t("vaults.showLess")
+                                            : t("vaults.showMore", { count: hiddenVaultsCount })}
+                                    </span>
+                                    {isExpanded ? (
+                                        <CaretUp
+                                            size={14}
+                                            weight="bold"
+                                            className="transition-transform group-hover:-translate-y-0.5"
+                                        />
+                                    ) : (
+                                        <CaretDown
+                                            size={14}
+                                            weight="bold"
+                                            className="transition-transform group-hover:translate-y-0.5"
+                                        />
+                                    )}
+                                </button>
+                            </div>
+                        )}
+                    </>
+                );
+            })()}
 
             {/* Total */}
             <motion.div

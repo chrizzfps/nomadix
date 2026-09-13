@@ -74,7 +74,13 @@ export function ReceivableFormModal({
             });
         }
         setError(null);
-    }, [isOpen, editing, defaultVaultId, vaults]);
+        // `vaults` is deliberately NOT a dependency: creating a client
+        // inline reloads the whole receivables page (new vaults/clients
+        // array references) while this modal is still open, which used to
+        // re-run this effect and wipe the entire form -- including the
+        // client just picked -- right after it was created.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, editing, defaultVaultId]);
 
     const handleCreateClient = async (name: string): Promise<Client | null> => {
         const {
