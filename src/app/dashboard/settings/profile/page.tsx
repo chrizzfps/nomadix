@@ -17,6 +17,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 import { useLanguageStore } from "@/stores/language-store";
+import { usePlan } from "@/hooks/use-plan";
 
 interface ExtendedNomadProfile {
     bio: string;
@@ -49,6 +50,7 @@ export default function ProfilePage() {
     const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
     const t = useLanguageStore((s) => s.t);
+    const { isPro } = usePlan();
 
     const [profile, setProfile] = useState<{
         full_name: string;
@@ -243,7 +245,7 @@ export default function ProfilePage() {
                         </div>
                         <div className="flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-foreground/80">
                             <Crown size={12} weight="fill" className="text-foreground" />
-                            Premium Plan
+                            {isPro ? t("plan.tier.pro") : t("plan.tier.free")}
                         </div>
                     </div>
                 </div>
@@ -378,7 +380,9 @@ export default function ProfilePage() {
                     <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
                         <Crown size={18} weight="fill" className="text-emerald-500" />
                     </div>
-                    <p className="text-2xl font-bold text-foreground">Premium</p>
+                    <p className="text-2xl font-bold text-foreground">
+                        {isPro ? t("plan.tier.pro") : t("plan.tier.free")}
+                    </p>
                     <p className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground">
                         {t("profile.plan")}
                     </p>

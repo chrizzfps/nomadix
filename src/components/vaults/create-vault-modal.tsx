@@ -6,6 +6,8 @@ import { X, Vault, UsersThree, HandCoins } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 import { friendInitials, formatFriendHandle } from "@/lib/social";
+import { usePlan } from "@/hooks/use-plan";
+import { UpgradeDialog } from "@/components/plan/upgrade-dialog";
 import type { Currency, FriendSummary, VaultType } from "@/types";
 
 interface CreateVaultModalProps {
@@ -32,6 +34,8 @@ export function CreateVaultModal({
 }: CreateVaultModalProps) {
     const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
+    const { isPro } = usePlan();
+    const [showShareUpgrade, setShowShareUpgrade] = useState(false);
 
     const [name, setName] = useState("");
     const [currency, setCurrency] = useState<Currency>("EUR");
@@ -138,6 +142,7 @@ export function CreateVaultModal({
     };
 
     return (
+        <>
         <AnimatePresence>
             {isOpen && (
                 <>
@@ -302,11 +307,20 @@ export function CreateVaultModal({
                             {/* Share Toggle — not offered for a receivable vault in v1 */}
                             {!isReceivable && (
                                 <div className="space-y-3 rounded-xl border border-border bg-accent/40 p-3">
-                                    <label className="flex items-center gap-3 cursor-pointer">
+                                    <label
+                                        className="flex items-center gap-3 cursor-pointer"
+                                        onClick={(e) => {
+                                            if (!isPro) {
+                                                e.preventDefault();
+                                                setShowShareUpgrade(true);
+                                            }
+                                        }}
+                                    >
                                         <div className="relative">
                                             <input
                                                 type="checkbox"
                                                 checked={shareEnabled}
+                                                disabled={!isPro}
                                                 onChange={(e) => {
                                                     setShareEnabled(e.target.checked);
                                                     if (!e.target.checked) setSelectedFriendId(null);
@@ -323,13 +337,15 @@ export function CreateVaultModal({
                                                     Share with a friend
                                                 </p>
                                                 <p className="text-[11px] text-muted-foreground">
-                                                    Invite a friend to co-own this vault
+                                                    {isPro
+                                                        ? "Invite a friend to co-own this vault"
+                                                        : "Pro feature — invite a friend to co-own this vault"}
                                                 </p>
                                             </div>
                                         </div>
                                     </label>
 
-                                    {shareEnabled && (
+                                    {shareEnabled && isPro && (
                                         <div className="space-y-1.5">
                                             {friendsLoading ? (
                                                 <div className="h-11 animate-pulse rounded-lg bg-accent" />
@@ -387,5 +403,11 @@ export function CreateVaultModal({
                 </>
             )}
         </AnimatePresence>
+        <UpgradeDialog
+            isOpen={showShareUpgrade}
+            onClose={() => setShowShareUpgrade(false)}
+            reason="shareVault"
+        />
+        </>
     );
 }

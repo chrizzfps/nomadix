@@ -20,6 +20,9 @@ import { SubscriptionFormModal } from "@/components/subscriptions/subscription-f
 import { SubscriptionDetailModal } from "@/components/subscriptions/subscription-detail-modal";
 import { ConfirmChargeModal } from "@/components/subscriptions/confirm-charge-modal";
 import { useLanguageStore } from "@/stores/language-store";
+import { LimitBadge } from "@/components/plan/limit-badge";
+import { UpgradeDialog } from "@/components/plan/upgrade-dialog";
+import { usePlanLimit } from "@/hooks/use-plan-limit";
 import type { Subscription } from "@/types";
 
 interface VaultOption {
@@ -159,7 +162,14 @@ export default function SubscriptionsPage() {
         reloadReminders(true);
     }, [load, reloadReminders]);
 
+    const [showUpgrade, setShowUpgrade] = useState(false);
+    const subscriptionLimit = usePlanLimit("subscription");
+
     const openCreate = () => {
+        if (subscriptionLimit.reached) {
+            setShowUpgrade(true);
+            return;
+        }
         setEditing(null);
         setIsFormOpen(true);
     };
@@ -191,6 +201,7 @@ export default function SubscriptionsPage() {
                 >
                     <Plus size={16} weight="bold" />
                     {t("subs.new")}
+                    <LimitBadge entity="subscription" className="bg-primary-foreground/15 text-primary-foreground" />
                 </button>
             </div>
 
@@ -318,6 +329,11 @@ export default function SubscriptionsPage() {
                 onSaved={handleChanged}
                 vaults={vaults}
                 editing={editing}
+            />
+            <UpgradeDialog
+                isOpen={showUpgrade}
+                onClose={() => setShowUpgrade(false)}
+                reason="subscription"
             />
 
             <SubscriptionDetailModal

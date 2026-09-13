@@ -16,8 +16,11 @@ import { createClient } from "@/lib/supabase/client";
 import { usePrivacyStore } from "@/stores/privacy-store";
 import { formatMoney } from "@/lib/currency";
 import { todayISO } from "@/lib/subscriptions";
+import { historyCutoff } from "@/lib/plan";
+import { usePlan } from "@/hooks/use-plan";
 import { AI_PROVIDERS, type AiProvider } from "@/lib/ai-providers";
 import { TransactionDetailModal } from "@/components/vaults/transaction-detail-modal";
+import { UpgradeDialog } from "@/components/plan/upgrade-dialog";
 import { useLanguageStore } from "@/stores/language-store";
 import type { MonthlyReportContext, ReportLanguage } from "@/lib/ai-report";
 
@@ -90,6 +93,13 @@ export default function ReportsPage() {
         provider?: AiProvider;
     } | null>(null);
     const [selectedTx, setSelectedTx] = useState<TxDetail | null>(null);
+    const [showUpgrade, setShowUpgrade] = useState(false);
+    const { tier } = usePlan();
+    // Free tier can only browse the last FREE_HISTORY_MONTHS months of
+    // reports; older data isn't deleted, it's just not orderable here until
+    // upgrade. Mirrors the "report" entity gate above (also 1 total), but
+    // this one caps *which* months are reachable rather than how many.
+    const minMonth = historyCutoff(tier)?.slice(0, 7) ?? null;
 
     const generate = async (force: boolean) => {
         setIsLoading(true);
@@ -102,6 +112,11 @@ export default function ReportsPage() {
             });
             const json = await res.json();
             if (!res.ok) {
+                if (json.code === "plan_limit") {
+                    setShowUpgrade(true);
+                    setResult(null);
+                    return;
+                }
                 setError({
                     message: json.error || t("reports.somethingWrong"),
                     code: json.code,
@@ -167,7 +182,15 @@ export default function ReportsPage() {
                     <input
                         type="month"
                         value={month}
-                        onChange={(e) => setMonth(e.target.value)}
+                        min={minMonth ?? undefined}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            if (minMonth && value < minMonth) {
+                                setShowUpgrade(true);
+                                return;
+                            }
+                            setMonth(value);
+                        }}
                         className="rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground/80 focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                     <button
@@ -398,6 +421,11 @@ export default function ReportsPage() {
                 onClose={() => setSelectedTx(null)}
                 onDeleted={() => setSelectedTx(null)}
                 transaction={selectedTx}
+            />
+            <UpgradeDialog
+                isOpen={showUpgrade}
+                onClose={() => setShowUpgrade(false)}
+                reason="report"
             />
         </div>
     );

@@ -5664,3 +5664,325 @@ grant execute on function public.nomadix_list_transferable_vaults(uuid) to authe
 -- 6) delete from public.vaults where id = '<receivable-vault>'::uuid;
 --   -- expect success; its receivables cascade-delete, clients survive
 -- ============================================================================
+
+-- ============================================================================
+-- Account plans (Free / Pro monetization layer)
+-- ============================================================================
+-- public.subscriptions above is a PRODUCT feature (the user's own Netflix-
+-- style recurring charges) -- unrelated to this. Everything here is prefixed
+-- account_plan* / nomadix_*_quota to avoid any confusion with it.
+--
+-- Absence of a row in account_plans means "free". We never insert a free row
+-- on signup -- nomadix_current_tier() already returns 'free' for that case,
+-- so there is nothing to backfill and no bloat.
+--
+-- Security: authenticated users get SELECT on their own row only. There is
+-- deliberately no insert/update/delete policy for authenticated -- writes
+-- happen only via the service role (billing webhook) or the security
+-- definer RPCs below. A user who could write their own tier would make the
+-- whole system decorative.
+-- ---------------------------------------------------------------------------
+create table if not exists public.account_plans (
+    user_id uuid primary key references auth.users(id) on delete cascade,
+    tier text not null default 'free' check (tier in ('free', 'pro')),
+    status text not null default 'active'
+        check (status in ('active', 'past_due', 'canceled')),
+    period_interval text check (period_interval in ('month', 'year')),
+    current_period_end timestamptz,
+    cancel_at_period_end boolean not null default false,
+    provider text check (provider in ('paypal', 'manual')),
+    provider_subscription_id text unique,
+    note text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+alter table public.account_plans enable row level security;
+
+do $$
+begin
+    begin
+        create policy "account_plans_select_own" on public.account_plans
+        for select using (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+end $$;
+
+drop trigger if exists account_plans_touch_trg on public.account_plans;
+create trigger account_plans_touch_trg
+    before update on public.account_plans
+    for each row execute function public.nomadix_touch_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- nomadix_current_tier: single source of truth for "is this user Pro right
+-- now". A 3-day grace window after current_period_end absorbs payment-
+-- provider webhook lag without granting real free-riding.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_current_tier(p_user uuid default auth.uid())
+returns text
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+    select coalesce(
+        (
+            select case
+                when ap.tier = 'pro'
+                     and ap.status <> 'canceled'
+                     and (
+                        ap.current_period_end is null
+                        or ap.current_period_end > now() - interval '3 days'
+                     )
+                then 'pro'
+                else 'free'
+            end
+            from public.account_plans ap
+            where ap.user_id = p_user
+        ),
+        'free'
+    );
+$$;
+
+revoke all on function public.nomadix_current_tier(uuid) from public, anon;
+grant execute on function public.nomadix_current_tier(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_assert_quota: raises 'NOMADIX_PLAN_LIMIT:<entity>' when a free
+-- user is about to create more than their entity limit. Pro users always
+-- pass. Called from a before-insert trigger on each gated table, so the
+-- limit holds even if a client calls supabase-js directly, bypassing the UI.
+--
+-- Limits here MUST mirror PLAN_LIMITS in src/lib/plan.ts exactly.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_assert_quota(p_entity text, p_user uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_limit integer;
+    v_used integer;
+begin
+    if public.nomadix_current_tier(p_user) = 'pro' then
+        return;
+    end if;
+
+    v_limit := case p_entity
+        when 'vault' then 3
+        when 'category' then 5
+        when 'subscription' then 5
+        when 'receivable' then 0
+        when 'client' then 0
+        when 'document' then 2
+        when 'trip' then 1
+        else null
+    end;
+
+    if v_limit is null then
+        raise exception 'nomadix_assert_quota: unknown entity %', p_entity;
+    end if;
+
+    v_used := case p_entity
+        when 'vault' then
+            (select count(*) from public.vaults where user_id = p_user)
+        when 'category' then
+            (select count(*) from public.transaction_categories
+              where user_id = p_user and is_system = false)
+        when 'subscription' then
+            (select count(*) from public.subscriptions where user_id = p_user)
+        when 'receivable' then
+            (select count(*) from public.receivables where user_id = p_user)
+        when 'client' then
+            (select count(*) from public.clients where user_id = p_user)
+        when 'document' then
+            (select count(*) from public.documents where user_id = p_user)
+        when 'trip' then
+            (select count(*) from public.trips where user_id = p_user)
+    end;
+
+    if v_used >= v_limit then
+        raise exception 'NOMADIX_PLAN_LIMIT:%', p_entity using errcode = 'P0001';
+    end if;
+end;
+$$;
+
+revoke all on function public.nomadix_assert_quota(text, uuid) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Per-table before-insert triggers. Each one just delegates to
+-- nomadix_assert_quota with its own entity key and NEW.user_id.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_quota_trg_vault()
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+    perform public.nomadix_assert_quota('vault', new.user_id);
+    return new;
+end $$;
+
+drop trigger if exists vaults_quota_trg on public.vaults;
+create trigger vaults_quota_trg
+    before insert on public.vaults
+    for each row execute function public.nomadix_quota_trg_vault();
+
+create or replace function public.nomadix_quota_trg_category()
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+    if new.is_system is distinct from true then
+        perform public.nomadix_assert_quota('category', new.user_id);
+    end if;
+    return new;
+end $$;
+
+drop trigger if exists transaction_categories_quota_trg on public.transaction_categories;
+create trigger transaction_categories_quota_trg
+    before insert on public.transaction_categories
+    for each row execute function public.nomadix_quota_trg_category();
+
+create or replace function public.nomadix_quota_trg_subscription()
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+    perform public.nomadix_assert_quota('subscription', new.user_id);
+    return new;
+end $$;
+
+drop trigger if exists subscriptions_quota_trg on public.subscriptions;
+create trigger subscriptions_quota_trg
+    before insert on public.subscriptions
+    for each row execute function public.nomadix_quota_trg_subscription();
+
+create or replace function public.nomadix_quota_trg_receivable()
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+    perform public.nomadix_assert_quota('receivable', new.user_id);
+    return new;
+end $$;
+
+drop trigger if exists receivables_quota_trg on public.receivables;
+create trigger receivables_quota_trg
+    before insert on public.receivables
+    for each row execute function public.nomadix_quota_trg_receivable();
+
+create or replace function public.nomadix_quota_trg_client()
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+    perform public.nomadix_assert_quota('client', new.user_id);
+    return new;
+end $$;
+
+drop trigger if exists clients_quota_trg on public.clients;
+create trigger clients_quota_trg
+    before insert on public.clients
+    for each row execute function public.nomadix_quota_trg_client();
+
+create or replace function public.nomadix_quota_trg_document()
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+    perform public.nomadix_assert_quota('document', new.user_id);
+    return new;
+end $$;
+
+drop trigger if exists documents_quota_trg on public.documents;
+create trigger documents_quota_trg
+    before insert on public.documents
+    for each row execute function public.nomadix_quota_trg_document();
+
+create or replace function public.nomadix_quota_trg_trip()
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+    perform public.nomadix_assert_quota('trip', new.user_id);
+    return new;
+end $$;
+
+drop trigger if exists trips_quota_trg on public.trips;
+create trigger trips_quota_trg
+    before insert on public.trips
+    for each row execute function public.nomadix_quota_trg_trip();
+
+-- ---------------------------------------------------------------------------
+-- Sharing a vault is a capability gate, not a quota -- so it lives inside
+-- nomadix_share_vault itself rather than a trigger. Accepting a share
+-- (nomadix_respond_vault_share) is intentionally left untouched: a free
+-- user must always be able to join a vault a Pro user shares with them,
+-- since that path is the product's own growth loop.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_share_vault(
+    p_vault_id uuid,
+    p_friend_id uuid
+) returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_uid uuid := auth.uid();
+    v_vault public.vaults%rowtype;
+    v_existing uuid;
+    v_member_id uuid;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+
+    if public.nomadix_current_tier(v_uid) <> 'pro' then
+        raise exception 'NOMADIX_PLAN_LIMIT:share_vault' using errcode = 'P0001';
+    end if;
+
+    select * into v_vault from public.vaults where id = p_vault_id for update;
+    if not found or v_vault.user_id <> v_uid then
+        raise exception 'Vault not found' using errcode = 'no_data_found';
+    end if;
+    if p_friend_id is null or p_friend_id = v_uid then
+        raise exception 'Invalid friend' using errcode = 'invalid_parameter_value';
+    end if;
+    if not public.nomadix_are_friends(v_uid, p_friend_id) then
+        raise exception 'Not friends' using errcode = 'insufficient_privilege';
+    end if;
+
+    select id into v_existing
+      from public.vault_members
+     where vault_id = p_vault_id and user_id = p_friend_id
+       and status in ('invited', 'active');
+    if found then
+        return v_existing;
+    end if;
+
+    insert into public.vault_members (vault_id, user_id, member_slot, role, status, joined_at)
+    values (p_vault_id, v_uid, 1, 'owner', 'active', now())
+    on conflict do nothing;
+
+    insert into public.vault_members (vault_id, user_id, member_slot, role, status, invited_by)
+    values (p_vault_id, p_friend_id, 2, 'member', 'invited', v_uid)
+    returning id into v_member_id;
+
+    return v_member_id;
+exception
+    when unique_violation then
+        raise exception 'This vault already has a co-owner or a pending invite'
+            using errcode = '23505';
+end $$;
+
+revoke all on function public.nomadix_share_vault(uuid, uuid) from public, anon;
+grant execute on function public.nomadix_share_vault(uuid, uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Manual verification:
+-- 1) As a free user with 3 vaults already, try to insert a 4th directly via
+--    supabase-js (not the UI):
+--    insert into public.vaults (user_id, name, currency, type, icon, color)
+--    values (auth.uid(), 'Test', 'EUR', 'cash', 'wallet', '#000');
+--    -- expect: error NOMADIX_PLAN_LIMIT:vault
+-- 2) Grant Pro manually and retry the same insert -- expect success:
+--    insert into public.account_plans (user_id, tier, status, provider, note)
+--    values ('<user-id>'::uuid, 'pro', 'active', 'manual', 'paid via paypal.me 2026-xx-xx')
+--    on conflict (user_id) do update
+--       set tier = 'pro', status = 'active', provider = 'manual',
+--           note = excluded.note, updated_at = now();
+-- 3) Downgrade back to free and confirm existing rows over the limit are
+--    untouched (select still returns all of them) while a new insert fails:
+--    update public.account_plans set tier = 'free' where user_id = '<user-id>'::uuid;
+-- 4) As a free user, call nomadix_share_vault on your own vault -- expect
+--    NOMADIX_PLAN_LIMIT:share_vault. As a Pro user it should succeed as before.
+-- 5) select public.nomadix_current_tier(); -- expect 'free' for a user with
+--    no account_plans row at all.
+-- ============================================================================

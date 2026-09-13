@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 import { useLanguageStore } from "@/stores/language-store";
 import { friendInitials, formatFriendHandle } from "@/lib/social";
+import { parsePlanLimitError } from "@/lib/plan";
+import { UpgradeDialog } from "@/components/plan/upgrade-dialog";
 import type { FriendSummary } from "@/types";
 
 interface ShareVaultModalProps {
@@ -25,6 +27,7 @@ export function ShareVaultModal({ isOpen, onClose, vaultId, vaultName, onShared 
     const [friends, setFriends] = useState<FriendSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [sendingId, setSendingId] = useState<string | null>(null);
+    const [showUpgrade, setShowUpgrade] = useState(false);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -49,6 +52,10 @@ export function ShareVaultModal({ isOpen, onClose, vaultId, vaultName, onShared 
         });
         setSendingId(null);
         if (error) {
+            if (parsePlanLimitError(error) === "share_vault") {
+                setShowUpgrade(true);
+                return;
+            }
             addToast(error.message || t("sharedVault.inviteFailed"), "error");
             return;
         }
@@ -58,6 +65,7 @@ export function ShareVaultModal({ isOpen, onClose, vaultId, vaultName, onShared 
     };
 
     return (
+        <>
         <AnimatePresence>
             {isOpen && (
                 <>
@@ -127,5 +135,11 @@ export function ShareVaultModal({ isOpen, onClose, vaultId, vaultName, onShared 
                 </>
             )}
         </AnimatePresence>
+        <UpgradeDialog
+            isOpen={showUpgrade}
+            onClose={() => setShowUpgrade(false)}
+            reason="shareVault"
+        />
+        </>
     );
 }

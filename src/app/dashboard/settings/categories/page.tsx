@@ -12,6 +12,9 @@ import {
     WarningCircle,
 } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
+import { LimitBadge } from "@/components/plan/limit-badge";
+import { UpgradeDialog } from "@/components/plan/upgrade-dialog";
+import { usePlanLimit } from "@/hooks/use-plan-limit";
 import {
     CATEGORY_ICON_MAP,
     DEFAULT_TRANSACTION_CATEGORIES,
@@ -141,7 +144,14 @@ export default function CategoriesPage() {
         loadCategories();
     }, [loadCategories]);
 
+    const [showUpgrade, setShowUpgrade] = useState(false);
+    const categoryLimit = usePlanLimit("category");
+
     const openCreate = () => {
+        if (categoryLimit.reached) {
+            setShowUpgrade(true);
+            return;
+        }
         setEditing(null);
         setFormName("");
         setFormDescription("");
@@ -421,6 +431,7 @@ export default function CategoriesPage() {
                 >
                     <Plus size={16} weight="bold" />
                     New Category
+                    <LimitBadge entity="category" className="bg-primary-foreground/15 text-primary-foreground" />
                 </button>
             </div>
 
@@ -795,6 +806,11 @@ export default function CategoriesPage() {
                     </>
                 )}
             </AnimatePresence>
+            <UpgradeDialog
+                isOpen={showUpgrade}
+                onClose={() => setShowUpgrade(false)}
+                reason="category"
+            />
         </motion.div>
     );
 }

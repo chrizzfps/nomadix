@@ -50,6 +50,27 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
+    // Free tier: one report, total, ever -- the first month a free user
+    // generates is the only one they can revisit (any language, any number
+    // of regenerations). Requesting a *different* month is the Pro gate.
+    // This has to run before the cache lookup below, or a free user's very
+    // first request for a second month would sail straight into generation
+    // since nothing is cached for it yet.
+    const { data: tier } = await supabase.rpc("nomadix_current_tier");
+    if (tier !== "pro") {
+        const { data: existing } = await supabase
+            .from("ai_monthly_reports")
+            .select("month")
+            .eq("user_id", user.id);
+        const months = new Set((existing || []).map((r) => r.month));
+        if (months.size > 0 && !months.has(monthISO)) {
+            return NextResponse.json(
+                { error: "Free plan includes one monthly report. Upgrade to Pro for unlimited reports.", code: "plan_limit", entity: "report" },
+                { status: 402 }
+            );
+        }
+    }
+
     if (!force) {
         const { data: cached } = await supabase
             .from("ai_monthly_reports")

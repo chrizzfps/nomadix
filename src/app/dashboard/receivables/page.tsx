@@ -16,6 +16,9 @@ import { ReceivableFormModal } from "@/components/receivables/receivable-form-mo
 import { ReceivableDetailModal } from "@/components/receivables/receivable-detail-modal";
 import { CollectReceivableModal } from "@/components/receivables/collect-receivable-modal";
 import { ClientsManagerModal } from "@/components/receivables/clients-manager-modal";
+import { PlanGate } from "@/components/plan/plan-gate";
+import { UpgradeDialog } from "@/components/plan/upgrade-dialog";
+import { usePlanLimit } from "@/hooks/use-plan-limit";
 import type { Client, Receivable } from "@/types";
 
 interface VaultRow {
@@ -55,6 +58,8 @@ export default function ReceivablesPage() {
     const [detailTarget, setDetailTarget] = useState<Receivable | null>(null);
     const [collectTarget, setCollectTarget] = useState<Receivable | null>(null);
     const [showClients, setShowClients] = useState(false);
+    const [showUpgrade, setShowUpgrade] = useState(false);
+    const receivableLimit = usePlanLimit("receivable");
 
     // A prefilter from the vault card's "N accounts" link
     // (/dashboard/receivables?vault=<id>) -- read client-side, matching the
@@ -160,6 +165,10 @@ export default function ReceivablesPage() {
                     {receivableVaults.length > 0 && (
                         <button
                             onClick={() => {
+                                if (receivableLimit.reached) {
+                                    setShowUpgrade(true);
+                                    return;
+                                }
                                 setEditing(null);
                                 setShowForm(true);
                             }}
@@ -172,6 +181,7 @@ export default function ReceivablesPage() {
                 </div>
             </div>
 
+            <PlanGate entity="receivable">
             {isLoading ? (
                 <div className="mt-8 space-y-4">
                     <div className="h-24 animate-pulse rounded-2xl bg-accent" />
@@ -308,6 +318,7 @@ export default function ReceivablesPage() {
                     </div>
                 </>
             )}
+            </PlanGate>
 
             {/* Modals */}
             <ReceivableFormModal
@@ -350,6 +361,11 @@ export default function ReceivablesPage() {
                 onClose={() => setShowClients(false)}
                 clients={clients}
                 onChanged={load}
+            />
+            <UpgradeDialog
+                isOpen={showUpgrade}
+                onClose={() => setShowUpgrade(false)}
+                reason="receivable"
             />
         </motion.div>
     );

@@ -33,6 +33,9 @@ import {
 } from "@phosphor-icons/react";
 import { VaultCard } from "@/components/vaults/vault-card";
 import { CreateVaultModal } from "@/components/vaults/create-vault-modal";
+import { LimitBadge } from "@/components/plan/limit-badge";
+import { UpgradeDialog } from "@/components/plan/upgrade-dialog";
+import { usePlanLimit } from "@/hooks/use-plan-limit";
 import { NewTransactionModal } from "@/components/vaults/new-transaction-modal";
 import { TransactionEditModal } from "@/components/vaults/transaction-edit-modal";
 import { SplitExpenseModal } from "@/components/social/split-expense-modal";
@@ -126,6 +129,8 @@ export default function VaultsPage() {
         useState(ACTIVITY_PAGE_SIZE);
     const [showCreateVault, setShowCreateVault] = useState(false);
     const [showNewTransaction, setShowNewTransaction] = useState(false);
+    const [showVaultUpgrade, setShowVaultUpgrade] = useState(false);
+    const vaultLimit = usePlanLimit("vault");
     const [selectedTx, setSelectedTx] = useState<TransactionData | null>(null);
     const [splitTarget, setSplitTarget] = useState<TransactionData | null>(null);
     const [activityFilter, setActivityFilter] = useState<
@@ -612,11 +617,14 @@ export default function VaultsPage() {
                         {t("vaults.transaction")}
                     </button>
                     <button
-                        onClick={() => setShowCreateVault(true)}
-                        className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
+                        onClick={() =>
+                            vaultLimit.reached ? setShowVaultUpgrade(true) : setShowCreateVault(true)
+                        }
+                        className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60"
                     >
                         <Plus size={16} weight="bold" />
                         {t("vaults.newVault")}
+                        <LimitBadge entity="vault" className="bg-primary-foreground/15 text-primary-foreground" />
                     </button>
                 </div>
             </div>
@@ -1090,6 +1098,11 @@ export default function VaultsPage() {
                 isOpen={showCreateVault}
                 onClose={() => setShowCreateVault(false)}
                 onCreated={loadData}
+            />
+            <UpgradeDialog
+                isOpen={showVaultUpgrade}
+                onClose={() => setShowVaultUpgrade(false)}
+                reason="vault"
             />
             <NewTransactionModal
                 isOpen={showNewTransaction}

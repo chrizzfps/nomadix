@@ -18,6 +18,9 @@ import { EditDocumentModal } from "@/components/identity/edit-document-modal";
 import { AccessLog } from "@/components/identity/access-log";
 import { usePrivacyStore } from "@/stores/privacy-store";
 import { createClient } from "@/lib/supabase/client";
+import { LimitBadge } from "@/components/plan/limit-badge";
+import { UpgradeDialog } from "@/components/plan/upgrade-dialog";
+import { usePlanLimit } from "@/hooks/use-plan-limit";
 import { useToastStore } from "@/stores/toast-store";
 import { useLanguageStore } from "@/stores/language-store";
 import type { DocumentType, AccessLogEntry } from "@/types";
@@ -36,6 +39,8 @@ export default function IdentityPage() {
     const { isPrivacyMode, togglePrivacy } = usePrivacyStore();
     const t = useLanguageStore((s) => s.t);
     const [showAddDocument, setShowAddDocument] = useState(false);
+    const [showUpgrade, setShowUpgrade] = useState(false);
+    const documentLimit = usePlanLimit("document");
     const [selectedDoc, setSelectedDoc] = useState<DocumentData | null>(null);
     const [editDoc, setEditDoc] = useState<DocumentData | null>(null);
     const [documents, setDocuments] = useState<DocumentData[]>([]);
@@ -264,7 +269,9 @@ export default function IdentityPage() {
                     }}
                 >
                     <button
-                        onClick={() => setShowAddDocument(true)}
+                        onClick={() =>
+                            documentLimit.reached ? setShowUpgrade(true) : setShowAddDocument(true)
+                        }
                         className="flex h-full min-h-[200px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border bg-card/50 transition-all hover:border-ring hover:bg-accent active:scale-[0.98]"
                     >
                         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent">
@@ -273,6 +280,9 @@ export default function IdentityPage() {
                                 weight="bold"
                                 className="text-muted-foreground"
                             />
+                        </div>
+                        <div className="flex flex-col items-center gap-1.5">
+                            <LimitBadge entity="document" />
                         </div>
                         <div className="text-center">
                             <p className="text-sm font-semibold text-foreground/70">
@@ -343,6 +353,11 @@ export default function IdentityPage() {
                 isOpen={showAddDocument}
                 onClose={() => setShowAddDocument(false)}
                 onCreated={loadDocuments}
+            />
+            <UpgradeDialog
+                isOpen={showUpgrade}
+                onClose={() => setShowUpgrade(false)}
+                reason="document"
             />
             <DocumentDetailModal
                 isOpen={!!selectedDoc}

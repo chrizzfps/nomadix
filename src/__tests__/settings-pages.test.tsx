@@ -63,7 +63,9 @@ describe("New Settings Pages Functionality & i18n", () => {
     it("renders Billing page with plan details and benefits", async () => {
         render(<BillingPage />);
         expect(await screen.findByText("Billing & Subscription")).toBeInTheDocument();
-        expect(screen.getByText("Nomadix Premium Plan")).toBeInTheDocument();
+        // No authenticated user in this test's store -> usePlan() defaults
+        // to the free tier, same as any signed-out render.
+        expect(screen.getByText("Free")).toBeInTheDocument();
         expect(screen.getByText("Account Usage")).toBeInTheDocument();
     });
 

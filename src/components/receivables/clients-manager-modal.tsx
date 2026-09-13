@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 import { useLanguageStore } from "@/stores/language-store";
 import { friendInitials } from "@/lib/social";
+import { parsePlanLimitError } from "@/lib/plan";
+import { UpgradeDialog } from "@/components/plan/upgrade-dialog";
 import type { Client } from "@/types";
 
 interface ClientsManagerModalProps {
@@ -22,6 +24,7 @@ export function ClientsManagerModal({ isOpen, onClose, clients, onChanged }: Cli
     const t = useLanguageStore((s) => s.t);
     const [newName, setNewName] = useState("");
     const [isAdding, setIsAdding] = useState(false);
+    const [showUpgrade, setShowUpgrade] = useState(false);
 
     const handleAdd = async () => {
         const name = newName.trim();
@@ -40,6 +43,10 @@ export function ClientsManagerModal({ isOpen, onClose, clients, onChanged }: Cli
         setIsAdding(false);
 
         if (error) {
+            if (parsePlanLimitError(error) === "client") {
+                setShowUpgrade(true);
+                return;
+            }
             addToast(error.message, "error");
             return;
         }
@@ -63,6 +70,7 @@ export function ClientsManagerModal({ isOpen, onClose, clients, onChanged }: Cli
     const archived = clients.filter((c) => c.is_archived);
 
     return (
+        <>
         <AnimatePresence>
             {isOpen && (
                 <>
@@ -185,5 +193,11 @@ export function ClientsManagerModal({ isOpen, onClose, clients, onChanged }: Cli
                 </>
             )}
         </AnimatePresence>
+        <UpgradeDialog
+            isOpen={showUpgrade}
+            onClose={() => setShowUpgrade(false)}
+            reason="client"
+        />
+        </>
     );
 }

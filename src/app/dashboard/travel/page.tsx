@@ -13,6 +13,9 @@ import { TripCard } from "@/components/travel/trip-card";
 import { CreateTripModal } from "@/components/travel/create-trip-modal";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguageStore } from "@/stores/language-store";
+import { LimitBadge } from "@/components/plan/limit-badge";
+import { UpgradeDialog } from "@/components/plan/upgrade-dialog";
+import { usePlanLimit } from "@/hooks/use-plan-limit";
 
 interface Trip {
     id: string;
@@ -30,6 +33,8 @@ export default function TravelPage() {
     const [trips, setTrips] = useState<Trip[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [showUpgrade, setShowUpgrade] = useState(false);
+    const tripLimit = usePlanLimit("trip");
 
     const loadTrips = useCallback(async () => {
         const {
@@ -152,11 +157,12 @@ export default function TravelPage() {
                 {/* Add Trip Placeholder */}
                 <motion.button
                     whileHover={{ scale: 1.02 }}
-                    onClick={() => setShowModal(true)}
+                    onClick={() => (tripLimit.reached ? setShowUpgrade(true) : setShowModal(true))}
                     className="flex h-44 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-ring hover:text-muted-foreground"
                 >
                     <Airplane size={24} />
                     <span className="text-xs font-semibold">{t("travel.addTrip")}</span>
+                    <LimitBadge entity="trip" />
                 </motion.button>
             </motion.div>
 
@@ -165,6 +171,11 @@ export default function TravelPage() {
                 isOpen={showModal}
                 onClose={() => setShowModal(false)}
                 onCreated={loadTrips}
+            />
+            <UpgradeDialog
+                isOpen={showUpgrade}
+                onClose={() => setShowUpgrade(false)}
+                reason="trip"
             />
         </div>
     );

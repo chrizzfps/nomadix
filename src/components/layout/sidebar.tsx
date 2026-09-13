@@ -18,6 +18,7 @@ import {
 import { signOut } from "@/app/auth/actions";
 import { APP_NAME } from "@/lib/constants";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { usePlan } from "@/hooks/use-plan";
 import { useLanguageStore } from "@/stores/language-store";
 
 const navItems = [
@@ -35,6 +36,7 @@ const navItems = [
 export function Sidebar() {
     const pathname = usePathname();
     const t = useLanguageStore((s) => s.t);
+    const { isPro } = usePlan();
 
     const isActive = (href: string) => {
         if (href === "/dashboard") return pathname === "/dashboard";
@@ -64,7 +66,9 @@ export function Sidebar() {
                     </div>
                     <div>
                         <p className="text-sm font-semibold text-foreground">{APP_NAME}</p>
-                        <p className="text-[10px] text-muted-foreground">Premium Plan</p>
+                        <p className="text-[10px] text-muted-foreground">
+                            {isPro ? t("plan.tier.pro") : t("plan.tier.free")}
+                        </p>
                     </div>
                 </div>
                 <NotificationBell align="left" />
