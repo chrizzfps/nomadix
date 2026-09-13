@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Eye, EyeSlash, GoogleLogo, AppleLogo } from "@phosphor-icons/react";
+import { Eye, EyeSlash, GoogleLogo } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { APP_NAME, APP_TAGLINE, APP_DESCRIPTION } from "@/lib/constants";
 
@@ -332,22 +332,15 @@ export default function SignUpPage() {
                         </div>
                     </div>
 
-                    {/* OAuth Buttons */}
-                    <div className="mt-6 grid grid-cols-2 gap-3">
+                    {/* OAuth */}
+                    <div className="mt-6">
                         <button
                             onClick={handleGoogleSignIn}
                             type="button"
-                            className="flex items-center justify-center gap-2.5 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 text-sm font-medium text-white transition-all hover:bg-zinc-800 hover:border-zinc-700 active:scale-[0.98]"
+                            className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 text-sm font-medium text-white transition-all hover:bg-zinc-800 hover:border-zinc-700 active:scale-[0.98]"
                         >
                             <GoogleLogo size={18} weight="bold" />
-                            Google
-                        </button>
-                        <button
-                            type="button"
-                            className="flex items-center justify-center gap-2.5 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 text-sm font-medium text-white transition-all hover:bg-zinc-800 hover:border-zinc-700 active:scale-[0.98]"
-                        >
-                            <AppleLogo size={18} weight="fill" />
-                            Apple
+                            Continue with Google
                         </button>
                     </div>
                 </div>

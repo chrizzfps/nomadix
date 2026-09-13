@@ -38,7 +38,11 @@ export async function updateSession(request: NextRequest) {
         request.nextUrl.pathname.startsWith("/login") ||
         request.nextUrl.pathname.startsWith("/signup");
 
-    if (!user && !isAuthPage && request.nextUrl.pathname !== "/") {
+    // /auth/* routes (OAuth callback, password recovery exchange) must run
+    // before a session cookie exists — never gate them here.
+    const isAuthRoute = request.nextUrl.pathname.startsWith("/auth");
+
+    if (!user && !isAuthPage && !isAuthRoute && request.nextUrl.pathname !== "/") {
         const url = request.nextUrl.clone();
         url.pathname = "/login";
         return NextResponse.redirect(url);
