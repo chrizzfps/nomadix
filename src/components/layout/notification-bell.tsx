@@ -59,7 +59,7 @@ export function NotificationBell({ align = "left", className }: NotificationBell
 
     const goTo = (item: ReminderItem) => {
         setIsOpen(false);
-        router.push(`/dashboard/subscriptions?open=${item.subscriptionId}`);
+        router.push(item.href);
     };
 
     return (

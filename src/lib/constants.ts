@@ -14,11 +14,14 @@ export const CURRENCY_SYMBOLS: Record<string, string> = {
     USD: "$",
 };
 
-// Vault types
+// Vault types. Single source of truth — create-vault-modal, edit-vault-modal
+// and vault-card all import this instead of keeping their own inline copy.
+// "receivable" is not liquid — see isLiquidVault() in src/lib/receivables.ts.
 export const VAULT_TYPES = [
-    { value: "savings", label: "Savings" },
-    { value: "checking", label: "Checking" },
-    { value: "cash", label: "Cash" },
+    { value: "savings", label: "Savings", labelKey: "vaults.type.savings" },
+    { value: "checking", label: "Checking", labelKey: "vaults.type.checking" },
+    { value: "cash", label: "Cash", labelKey: "vaults.type.cash" },
+    { value: "receivable", label: "Pending Collection", labelKey: "vaults.type.receivable" },
 ] as const;
 
 // Transaction categories
@@ -63,6 +66,7 @@ export const DOCUMENT_TYPES = [
 export const NAV_ITEMS = [
     { href: "/dashboard", label: "Dashboard", icon: "SquaresFour" },
     { href: "/dashboard/vaults", label: "Vaults", icon: "Vault" },
+    { href: "/dashboard/receivables", label: "Receivables", icon: "HandCoins" },
     { href: "/dashboard/expenses", label: "Expenses", icon: "Receipt" },
     { href: "/dashboard/subscriptions", label: "Subscriptions", icon: "ArrowsClockwise" },
     { href: "/dashboard/reports", label: "Reports", icon: "Sparkle" },

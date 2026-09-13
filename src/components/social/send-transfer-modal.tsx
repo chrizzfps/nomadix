@@ -57,7 +57,14 @@ export function SendTransferModal({ isOpen, onClose, friend, onSent }: SendTrans
 
             const [{ data: mine, error: mineError }, { data: theirs, error: theirsError }] =
                 await Promise.all([
-                    supabase.from("vaults").select("*").eq("user_id", user.id).order("name"),
+                    // A vault pending collection has no liquid balance --
+                    // it can never be the SOURCE of a transfer.
+                    supabase
+                        .from("vaults")
+                        .select("*")
+                        .eq("user_id", user.id)
+                        .neq("type", "receivable")
+                        .order("name"),
                     supabase.rpc("nomadix_list_transferable_vaults", {
                         p_target_user_id: friend.friend_id,
                     }),

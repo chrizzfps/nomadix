@@ -10,6 +10,7 @@
 import type { Currency, Subscription, Transaction, Vault } from "@/types";
 import { convertTransactionAmount } from "@/lib/currency-helpers";
 import { monthlyEquivalent } from "@/lib/subscriptions";
+import { isLiquidVault } from "@/lib/receivables";
 
 export interface CategoryTotal {
     category: string;
@@ -190,11 +191,16 @@ export function buildMonthlyReportContext(params: {
     for (const t of transactions) {
         balanceMap.set(t.vault_id, (balanceMap.get(t.vault_id) || 0) + Number(t.amount));
     }
-    const vaultBalances: VaultBalance[] = vaults.map((v) => ({
-        name: v.name,
-        currency: v.currency,
-        balance: balanceMap.get(v.id) || 0,
-    }));
+    // A receivable vault never has real transactions, so it would already
+    // net to 0 here -- filtered explicitly anyway so net worth (and the
+    // report's vault list) never implies unarrived money is in hand.
+    const vaultBalances: VaultBalance[] = vaults
+        .filter((v) => isLiquidVault(v.type))
+        .map((v) => ({
+            name: v.name,
+            currency: v.currency,
+            balance: balanceMap.get(v.id) || 0,
+        }));
     const netWorth = vaultBalances.reduce((sum, v) => sum + convert(v.balance, v.currency), 0);
 
     return {

@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { createClient } from "@/lib/supabase/client";
-import { buildReminders, todayISO, type ReminderItem } from "@/lib/subscriptions";
-import type { Subscription, SubscriptionOccurrence } from "@/types";
+import { buildReminders, compareReminders, todayISO, type ReminderItem } from "@/lib/subscriptions";
+import { buildReceivableReminders } from "@/lib/receivables";
+import type { Receivable, Subscription, SubscriptionOccurrence } from "@/types";
 
 const CATCHUP_KEY = "nomadix_subs_catchup_at";
 const CATCHUP_TTL = 6 * 60 * 60 * 1000; // 6h — cron is the real safety net
@@ -39,18 +40,28 @@ export const useRemindersStore = create<RemindersState>((set, get) => ({
             return;
         }
 
-        const [{ data: subs }, { data: occs }] = await Promise.all([
+        const [{ data: subs }, { data: occs }, { data: receivableRows }] = await Promise.all([
             supabase.from("subscriptions").select("*").eq("user_id", user.id),
             supabase
                 .from("subscription_occurrences")
                 .select("*")
                 .eq("user_id", user.id)
                 .in("status", ["pending", "failed"]),
+            supabase
+                .from("receivables")
+                .select("*")
+                .eq("user_id", user.id)
+                .in("status", ["pending", "partial"]),
         ]);
 
         const subscriptions = (subs || []) as Subscription[];
         const occurrences = (occs || []) as SubscriptionOccurrence[];
-        let items = buildReminders(subscriptions, occurrences);
+        const receivables = (receivableRows || []) as Receivable[];
+
+        let items = [
+            ...buildReminders(subscriptions, occurrences),
+            ...buildReceivableReminders(receivables),
+        ].sort(compareReminders);
 
         if (typeof window !== "undefined") {
             try {
@@ -59,6 +70,7 @@ export const useRemindersStore = create<RemindersState>((set, get) => ({
                     const cfg = JSON.parse(raw);
                     items = items.filter((it) => {
                         if (it.kind === "trial_ending" && cfg.subPriceChange === false) return false;
+                        if (it.source === "receivable" && cfg.receivableReminder === false) return false;
                         return true;
                     });
                 }
@@ -69,6 +81,12 @@ export const useRemindersStore = create<RemindersState>((set, get) => ({
 
         const today = todayISO();
         const unreadCount = items.filter((it) => {
+            if (it.source === "receivable") {
+                const r = receivables.find((rec) => rec.id === it.subscriptionId);
+                if (!r) return true;
+                if (!r.last_reminder_seen_at) return true;
+                return r.last_reminder_seen_at < today;
+            }
             const sub = subscriptions.find((s) => s.id === it.subscriptionId);
             if (!sub) return true;
             if (!sub.last_reminder_seen_at) return true;
@@ -81,9 +99,14 @@ export const useRemindersStore = create<RemindersState>((set, get) => ({
     },
 
     markSeen: async (subscriptionId: string) => {
+        const { items } = get();
+        // "subscriptionId" also carries a receivable id for a
+        // source: "receivable" item (see ReminderItem) -- route the write
+        // to the table the item actually came from.
+        const source = items.find((it) => it.subscriptionId === subscriptionId)?.source;
         const supabase = createClient();
         await supabase
-            .from("subscriptions")
+            .from(source === "receivable" ? "receivables" : "subscriptions")
             .update({ last_reminder_seen_at: new Date().toISOString() })
             .eq("id", subscriptionId);
         set((state) => ({
@@ -94,13 +117,24 @@ export const useRemindersStore = create<RemindersState>((set, get) => ({
 
     markAllSeen: async () => {
         const { items } = get();
-        const ids = Array.from(new Set(items.map((it) => it.subscriptionId)));
-        if (ids.length === 0) return;
+        const subIds = Array.from(
+            new Set(items.filter((it) => it.source !== "receivable").map((it) => it.subscriptionId))
+        );
+        const receivableIds = Array.from(
+            new Set(items.filter((it) => it.source === "receivable").map((it) => it.subscriptionId))
+        );
+        if (subIds.length === 0 && receivableIds.length === 0) return;
+
         const supabase = createClient();
-        await supabase
-            .from("subscriptions")
-            .update({ last_reminder_seen_at: new Date().toISOString() })
-            .in("id", ids);
+        const seenAt = new Date().toISOString();
+        await Promise.all([
+            subIds.length > 0
+                ? supabase.from("subscriptions").update({ last_reminder_seen_at: seenAt }).in("id", subIds)
+                : Promise.resolve(),
+            receivableIds.length > 0
+                ? supabase.from("receivables").update({ last_reminder_seen_at: seenAt }).in("id", receivableIds)
+                : Promise.resolve(),
+        ]);
         set({ unreadCount: 0 });
     },
 

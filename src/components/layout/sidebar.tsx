@@ -13,6 +13,7 @@ import {
     UsersThree,
     GearSix,
     SignOut,
+    HandCoins,
 } from "@phosphor-icons/react";
 import { signOut } from "@/app/auth/actions";
 import { APP_NAME } from "@/lib/constants";
@@ -22,6 +23,7 @@ import { useLanguageStore } from "@/stores/language-store";
 const navItems = [
     { href: "/dashboard", key: "nav.dashboard", defaultLabel: "Dashboard", icon: SquaresFour },
     { href: "/dashboard/vaults", key: "nav.vaults", defaultLabel: "Vaults", icon: Vault },
+    { href: "/dashboard/receivables", key: "nav.receivables", defaultLabel: "Receivables", icon: HandCoins },
     { href: "/dashboard/expenses", key: "nav.expenses", defaultLabel: "Expenses", icon: Receipt },
     { href: "/dashboard/subscriptions", key: "nav.subscriptions", defaultLabel: "Subscriptions", icon: ArrowsClockwise },
     { href: "/dashboard/reports", key: "nav.reports", defaultLabel: "Reports", icon: Sparkle },

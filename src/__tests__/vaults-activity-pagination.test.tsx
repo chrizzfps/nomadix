@@ -3,6 +3,10 @@ import userEvent from "@testing-library/user-event";
 import VaultsPage from "@/app/dashboard/vaults/page";
 import { useLanguageStore } from "@/stores/language-store";
 
+jest.mock("next/navigation", () => ({
+    useRouter: () => ({ push: jest.fn() }),
+}));
+
 jest.mock("@/stores/currency-store", () => ({
     useCurrencyStore: () => ({
         displayCurrency: "USD",
@@ -43,11 +47,14 @@ jest.mock("@/lib/supabase/client", () => {
     }));
 
     const makeBuilder = (data: unknown) => {
-        const builder = {
-            select: () => builder,
-            eq: () => builder,
-            order: async () => ({ data, error: null }),
-        };
+        const builder: Record<string, unknown> = {};
+        const chain = () => builder;
+        builder.select = chain;
+        builder.eq = chain;
+        builder.in = chain;
+        builder.order = chain;
+        builder.then = (resolve: (v: { data: unknown; error: unknown }) => void) =>
+            resolve({ data, error: null });
         return builder;
     };
 
@@ -58,6 +65,12 @@ jest.mock("@/lib/supabase/client", () => {
                 error: null,
             }),
         },
+        // Pre-existing gap: loadData() also calls
+        // nomadix_list_pending_vault_invites via rpc(), which this mock
+        // never defined -- that threw synchronously and left the page
+        // stuck on its loading skeleton regardless of anything this
+        // change touches.
+        rpc: async () => ({ data: [], error: null }),
         from: (table: string) => {
             if (table === "vaults") return makeBuilder(vaultRows);
             if (table === "transactions") return makeBuilder(txRows);

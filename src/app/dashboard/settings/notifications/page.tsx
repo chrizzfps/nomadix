@@ -10,6 +10,7 @@ import {
     WarningCircle,
     CalendarCheck,
     Vault,
+    HandCoins,
 } from "@phosphor-icons/react";
 import { useToastStore } from "@/stores/toast-store";
 import { useLanguageStore } from "@/stores/language-store";
@@ -21,6 +22,7 @@ interface NotificationConfig {
     subReminder7d: boolean;
     subPriceChange: boolean;
     vaultLowBalance: boolean;
+    receivableReminder: boolean;
     emailWeeklyDigest: boolean;
     emailSecurityAlerts: boolean;
     browserPushEnabled: boolean;
@@ -32,6 +34,7 @@ const DEFAULT_CONFIG: NotificationConfig = {
     subReminder7d: false,
     subPriceChange: true,
     vaultLowBalance: true,
+    receivableReminder: true,
     emailWeeklyDigest: false,
     emailSecurityAlerts: true,
     browserPushEnabled: false,
@@ -242,6 +245,27 @@ export default function NotificationsPage() {
                                 type="checkbox"
                                 checked={config.vaultLowBalance}
                                 onChange={() => toggle("vaultLowBalance")}
+                                className="peer sr-only"
+                            />
+                            <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
+                            <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
+                        </label>
+                    </div>
+                    <div className="flex items-center justify-between p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-foreground/70">
+                                <HandCoins size={18} />
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-foreground">{t("notif.receivableReminder")}</p>
+                                <p className="text-xs text-muted-foreground">{t("notif.receivableReminderDesc")}</p>
+                            </div>
+                        </div>
+                        <label className="relative cursor-pointer shrink-0">
+                            <input
+                                type="checkbox"
+                                checked={config.receivableReminder}
+                                onChange={() => toggle("receivableReminder")}
                                 className="peer sr-only"
                             />
                             <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />

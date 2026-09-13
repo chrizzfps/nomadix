@@ -4,7 +4,10 @@
 
 export type Currency = "EUR" | "USD";
 
-export type VaultType = "savings" | "checking" | "cash";
+// "receivable" is not liquid money -- it is invoiced/promised money not yet
+// collected. See isLiquidVault() in src/lib/receivables.ts: every balance
+// total, net worth, and vault-of-origin picker in the app must exclude it.
+export type VaultType = "savings" | "checking" | "cash" | "receivable";
 
 // "adjustment" is a manual balance correction on a vault — it moves the vault
 // balance and net worth, but it is never real income or spending, so every
@@ -125,6 +128,10 @@ export interface TripItinerary {
 
 export interface VaultWithBalance extends Vault {
     balance: number;
+    // Only set (and only meaningful) on a "receivable" vault: the sum of
+    // amount - amount_collected across its open receivables. A liquid
+    // vault's `balance` already IS its available money; this is separate.
+    outstanding?: number;
 }
 
 export interface TransactionWithVault extends Transaction {
@@ -444,4 +451,65 @@ export interface FriendNetBalance {
 
 export interface TransactionWithShare extends Transaction {
     share: TransactionShare | null;
+}
+
+// ============================================
+// Receivables (Pendiente por cobrar)
+// ============================================
+
+export type ReceivableDirection = "receivable" | "payable";
+
+export type ReceivableStatus = "pending" | "partial" | "paid" | "canceled";
+
+// Derived client-side (never stored) — see effectiveStatus() in
+// src/lib/receivables.ts. Adds "overdue" and "due_soon" on top of the
+// stored ReceivableStatus, the same way DueTone works for subscriptions.
+export type EffectiveReceivableStatus =
+    | "paid"
+    | "canceled"
+    | "overdue"
+    | "due_soon"
+    | "pending"
+    | "partial";
+
+export interface Client {
+    id: string;
+    user_id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    notes: string | null;
+    color: string;
+    is_archived: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface Receivable {
+    id: string;
+    user_id: string;
+    vault_id: string;
+    client_id: string | null;
+    client_name: string | null;
+    direction: ReceivableDirection;
+    description: string;
+    amount: number;
+    currency: Currency;
+    issue_date: string;
+    expected_date: string;
+    status: ReceivableStatus;
+    amount_collected: number;
+    paid_at: string | null;
+    settled_vault_id: string | null;
+    settlement_transaction_id: string | null;
+    reminder_days_before: number;
+    notify_in_app: boolean;
+    last_reminder_seen_at: string | null;
+    notes: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface ReceivableWithClient extends Receivable {
+    client: Pick<Client, "name" | "color"> | null;
 }

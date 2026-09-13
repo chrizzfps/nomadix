@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Vault, FloppyDisk } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
-import type { Currency } from "@/types";
+import type { Currency, VaultType } from "@/types";
 
 interface EditVaultModalProps {
     isOpen: boolean;
@@ -15,7 +15,7 @@ interface EditVaultModalProps {
         id: string;
         name: string;
         currency: string;
-        type: "savings" | "checking" | "cash";
+        type: VaultType;
         is_protected: boolean;
         balance: number;
     };
@@ -30,9 +30,16 @@ export function EditVaultModal({
     const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
 
+    // A vault's type never changes between "receivable" and liquid after
+    // creation -- its balance source (transactions vs. the receivables
+    // table) is fundamentally different, so switching would silently
+    // orphan whichever side it left behind. The type picker below is
+    // locked whenever the vault started out as one or the other.
+    const isReceivable = vault.type === "receivable";
+
     const [name, setName] = useState(vault.name);
     const [currency, setCurrency] = useState<Currency>(vault.currency as Currency);
-    const [type, setType] = useState<"savings" | "checking" | "cash">(vault.type);
+    const [type, setType] = useState<VaultType>(vault.type);
     const [isProtected, setIsProtected] = useState(vault.is_protected);
     const [newBalance, setNewBalance] = useState(String(vault.balance));
     const [isSaving, setIsSaving] = useState(false);
@@ -81,11 +88,12 @@ export function EditVaultModal({
             return;
         }
 
-        // If balance changed, insert an adjustment transaction
+        // A receivable vault's balance comes from the receivables table,
+        // never from transactions -- there is no adjustment to write here.
         const targetBalance = parseFloat(newBalance) || 0;
         const diff = targetBalance - vault.balance;
 
-        if (Math.abs(diff) > 0.01) {
+        if (!isReceivable && Math.abs(diff) > 0.01) {
             const { error: txError } = await supabase
                 .from("transactions")
                 .insert({
@@ -184,34 +192,38 @@ export function EditVaultModal({
                                 />
                             </div>
 
-                            {/* Balance */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
-                                    Current Balance
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={newBalance}
-                                    onChange={(e) =>
-                                        setNewBalance(e.target.value)
-                                    }
-                                    className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                                />
-                                {Math.abs(
-                                    (parseFloat(newBalance) || 0) -
-                                    vault.balance
-                                ) > 0.01 && (
-                                        <p className="text-[11px] text-amber-600">
-                                            An adjustment transaction of{" "}
-                                            {(
-                                                (parseFloat(newBalance) || 0) -
-                                                vault.balance
-                                            ).toFixed(2)}{" "}
-                                            will be created.
-                                        </p>
-                                    )}
-                            </div>
+                            {/* Balance — not applicable to a receivable vault: its
+                                balance is the sum of its open accounts, not a
+                                number you can hand-correct here. */}
+                            {!isReceivable && (
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
+                                        Current Balance
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={newBalance}
+                                        onChange={(e) =>
+                                            setNewBalance(e.target.value)
+                                        }
+                                        className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                                    />
+                                    {Math.abs(
+                                        (parseFloat(newBalance) || 0) -
+                                        vault.balance
+                                    ) > 0.01 && (
+                                            <p className="text-[11px] text-amber-600">
+                                                An adjustment transaction of{" "}
+                                                {(
+                                                    (parseFloat(newBalance) || 0) -
+                                                    vault.balance
+                                                ).toFixed(2)}{" "}
+                                                will be created.
+                                            </p>
+                                        )}
+                                </div>
+                            )}
 
                             {/* Currency */}
                             <div className="space-y-2">
@@ -235,64 +247,76 @@ export function EditVaultModal({
                                 </div>
                             </div>
 
-                            {/* Type */}
+                            {/* Type — locked once created. A vault's type never
+                                crosses the receivable / liquid boundary, since
+                                that boundary is where its balance source
+                                (transactions vs. receivables) changes. */}
                             <div className="space-y-2">
                                 <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                     Type
                                 </label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {(
-                                        [
-                                            {
-                                                value: "checking",
-                                                label: "Checking",
-                                            },
-                                            {
-                                                value: "savings",
-                                                label: "Savings",
-                                            },
-                                            { value: "cash", label: "Cash" },
-                                        ] as const
-                                    ).map((t) => (
-                                        <button
-                                            key={t.value}
-                                            type="button"
-                                            onClick={() => setType(t.value)}
-                                            className={`rounded-xl border px-3 py-2.5 text-xs font-medium transition-all ${type === t.value
-                                                    ? "border-primary bg-primary text-primary-foreground"
-                                                    : "border-border bg-card text-muted-foreground hover:border-ring"
-                                                }`}
-                                        >
-                                            {t.label}
-                                        </button>
-                                    ))}
-                                </div>
+                                {isReceivable ? (
+                                    <div className="rounded-xl border border-dashed border-amber-300 bg-card px-3 py-2.5 text-xs font-medium text-amber-700 dark:border-amber-900/60 dark:text-amber-400">
+                                        Pending Collection
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {(
+                                            [
+                                                {
+                                                    value: "checking",
+                                                    label: "Checking",
+                                                },
+                                                {
+                                                    value: "savings",
+                                                    label: "Savings",
+                                                },
+                                                { value: "cash", label: "Cash" },
+                                            ] as const
+                                        ).map((t) => (
+                                            <button
+                                                key={t.value}
+                                                type="button"
+                                                onClick={() => setType(t.value)}
+                                                className={`rounded-xl border px-3 py-2.5 text-xs font-medium transition-all ${type === t.value
+                                                        ? "border-primary bg-primary text-primary-foreground"
+                                                        : "border-border bg-card text-muted-foreground hover:border-ring"
+                                                    }`}
+                                            >
+                                                {t.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Protected Toggle */}
-                            <label className="flex items-center gap-3 cursor-pointer">
-                                <div className="relative">
-                                    <input
-                                        type="checkbox"
-                                        checked={isProtected}
-                                        onChange={(e) =>
-                                            setIsProtected(e.target.checked)
-                                        }
-                                        className="peer sr-only"
-                                    />
-                                    <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
-                                    <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-foreground/80">
-                                        Protected Vault
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground">
-                                        Requires extra confirmation for
-                                        withdrawals
-                                    </p>
-                                </div>
-                            </label>
+                            {/* Protected Toggle — meaningless on a receivable
+                                vault: there is no withdrawal to guard. */}
+                            {!isReceivable && (
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            checked={isProtected}
+                                            onChange={(e) =>
+                                                setIsProtected(e.target.checked)
+                                            }
+                                            className="peer sr-only"
+                                        />
+                                        <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
+                                        <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-foreground/80">
+                                            Protected Vault
+                                        </p>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            Requires extra confirmation for
+                                            withdrawals
+                                        </p>
+                                    </div>
+                                </label>
+                            )}
 
                             {error && (
                                 <p className="text-sm text-red-500">{error}</p>

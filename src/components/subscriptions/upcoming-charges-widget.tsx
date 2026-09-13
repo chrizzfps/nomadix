@@ -10,6 +10,7 @@ import { usePrivacyStore } from "@/stores/privacy-store";
 import { useRemindersStore } from "@/stores/reminders-store";
 import { convertTransactionAmount } from "@/lib/currency-helpers";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
+import { isLiquidVault } from "@/lib/receivables";
 import {
     upcomingDueDates,
     chargeBreakdown,
@@ -60,7 +61,7 @@ export function UpcomingChargesWidget() {
         }
 
         const [{ data: vaultRows }, { data: txRows }, { data: subRows }] = await Promise.all([
-            supabase.from("vaults").select("id,name,currency").eq("user_id", user.id),
+            supabase.from("vaults").select("id,name,currency,type").eq("user_id", user.id),
             supabase.from("transactions").select("vault_id,amount").eq("user_id", user.id),
             supabase
                 .from("subscriptions")
@@ -78,9 +79,14 @@ export function UpcomingChargesWidget() {
         (txRows || []).forEach((t: { vault_id: string; amount: number }) => {
             balanceByVault.set(t.vault_id, (balanceByVault.get(t.vault_id) || 0) + t.amount);
         });
-        (vaultRows || []).forEach((v: { id: string; currency: "EUR" | "USD" }) => {
-            totalBalance += convert(balanceByVault.get(v.id) || 0, v.currency);
-        });
+        // A vault pending collection is not money in hand -- it must never
+        // seed the runway projection, or a real shortfall hides behind
+        // plata that hasn't actually arrived.
+        (vaultRows || [])
+            .filter((v: { type: string }) => isLiquidVault(v.type))
+            .forEach((v: { id: string; currency: "EUR" | "USD" }) => {
+                totalBalance += convert(balanceByVault.get(v.id) || 0, v.currency);
+            });
 
         setVaultNames(names);
         setStartingBalance(totalBalance);

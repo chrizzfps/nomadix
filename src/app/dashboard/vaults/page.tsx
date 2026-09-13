@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
     Plus,
@@ -24,6 +25,7 @@ import {
     Heart,
     Car,
     UsersThree,
+    HourglassMedium,
 } from "@phosphor-icons/react";
 import { VaultCard } from "@/components/vaults/vault-card";
 import { CreateVaultModal } from "@/components/vaults/create-vault-modal";
@@ -32,21 +34,27 @@ import { TransactionEditModal } from "@/components/vaults/transaction-edit-modal
 import { SplitExpenseModal } from "@/components/social/split-expense-modal";
 import { CurrencyToggle } from "@/components/shared/currency-toggle";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { usePrivacyStore } from "@/stores/privacy-store";
 import { CURRENCY_SYMBOLS, TRANSACTION_CATEGORIES } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { convertTransactionAmount } from "@/lib/currency-helpers";
+import { isLiquidVault, totalsByVault } from "@/lib/receivables";
 import { useLanguageStore } from "@/stores/language-store";
 import { useToastStore } from "@/stores/toast-store";
+import type { Receivable, VaultType } from "@/types";
 
 interface VaultData {
     id: string;
     name: string;
     currency: string;
-    type: "savings" | "checking" | "cash";
+    type: VaultType;
     is_protected: boolean;
     balance: number;
     is_shared?: boolean;
     isOwner?: boolean;
+    // Only set for type === "receivable" — see totalsByVault().
+    receivableCount?: number;
+    receivableOverdueCount?: number;
 }
 
 interface PendingVaultInvite {
@@ -94,9 +102,11 @@ const categoryIcons: Record<string, React.ElementType> = {
 
 export default function VaultsPage() {
     const supabase = createClient();
+    const router = useRouter();
     const { displayCurrency, convert, loadRate, getActiveRate } = useCurrencyStore();
     const t = useLanguageStore((s) => s.t);
     const addToast = useToastStore((s) => s.addToast);
+    const isPrivacyMode = usePrivacyStore((s) => s.isPrivacyMode);
     const symbol = CURRENCY_SYMBOLS[displayCurrency];
 
     const ACTIVITY_PAGE_SIZE = 10;
@@ -150,6 +160,14 @@ export default function VaultsPage() {
             .select("*")
             .eq("user_id", user.id)
             .order("created_at", { ascending: false });
+
+        // Fetch open receivables. A receivable vault's "balance" is never a
+        // transaction sum -- it's this, via totalsByVault() below.
+        const { data: receivableRows } = await supabase
+            .from("receivables")
+            .select("*")
+            .eq("user_id", user.id)
+            .in("status", ["pending", "partial"]);
 
         if (vaultError || txError) {
             setActivityError("Unable to load activity. Please try again.");
@@ -238,16 +256,28 @@ export default function VaultsPage() {
             balanceMap.set(tx.vault_id, prev + Number(tx.amount));
         });
 
-        const enrichedVaults: VaultData[] = allVaultRows.map((v) => ({
-            id: v.id,
-            name: v.name,
-            currency: v.currency,
-            type: v.type as "savings" | "checking" | "cash",
-            is_protected: v.is_protected,
-            balance: balanceMap.get(v.id) || 0,
-            is_shared: !!v.is_shared,
-            isOwner: v.user_id === user.id,
-        }));
+        const receivableTotalsMap = totalsByVault((receivableRows || []) as Receivable[]);
+
+        const enrichedVaults: VaultData[] = allVaultRows.map((v) => {
+            const vType = v.type as VaultType;
+            const receivableEntry = receivableTotalsMap.get(v.id);
+            return {
+                id: v.id,
+                name: v.name,
+                currency: v.currency,
+                type: vType,
+                is_protected: v.is_protected,
+                // A receivable vault's card "balance" is its outstanding
+                // total, never a transactions sum.
+                balance: vType === "receivable"
+                    ? receivableEntry?.outstanding || 0
+                    : balanceMap.get(v.id) || 0,
+                is_shared: !!v.is_shared,
+                isOwner: v.user_id === user.id,
+                receivableCount: receivableEntry?.count,
+                receivableOverdueCount: receivableEntry?.overdueCount,
+            };
+        });
 
         const enrichedTx: TransactionData[] = allTxRows.map((tx) => ({
             ...tx,
@@ -268,10 +298,26 @@ export default function VaultsPage() {
         setActivityVisibleCount(ACTIVITY_PAGE_SIZE);
     }, [activityFilter, selectedCategories]);
 
-    const totalBalance = vaults.reduce(
-        (sum, v) => sum + convert(v.balance, v.currency as "EUR" | "USD"),
-        0
-    );
+    // Liquid total — what totalBalance has always meant. A receivable
+    // vault's "balance" is money not yet in hand, so it must never enter
+    // this sum. See isLiquidVault() in src/lib/receivables.ts.
+    const totalBalance = vaults
+        .filter((v) => isLiquidVault(v.type))
+        .reduce((sum, v) => sum + convert(v.balance, v.currency as "EUR" | "USD"), 0);
+
+    const pendingCollectionTotal = vaults
+        .filter((v) => !isLiquidVault(v.type))
+        .reduce((sum, v) => sum + convert(v.balance, v.currency as "EUR" | "USD"), 0);
+
+    const pendingCollectionCount = vaults
+        .filter((v) => !isLiquidVault(v.type))
+        .reduce((sum, v) => sum + (v.receivableCount || 0), 0);
+
+    const pendingCollectionOverdueCount = vaults
+        .filter((v) => !isLiquidVault(v.type))
+        .reduce((sum, v) => sum + (v.receivableOverdueCount || 0), 0);
+
+    const projectedTotal = totalBalance + pendingCollectionTotal;
 
     const filteredByType =
         activityFilter === "all"
@@ -503,6 +549,13 @@ export default function VaultsPage() {
                             isProtected={vault.is_protected}
                             isShared={vault.is_shared}
                             isOwner={vault.isOwner !== false}
+                            receivableCount={vault.receivableCount}
+                            receivableOverdueCount={vault.receivableOverdueCount}
+                            onClick={
+                                !isLiquidVault(vault.type)
+                                    ? () => router.push(`/dashboard/receivables?vault=${vault.id}`)
+                                    : undefined
+                            }
                             onUpdated={loadData}
                         />
                     </motion.div>
@@ -514,18 +567,58 @@ export default function VaultsPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.25 }}
-                className="mt-4 flex items-center justify-between rounded-xl border border-border bg-card px-5 py-3"
+                className="mt-4 rounded-xl border border-border bg-card px-5 py-3"
             >
-                <span className="text-xs font-semibold tracking-[0.15em] uppercase text-muted-foreground">
-                    {t("vaults.totalAcrossAll")}
-                </span>
-                <span className="text-lg font-bold text-foreground">
-                    {symbol}
-                    {totalBalance.toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                    })}
-                </span>
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold tracking-[0.15em] uppercase text-muted-foreground">
+                        {t("vaults.totalAcrossAll")}
+                    </span>
+                    <span className={`text-lg font-bold text-foreground tabular-nums ${isPrivacyMode ? "blur-sm select-none" : ""}`}>
+                        {symbol}
+                        {totalBalance.toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                        })}
+                    </span>
+                </div>
+
+                {pendingCollectionTotal > 0 && (
+                    <div className="mt-3 space-y-2 border-t border-dashed border-amber-200 pt-3 dark:border-amber-900/50">
+                        <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                                <HourglassMedium size={13} weight="bold" />
+                                {t("vaults.pendingCollection")} · {t(
+                                    pendingCollectionOverdueCount > 0
+                                        ? "vaults.receivableAccountsOverdue"
+                                        : "vaults.receivableAccountsCount",
+                                    {
+                                        count: pendingCollectionCount,
+                                        overdue: pendingCollectionOverdueCount,
+                                    }
+                                )}
+                            </span>
+                            <span className={`text-sm font-semibold text-amber-700 tabular-nums dark:text-amber-400 ${isPrivacyMode ? "blur-sm select-none" : ""}`}>
+                                + {symbol}
+                                {pendingCollectionTotal.toLocaleString("en-US", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                })}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                                {t("vaults.projectedTotal")}
+                            </span>
+                            <span className={`text-sm font-bold text-foreground tabular-nums ${isPrivacyMode ? "blur-sm select-none" : ""}`}>
+                                {symbol}
+                                {projectedTotal.toLocaleString("en-US", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                })}
+                            </span>
+                        </div>
+                    </div>
+                )}
             </motion.div>
 
             {/* Recent Activity */}
@@ -831,11 +924,13 @@ export default function VaultsPage() {
                 isOpen={showNewTransaction}
                 onClose={() => setShowNewTransaction(false)}
                 onCreated={loadData}
-                vaults={vaults.map((v) => ({
-                    id: v.id,
-                    name: v.name,
-                    currency: v.currency,
-                }))}
+                vaults={vaults
+                    .filter((v) => isLiquidVault(v.type))
+                    .map((v) => ({
+                        id: v.id,
+                        name: v.name,
+                        currency: v.currency,
+                    }))}
             />
             <TransactionEditModal
                 isOpen={!!selectedTx}

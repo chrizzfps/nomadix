@@ -2,17 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Vault, UsersThree } from "@phosphor-icons/react";
+import { X, Vault, UsersThree, HandCoins } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 import { friendInitials, formatFriendHandle } from "@/lib/social";
-import type { Currency, FriendSummary } from "@/types";
+import type { Currency, FriendSummary, VaultType } from "@/types";
 
 interface CreateVaultModalProps {
     isOpen: boolean;
     onClose: () => void;
     onCreated: () => void;
 }
+
+const VAULT_TYPE_OPTIONS: { value: VaultType; label: string; description?: string }[] = [
+    { value: "checking", label: "Checking" },
+    { value: "savings", label: "Savings" },
+    { value: "cash", label: "Cash" },
+    {
+        value: "receivable",
+        label: "Pending Collection",
+        description: "Invoiced money you haven't received yet",
+    },
+];
 
 export function CreateVaultModal({
     isOpen,
@@ -24,11 +35,15 @@ export function CreateVaultModal({
 
     const [name, setName] = useState("");
     const [currency, setCurrency] = useState<Currency>("EUR");
-    const [type, setType] = useState<"savings" | "checking" | "cash">("checking");
+    const [type, setType] = useState<VaultType>("checking");
     const [isProtected, setIsProtected] = useState(false);
     const [initialAmount, setInitialAmount] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // A receivable vault holds no liquid balance and can't be shared or
+    // protected in v1 -- none of that UI applies to it.
+    const isReceivable = type === "receivable";
 
     const [shareEnabled, setShareEnabled] = useState(false);
     const [friends, setFriends] = useState<FriendSummary[]>([]);
@@ -67,7 +82,7 @@ export function CreateVaultModal({
                 name: name.trim(),
                 currency,
                 type,
-                is_protected: isProtected,
+                is_protected: isReceivable ? false : isProtected,
             })
             .select("id")
             .single();
@@ -79,9 +94,11 @@ export function CreateVaultModal({
             return;
         }
 
-        // Create initial deposit transaction if amount is set
+        // Create initial deposit transaction if amount is set -- not
+        // applicable to a receivable vault, whose balance is never a
+        // transaction sum.
         const amount = parseFloat(initialAmount);
-        if (amount > 0) {
+        if (!isReceivable && amount > 0) {
             await supabase.from("transactions").insert({
                 user_id: user.id,
                 vault_id: insertedVault.id,
@@ -93,7 +110,7 @@ export function CreateVaultModal({
             });
         }
 
-        if (shareEnabled && selectedFriendId) {
+        if (!isReceivable && shareEnabled && selectedFriendId) {
             const { error: shareError } = await supabase.rpc("nomadix_share_vault", {
                 p_vault_id: insertedVault.id,
                 p_friend_id: selectedFriendId,
@@ -181,22 +198,24 @@ export function CreateVaultModal({
                                 />
                             </div>
 
-                            {/* Initial Amount */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
-                                    Initial Amount{" "}
-                                    <span className="normal-case tracking-normal text-muted-foreground">(optional)</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    placeholder="0.00"
-                                    value={initialAmount}
-                                    onChange={(e) => setInitialAmount(e.target.value)}
-                                    className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                                />
-                            </div>
+                            {/* Initial Amount — meaningless for a receivable vault */}
+                            {!isReceivable && (
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
+                                        Initial Amount{" "}
+                                        <span className="normal-case tracking-normal text-muted-foreground">(optional)</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="0.00"
+                                        value={initialAmount}
+                                        onChange={(e) => setInitialAmount(e.target.value)}
+                                        className="w-full rounded-xl border border-border bg-accent px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                                    />
+                                </div>
+                            )}
 
                             {/* Currency */}
                             <div className="space-y-2">
@@ -225,111 +244,123 @@ export function CreateVaultModal({
                                 <label className="text-xs font-medium tracking-[0.1em] uppercase text-muted-foreground">
                                     Type
                                 </label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {(
-                                        [
-                                            { value: "checking", label: "Checking" },
-                                            { value: "savings", label: "Savings" },
-                                            { value: "cash", label: "Cash" },
-                                        ] as const
-                                    ).map((t) => (
-                                        <button
-                                            key={t.value}
-                                            type="button"
-                                            onClick={() => setType(t.value)}
-                                            className={`rounded-xl border px-3 py-2.5 text-xs font-medium transition-all ${type === t.value
-                                                ? "border-primary bg-primary text-primary-foreground"
-                                                : "border-border bg-card text-muted-foreground hover:border-ring"
-                                                }`}
-                                        >
-                                            {t.label}
-                                        </button>
-                                    ))}
+                                <div className="grid grid-cols-2 gap-2">
+                                    {VAULT_TYPE_OPTIONS.map((opt) => {
+                                        const isReceivableOption = opt.value === "receivable";
+                                        const selected = type === opt.value;
+                                        return (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => setType(opt.value)}
+                                                className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-medium transition-all ${selected
+                                                    ? isReceivableOption
+                                                        ? "border-amber-400 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                                                        : "border-primary bg-primary text-primary-foreground"
+                                                    : "border-border bg-card text-muted-foreground hover:border-ring"
+                                                    }`}
+                                            >
+                                                {isReceivableOption && (
+                                                    <HandCoins size={14} weight="bold" />
+                                                )}
+                                                {opt.label}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
+                                {isReceivable && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                        {VAULT_TYPE_OPTIONS.find((o) => o.value === "receivable")?.description}
+                                    </p>
+                                )}
                             </div>
 
-                            {/* Protected Toggle */}
-                            <label className="flex items-center gap-3 cursor-pointer">
-                                <div className="relative">
-                                    <input
-                                        type="checkbox"
-                                        checked={isProtected}
-                                        onChange={(e) => setIsProtected(e.target.checked)}
-                                        className="peer sr-only"
-                                    />
-                                    <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
-                                    <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-foreground/80">
-                                        Protected Vault
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground">
-                                        Requires extra confirmation for withdrawals
-                                    </p>
-                                </div>
-                            </label>
-
-                            {/* Share Toggle */}
-                            <div className="space-y-3 rounded-xl border border-border bg-accent/40 p-3">
+                            {/* Protected Toggle — meaningless on a receivable vault */}
+                            {!isReceivable && (
                                 <label className="flex items-center gap-3 cursor-pointer">
                                     <div className="relative">
                                         <input
                                             type="checkbox"
-                                            checked={shareEnabled}
-                                            onChange={(e) => {
-                                                setShareEnabled(e.target.checked);
-                                                if (!e.target.checked) setSelectedFriendId(null);
-                                            }}
+                                            checked={isProtected}
+                                            onChange={(e) => setIsProtected(e.target.checked)}
                                             className="peer sr-only"
                                         />
                                         <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
                                         <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <UsersThree size={16} className="text-foreground/60" />
-                                        <div>
-                                            <p className="text-sm font-medium text-foreground/80">
-                                                Share with a friend
-                                            </p>
-                                            <p className="text-[11px] text-muted-foreground">
-                                                Invite a friend to co-own this vault
-                                            </p>
-                                        </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-foreground/80">
+                                            Protected Vault
+                                        </p>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            Requires extra confirmation for withdrawals
+                                        </p>
                                     </div>
                                 </label>
+                            )}
 
-                                {shareEnabled && (
-                                    <div className="space-y-1.5">
-                                        {friendsLoading ? (
-                                            <div className="h-11 animate-pulse rounded-lg bg-accent" />
-                                        ) : friends.length === 0 ? (
-                                            <p className="py-2 text-center text-xs text-muted-foreground">
-                                                You have no friends yet — add one first from the Friends page.
-                                            </p>
-                                        ) : (
-                                            friends.map((f) => (
-                                                <button
-                                                    key={f.friend_id}
-                                                    type="button"
-                                                    onClick={() => setSelectedFriendId(f.friend_id)}
-                                                    className={`flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors ${selectedFriendId === f.friend_id
-                                                        ? "border-primary bg-primary/10"
-                                                        : "border-border bg-card hover:border-ring"
-                                                        }`}
-                                                >
-                                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
-                                                        {friendInitials(f.full_name || f.username || "?")}
-                                                    </div>
-                                                    <span className="text-sm font-medium text-foreground">
-                                                        {formatFriendHandle(f)}
-                                                    </span>
-                                                </button>
-                                            ))
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                            {/* Share Toggle — not offered for a receivable vault in v1 */}
+                            {!isReceivable && (
+                                <div className="space-y-3 rounded-xl border border-border bg-accent/40 p-3">
+                                    <label className="flex items-center gap-3 cursor-pointer">
+                                        <div className="relative">
+                                            <input
+                                                type="checkbox"
+                                                checked={shareEnabled}
+                                                onChange={(e) => {
+                                                    setShareEnabled(e.target.checked);
+                                                    if (!e.target.checked) setSelectedFriendId(null);
+                                                }}
+                                                className="peer sr-only"
+                                            />
+                                            <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
+                                            <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <UsersThree size={16} className="text-foreground/60" />
+                                            <div>
+                                                <p className="text-sm font-medium text-foreground/80">
+                                                    Share with a friend
+                                                </p>
+                                                <p className="text-[11px] text-muted-foreground">
+                                                    Invite a friend to co-own this vault
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    {shareEnabled && (
+                                        <div className="space-y-1.5">
+                                            {friendsLoading ? (
+                                                <div className="h-11 animate-pulse rounded-lg bg-accent" />
+                                            ) : friends.length === 0 ? (
+                                                <p className="py-2 text-center text-xs text-muted-foreground">
+                                                    You have no friends yet — add one first from the Friends page.
+                                                </p>
+                                            ) : (
+                                                friends.map((f) => (
+                                                    <button
+                                                        key={f.friend_id}
+                                                        type="button"
+                                                        onClick={() => setSelectedFriendId(f.friend_id)}
+                                                        className={`flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors ${selectedFriendId === f.friend_id
+                                                            ? "border-primary bg-primary/10"
+                                                            : "border-border bg-card hover:border-ring"
+                                                            }`}
+                                                    >
+                                                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                                                            {friendInitials(f.full_name || f.username || "?")}
+                                                        </div>
+                                                        <span className="text-sm font-medium text-foreground">
+                                                            {formatFriendHandle(f)}
+                                                        </span>
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {error && (
                                 <p className="text-sm text-red-500">{error}</p>

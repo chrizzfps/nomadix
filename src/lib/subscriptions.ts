@@ -416,14 +416,36 @@ export function firstShortfall(points: ProjectionPoint[]): ProjectionPoint | nul
 // ============================================
 
 export interface ReminderItem {
-    id: string; // subscription id or occurrence id
+    id: string; // subscription id, occurrence id, or receivable id
     kind: "upcoming" | "pending" | "trial_ending" | "overdue" | "failed";
+    // "subscriptionId" is a historical name -- for a receivable-sourced
+    // item it holds the receivable id instead. Kept as-is (rather than
+    // renamed) so every existing subscription call site stays untouched.
     subscriptionId: string;
     title: string;
     dueDate: string;
     amount: number;
     currency: Currency;
     tone: DueTone;
+    source: "subscription" | "receivable";
+    href: string;
+}
+
+const REMINDER_RANK: Record<ReminderItem["kind"], number> = {
+    overdue: 0,
+    failed: 1,
+    pending: 2,
+    trial_ending: 3,
+    upcoming: 4,
+};
+
+/** Shared ordering for the notification bell: same rank table
+ *  buildReminders() has always used, exported so buildReceivableReminders()
+ *  (src/lib/receivables.ts) and the merge in reminders-store.ts sort
+ *  subscription and receivable items into one consistent list instead of
+ *  each keeping its own copy of the rank table to drift out of sync. */
+export function compareReminders(a: ReminderItem, b: ReminderItem): number {
+    return REMINDER_RANK[a.kind] - REMINDER_RANK[b.kind] || a.dueDate.localeCompare(b.dueDate);
 }
 
 export function buildReminders(
@@ -448,6 +470,8 @@ export function buildReminders(
             amount: occ.expected_amount,
             currency: occ.currency,
             tone,
+            source: "subscription",
+            href: `/dashboard/subscriptions?open=${sub.id}`,
         });
     }
 
@@ -466,6 +490,8 @@ export function buildReminders(
                     amount: sub.amount,
                     currency: sub.currency,
                     tone: dueStatus(sub.trial_end_date, todayIso).tone,
+                    source: "subscription",
+                    href: `/dashboard/subscriptions?open=${sub.id}`,
                 });
             }
         }
@@ -485,21 +511,14 @@ export function buildReminders(
                     amount: sub.amount,
                     currency: sub.currency,
                     tone: dueStatus(sub.next_due_date, todayIso).tone,
+                    source: "subscription",
+                    href: `/dashboard/subscriptions?open=${sub.id}`,
                 });
             }
         }
     }
 
-    const rank: Record<ReminderItem["kind"], number> = {
-        overdue: 0,
-        failed: 1,
-        pending: 2,
-        trial_ending: 3,
-        upcoming: 4,
-    };
-    return items.sort(
-        (a, b) => rank[a.kind] - rank[b.kind] || a.dueDate.localeCompare(b.dueDate)
-    );
+    return items.sort(compareReminders);
 }
 
 // ============================================

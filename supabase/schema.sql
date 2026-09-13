@@ -5319,3 +5319,348 @@ grant execute on function public.nomadix_reverse_transfer(uuid, text) to authent
 -- delete from public.vaults where id = '<vault-with-live-transfer>'::uuid;
 --   -- expect 'This vault has a transfer that can still be returned ...'
 -- ============================================================================
+
+-- ============================================================================
+-- vaults.type CHECK widening: 'receivable' is a new vault type (see below),
+-- but the base `vaults` table was created outside this file (Supabase
+-- dashboard, before this repo's migration discipline existed) and carries a
+-- CHECK constraint on `type` that schema.sql never previously documented or
+-- altered -- it only allowed 'savings'|'checking'|'cash'. Discovered and
+-- fixed by applying this section's migration directly against the live
+-- database via the Supabase MCP; recorded here so the file matches reality.
+-- ============================================================================
+alter table public.vaults
+    drop constraint if exists vaults_type_check;
+
+alter table public.vaults
+    add constraint vaults_type_check
+    check (type = any (array['savings'::text, 'checking'::text, 'cash'::text, 'receivable'::text]));
+
+-- ============================================================================
+-- RECEIVABLES (Pendiente por cobrar)
+-- ----------------------------------------------------------------------------
+-- Money that has been invoiced/promised but not received yet. Modeled as its
+-- own tables (clients + receivables), NOT as transactions -- it must never
+-- enter a liquid balance, a net worth figure, or a runway projection until
+-- it is actually collected. A receivable vault (public.vaults.type =
+-- 'receivable') is the visual/organizational home for a client's outstanding
+-- accounts; its "balance" is always SUM(receivables.amount - amount_collected)
+-- for that vault, never transactions.
+--
+-- `direction` already accepts 'payable' for a future "money I owe" feature --
+-- v1 only ever writes 'receivable'.
+--
+-- Re-runnable: every statement is idempotent.
+-- After applying: Supabase -> Settings -> API -> Reload schema
+--                 (or: notify pgrst, 'reload schema';)
+-- ============================================================================
+
+create table if not exists public.clients (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users(id) on delete cascade,
+    name text not null check (length(trim(name)) > 0),
+    email text,
+    phone text,
+    notes text,
+    color text not null default '#18181b',
+    is_archived boolean not null default false,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create unique index if not exists clients_user_name_uniq
+    on public.clients (user_id, lower(trim(name)));
+create index if not exists clients_user_idx
+    on public.clients (user_id, is_archived, name);
+
+create table if not exists public.receivables (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users(id) on delete cascade,
+    vault_id uuid not null references public.vaults(id) on delete cascade,
+    client_id uuid references public.clients(id) on delete set null,
+    -- Snapshot: if the client row is later deleted, the receivable still
+    -- says who it was for. Same pattern as transfers.sender_vault_name.
+    client_name text,
+
+    direction text not null default 'receivable'
+        check (direction in ('receivable', 'payable')),
+
+    description text not null check (length(trim(description)) > 0),
+    amount numeric(14,2) not null check (amount > 0),
+    currency text not null default 'EUR' check (currency in ('EUR', 'USD')),
+    issue_date date not null default current_date,
+    expected_date date not null,
+
+    -- 'overdue' is NOT a stored status -- it is derived from expected_date
+    -- in TS via effectiveStatus(). A persisted overdue flag would need a
+    -- cron just to flip it at midnight and would drift across timezones.
+    status text not null default 'pending'
+        check (status in ('pending', 'partial', 'paid', 'canceled')),
+    amount_collected numeric(14,2) not null default 0 check (amount_collected >= 0),
+
+    paid_at timestamptz,
+    settled_vault_id uuid references public.vaults(id) on delete set null,
+    settlement_transaction_id uuid references public.transactions(id) on delete set null,
+
+    reminder_days_before smallint not null default 3
+        check (reminder_days_before between 0 and 60),
+    notify_in_app boolean not null default true,
+    last_reminder_seen_at timestamptz,
+
+    notes text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+
+    constraint receivables_collected_lte_amount
+        check (amount_collected <= amount),
+    constraint receivables_paid_shape
+        check (status <> 'paid' or paid_at is not null)
+);
+
+create index if not exists receivables_user_status_idx
+    on public.receivables (user_id, status, expected_date);
+create index if not exists receivables_vault_idx
+    on public.receivables (vault_id) where status in ('pending', 'partial');
+create index if not exists receivables_client_idx
+    on public.receivables (client_id);
+
+-- ---------------------------------------------------------------------------
+-- updated_at triggers (reuses public.nomadix_touch_updated_at())
+-- ---------------------------------------------------------------------------
+drop trigger if exists clients_touch_trg on public.clients;
+create trigger clients_touch_trg
+    before update on public.clients
+    for each row execute function public.nomadix_touch_updated_at();
+
+drop trigger if exists receivables_touch_trg on public.receivables;
+create trigger receivables_touch_trg
+    before update on public.receivables
+    for each row execute function public.nomadix_touch_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- RLS: 4 own-row policies per table, idempotent
+-- ---------------------------------------------------------------------------
+alter table public.clients enable row level security;
+
+do $$
+begin
+    begin
+        create policy "clients_select_own" on public.clients
+        for select using (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+    begin
+        create policy "clients_insert_own" on public.clients
+        for insert with check (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+    begin
+        create policy "clients_update_own" on public.clients
+        for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+    begin
+        create policy "clients_delete_own" on public.clients
+        for delete using (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+end $$;
+
+alter table public.receivables enable row level security;
+
+do $$
+begin
+    begin
+        create policy "receivables_select_own" on public.receivables
+        for select using (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+    begin
+        create policy "receivables_insert_own" on public.receivables
+        for insert with check (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+    begin
+        create policy "receivables_update_own" on public.receivables
+        for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+    begin
+        create policy "receivables_delete_own" on public.receivables
+        for delete using (auth.uid() = user_id);
+    exception when duplicate_object then null; end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- nomadix_collect_receivable: the single write path for collecting a
+-- receivable. Touches two tables (receivables + transactions) and must never
+-- apply half -- same reasoning as nomadix_send_transfer. Supports partial
+-- collection (p_amount may be less than what's outstanding).
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_collect_receivable(
+    p_receivable_id uuid,
+    p_vault_id      uuid,
+    p_amount        numeric,
+    p_rate          numeric default null
+) returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_uid         uuid := auth.uid();
+    v_receivable  public.receivables%rowtype;
+    v_vault       public.vaults%rowtype;
+    v_amount      numeric := round(coalesce(p_amount, 0), 2);
+    v_outstanding numeric;
+    v_received    numeric;
+    v_new_collected numeric;
+    v_new_status  text;
+    v_tx_id       uuid;
+begin
+    if v_uid is null then
+        raise exception 'Not authenticated' using errcode = 'insufficient_privilege';
+    end if;
+
+    if v_amount <= 0 then
+        raise exception 'Amount must be greater than zero'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    -- Lock the receivable row: two concurrent collections on the same
+    -- receivable serialize instead of both reading the same "outstanding".
+    select * into v_receivable
+      from public.receivables
+     where id = p_receivable_id and user_id = v_uid
+     for update;
+
+    if v_receivable.id is null then
+        raise exception 'Receivable not found' using errcode = 'insufficient_privilege';
+    end if;
+
+    if v_receivable.status in ('paid', 'canceled') then
+        raise exception 'This receivable is already closed'
+            using errcode = 'check_violation';
+    end if;
+
+    select * into v_vault from public.vaults where id = p_vault_id and user_id = v_uid;
+
+    if v_vault.id is null then
+        raise exception 'Destination vault not found' using errcode = 'insufficient_privilege';
+    end if;
+
+    -- Collecting INTO another receivable vault isn't collecting -- it would
+    -- just create a second uncollected balance and silently double it in
+    -- every "pending" total.
+    if v_vault.type = 'receivable' then
+        raise exception 'Cannot collect into a receivable vault'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    v_outstanding := v_receivable.amount - v_receivable.amount_collected;
+    if v_amount > v_outstanding then
+        raise exception 'Amount exceeds the outstanding balance'
+            using errcode = 'invalid_parameter_value';
+    end if;
+
+    if v_receivable.currency = v_vault.currency then
+        v_received := v_amount;
+    else
+        if coalesce(p_rate, 0) <= 0 then
+            raise exception 'An exchange rate is required between these currencies'
+                using errcode = 'invalid_parameter_value';
+        end if;
+        v_received := round(
+            case when v_receivable.currency = 'USD' then v_amount * p_rate
+                 else v_amount / p_rate end,
+        2);
+    end if;
+
+    insert into public.transactions (
+        user_id, vault_id, amount, type, original_currency,
+        category, description, date, status
+    ) values (
+        v_uid, v_vault.id, v_received, 'income', v_vault.currency,
+        'Receivable',
+        coalesce(v_receivable.client_name, 'Client') || ' -- ' || v_receivable.description,
+        current_date, 'completed'
+    ) returning id into v_tx_id;
+
+    v_new_collected := round(v_receivable.amount_collected + v_amount, 2);
+    v_new_status := case when v_new_collected >= v_receivable.amount then 'paid' else 'partial' end;
+
+    update public.receivables
+       set amount_collected = v_new_collected,
+           status = v_new_status,
+           paid_at = case when v_new_status = 'paid' then now() else paid_at end,
+           settled_vault_id = v_vault.id,
+           settlement_transaction_id = v_tx_id,
+           updated_at = now()
+     where id = v_receivable.id;
+
+    return v_tx_id;
+end $$;
+
+revoke all on function public.nomadix_collect_receivable(uuid, uuid, numeric, numeric) from public, anon;
+grant execute on function public.nomadix_collect_receivable(uuid, uuid, numeric, numeric) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- A receivable vault must never appear as a valid transfer target: cobrar
+-- (collecting) is the only way money leaves a receivable's "pending" state.
+-- ---------------------------------------------------------------------------
+create or replace function public.nomadix_list_transferable_vaults(
+    p_target_user_id uuid
+) returns table (
+    vault_id uuid,
+    name     text,
+    currency text,
+    vault_type text,
+    icon     text,
+    color    text,
+    accepts_from_me boolean
+)
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+    select v.id, v.name, v.currency, v.type, v.icon, v.color, true
+      from public.vaults v
+     where auth.uid() is not null
+       and p_target_user_id is not null
+       and v.user_id = p_target_user_id
+       and v.type <> 'receivable'
+       and (
+            p_target_user_id = auth.uid()
+            or (
+                public.nomadix_are_friends(auth.uid(), p_target_user_id)
+                and (
+                     v.accepts_transfers_from = 'friends'
+                  or (v.accepts_transfers_from = 'allowlist'
+                      and exists (
+                          select 1 from public.vault_transfer_allowlist a
+                           where a.vault_id = v.id
+                             and a.friend_user_id = auth.uid()
+                      ))
+                )
+            )
+       )
+     order by v.name;
+$$;
+
+revoke all on function public.nomadix_list_transferable_vaults(uuid) from public, anon;
+grant execute on function public.nomadix_list_transferable_vaults(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Manual verification:
+-- 1) Create a receivable vault + a $500 receivable, collect $400 of it:
+-- select public.nomadix_collect_receivable('<r-id>'::uuid, '<checking-vault>'::uuid, 400, null);
+--   -- expect: a new 'income' transaction for 400, receivable.status = 'partial',
+--   --         amount_collected = 400
+-- 2) Collect the remaining 100:
+-- select public.nomadix_collect_receivable('<r-id>'::uuid, '<checking-vault>'::uuid, 100, null);
+--   -- expect: receivable.status = 'paid', paid_at is not null
+-- 3) Collecting again must fail:
+-- select public.nomadix_collect_receivable('<r-id>'::uuid, '<checking-vault>'::uuid, 1, null);
+--   -- expect: 'This receivable is already closed'
+-- 4) Collecting into another receivable vault must fail:
+-- select public.nomadix_collect_receivable('<r-id>'::uuid, '<other-receivable-vault>'::uuid, 10, null);
+--   -- expect: 'Cannot collect into a receivable vault'
+-- 5) select * from public.nomadix_list_transferable_vaults(auth.uid());
+--   -- expect: no row with vault_type = 'receivable'
+-- 6) delete from public.vaults where id = '<receivable-vault>'::uuid;
+--   -- expect success; its receivables cascade-delete, clients survive
+-- ============================================================================

@@ -57,6 +57,7 @@ jest.mock("@/lib/supabase/client", () => {
         const chain = () => builder;
         builder.select = chain;
         builder.eq = chain;
+        builder.neq = chain;
         builder.order = chain;
         builder.in = chain;
         builder.limit = chain;

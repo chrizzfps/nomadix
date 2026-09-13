@@ -73,7 +73,14 @@ export default function SubscriptionsPage() {
 
         const [{ data: vaultRows, error: vaultError }, { data: subRows, error: subError }] =
             await Promise.all([
-                supabase.from("vaults").select("id,name,currency").eq("user_id", user.id),
+                // A subscription is a real recurring charge -- it can only
+                // ever be paid from a liquid vault, so a "pending
+                // collection" vault is never offered here.
+                supabase
+                    .from("vaults")
+                    .select("id,name,currency")
+                    .eq("user_id", user.id)
+                    .neq("type", "receivable"),
                 supabase
                     .from("subscriptions")
                     .select("*")

@@ -48,7 +48,14 @@ export function SettleUpModal({ isOpen, onClose, friend, amountOwedEur, onSettle
             } = await supabase.auth.getUser();
             if (!user) return;
             const [{ data: mine }, { data: theirs, error: theirsError }] = await Promise.all([
-                supabase.from("vaults").select("*").eq("user_id", user.id).order("name"),
+                // A vault pending collection has no liquid balance -- it
+                // can never be the SOURCE of a settle-up transfer.
+                supabase
+                    .from("vaults")
+                    .select("*")
+                    .eq("user_id", user.id)
+                    .neq("type", "receivable")
+                    .order("name"),
                 supabase.rpc("nomadix_list_transferable_vaults", { p_target_user_id: friend.friend_id }),
             ]);
             if (theirsError) addToast(theirsError.message, "error");

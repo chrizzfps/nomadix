@@ -16,6 +16,7 @@ import {
     X,
     GearSix,
     SignOut,
+    HandCoins,
 } from "@phosphor-icons/react";
 import { signOut } from "@/app/auth/actions";
 import { AnimatePresence, motion } from "framer-motion";
@@ -31,6 +32,7 @@ const navItems = [
 ];
 
 const moreNavItems = [
+    { href: "/dashboard/receivables", key: "nav.receivables", defaultLabel: "Receivables", icon: HandCoins },
     { href: "/dashboard/reports", key: "nav.reports", defaultLabel: "Reports", icon: Sparkle },
     { href: "/dashboard/friends", key: "nav.friends", defaultLabel: "Friends", icon: UsersThree },
     { href: "/dashboard/identity", key: "nav.identity", defaultLabel: "Identity", icon: IdentificationCard },

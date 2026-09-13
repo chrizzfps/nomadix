@@ -22,16 +22,20 @@ import {
     ArrowDown,
     ArrowsLeftRight,
     ArrowClockwise,
+    HourglassMedium,
 } from "@phosphor-icons/react";
 import { CurrencyToggle } from "@/components/shared/currency-toggle";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { usePrivacyStore } from "@/stores/privacy-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { convertTransactionAmount } from "@/lib/currency-helpers";
+import { isLiquidVault, receivableTotals } from "@/lib/receivables";
 import { NewTransactionModal } from "@/components/vaults/new-transaction-modal";
 import { TransactionEditModal } from "@/components/vaults/transaction-edit-modal";
 import { UpcomingChargesWidget } from "@/components/subscriptions/upcoming-charges-widget";
 import { useLanguageStore } from "@/stores/language-store";
+import type { Receivable, VaultType } from "@/types";
 import Link from "next/link";
 import {
     LineChart,
@@ -107,7 +111,7 @@ interface VaultBasic {
     id: string;
     name: string;
     currency: string;
-    type: string;
+    type: VaultType;
 }
 
 export default function DashboardPage() {
@@ -127,9 +131,11 @@ export default function DashboardPage() {
         { name: string; income: number; expenses: number }[]
     >([]);
     const [vaults, setVaults] = useState<VaultBasic[]>([]);
+    const [receivables, setReceivables] = useState<Receivable[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showAddTx, setShowAddTx] = useState(false);
     const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+    const isPrivacyMode = usePrivacyStore((s) => s.isPrivacyMode);
 
     const loadData = useCallback(async () => {
         const {
@@ -152,6 +158,15 @@ export default function DashboardPage() {
             .eq("user_id", user.id);
 
         setVaults(vaultRows || []);
+
+        // Fetch open receivables — powers the "+ pending collection" line
+        // under the total balance card. Never folded into totalBalance.
+        const { data: receivableRows } = await supabase
+            .from("receivables")
+            .select("*")
+            .eq("user_id", user.id)
+            .in("status", ["pending", "partial"]);
+        setReceivables((receivableRows || []) as Receivable[]);
 
         // Fetch all transactions
         const { data: txRows } = await supabase
@@ -200,6 +215,11 @@ export default function DashboardPage() {
         vaultSums.forEach((sum, vaultId) => {
             const curr = vaultCurrencyMap.get(vaultId) || "USD";
             const vType = vaultTypeMap.get(vaultId) || "checking";
+            // A receivable vault never has real transactions written against
+            // it (collecting writes to the destination LIQUID vault
+            // instead), so this should already be empty for it -- guarded
+            // anyway, since totalBalance must never include unarrived money.
+            if (!isLiquidVault(vType)) return;
             const entry = { amount: sum, currency: curr };
             balances.total.push(entry);
             if (vType === "savings") balances.savings.push(entry);
@@ -253,6 +273,9 @@ export default function DashboardPage() {
     const savingsBalance = sumConverted(rawBalances.savings);
     const cashBalance = sumConverted(rawBalances.cash);
 
+    const pendingCollection = receivableTotals(receivables, convert);
+    const projectedTotal = totalBalance + pendingCollection.outstanding;
+
     const summaryCards = [
         { label: t("dashboard.totalBalance"), value: totalBalance, icon: Wallet },
         { label: t("dashboard.checking"), value: checkingBalance, icon: Wallet },
@@ -300,7 +323,7 @@ export default function DashboardPage() {
                             {t("dashboard.totalBalance")}
                         </p>
                         <div className="mt-3 flex items-baseline gap-3">
-                            <span className="text-4xl font-bold tracking-tight text-foreground">
+                            <span className={`text-4xl font-bold tracking-tight text-foreground tabular-nums ${isPrivacyMode ? "blur-sm select-none" : ""}`}>
                                 {symbol}
                                 {totalBalance.toLocaleString("en-US", {
                                     minimumFractionDigits: 2,
@@ -314,6 +337,36 @@ export default function DashboardPage() {
                                 </span>
                             )}
                         </div>
+
+                        {pendingCollection.outstanding > 0 && (
+                            <div className="mt-4 space-y-2 border-t border-dashed border-amber-200 pt-3 dark:border-amber-900/50">
+                                <div className="flex items-center justify-between">
+                                    <span className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                                        <HourglassMedium size={13} weight="bold" />
+                                        {t("vaults.pendingCollection")}
+                                    </span>
+                                    <span className={`text-sm font-semibold text-amber-700 tabular-nums dark:text-amber-400 ${isPrivacyMode ? "blur-sm select-none" : ""}`}>
+                                        + {symbol}
+                                        {pendingCollection.outstanding.toLocaleString("en-US", {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        })}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                                        {t("vaults.projectedTotal")}
+                                    </span>
+                                    <span className={`text-sm font-bold text-foreground tabular-nums ${isPrivacyMode ? "blur-sm select-none" : ""}`}>
+                                        {symbol}
+                                        {projectedTotal.toLocaleString("en-US", {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        })}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                     </motion.div>
 
                     {/* Chart */}
@@ -557,11 +610,13 @@ export default function DashboardPage() {
                 isOpen={showAddTx}
                 onClose={() => setShowAddTx(false)}
                 onCreated={loadData}
-                vaults={vaults.map((v) => ({
-                    id: v.id,
-                    name: v.name,
-                    currency: v.currency,
-                }))}
+                vaults={vaults
+                    .filter((v) => isLiquidVault(v.type))
+                    .map((v) => ({
+                        id: v.id,
+                        name: v.name,
+                        currency: v.currency,
+                    }))}
             />
             <TransactionEditModal
                 isOpen={!!selectedTx}

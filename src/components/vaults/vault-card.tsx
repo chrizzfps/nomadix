@@ -12,12 +12,14 @@ import {
     Trash,
     UsersThree,
     SignOut,
+    HandCoins,
 } from "@phosphor-icons/react";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { useLanguageStore } from "@/stores/language-store";
+import type { VaultType } from "@/types";
 import { EditVaultModal } from "./edit-vault-modal";
 import { ShareVaultModal } from "@/components/social/share-vault-modal";
 
@@ -26,10 +28,14 @@ interface VaultCardProps {
     name: string;
     balance: number;
     currency: string;
-    type: "savings" | "checking" | "cash";
+    type: VaultType;
     isProtected?: boolean;
     isShared?: boolean;
     isOwner?: boolean;
+    // Only meaningful for type === "receivable" — how many open accounts
+    // make up `balance` and how many of those are past their expected date.
+    receivableCount?: number;
+    receivableOverdueCount?: number;
     onClick?: () => void;
     onUpdated?: () => void;
 }
@@ -44,6 +50,7 @@ const typeLabels: Record<string, string> = {
     checking: "Checking",
     savings: "Savings",
     cash: "Cash",
+    receivable: "Pending Collection",
 };
 
 function EquivalentBalance({ balance, currency }: { balance: number; currency: string }) {
@@ -75,6 +82,8 @@ export function VaultCard({
     isProtected = false,
     isShared = false,
     isOwner = true,
+    receivableCount = 0,
+    receivableOverdueCount = 0,
     onClick,
     onUpdated,
 }: VaultCardProps) {
@@ -83,6 +92,7 @@ export function VaultCard({
     const t = useLanguageStore((s) => s.t);
     const symbol = CURRENCY_SYMBOLS[currency] || "$";
     const gradient = typeGradients[type] || typeGradients.checking;
+    const isReceivable = type === "receivable";
 
     const [menuOpen, setMenuOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
@@ -149,18 +159,30 @@ export function VaultCard({
                 whileHover={{ y: -4, scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onClick}
-                className={`relative cursor-pointer overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} p-6 text-white shadow-lg transition-shadow hover:shadow-xl`}
+                className={
+                    isReceivable
+                        ? "relative cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-amber-300 bg-card p-6 text-foreground shadow-sm transition-shadow hover:shadow-md dark:border-amber-900/60"
+                        : `relative cursor-pointer overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} p-6 text-white shadow-lg transition-shadow hover:shadow-xl`
+                }
             >
-                {/* Subtle pattern overlay */}
-                <div className="absolute inset-0 opacity-5">
-                    <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-card" />
-                    <div className="absolute -bottom-4 -left-4 h-24 w-24 rounded-full bg-card" />
-                </div>
+                {/* Subtle pattern overlay — the "credit card" gradient only */}
+                {!isReceivable && (
+                    <div className="absolute inset-0 opacity-5">
+                        <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-card" />
+                        <div className="absolute -bottom-4 -left-4 h-24 w-24 rounded-full bg-card" />
+                    </div>
+                )}
 
                 {/* Header */}
                 <div className="relative flex items-start justify-between">
                     <div className="flex items-center gap-2">
-                        {currency === "EUR" ? (
+                        {isReceivable ? (
+                            <HandCoins
+                                size={18}
+                                weight="bold"
+                                className="text-amber-600 dark:text-amber-400"
+                            />
+                        ) : currency === "EUR" ? (
                             <CurrencyEur
                                 size={18}
                                 weight="bold"
@@ -173,7 +195,13 @@ export function VaultCard({
                                 className="text-muted-foreground"
                             />
                         )}
-                        <span className="rounded-full bg-card/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+                        <span
+                            className={
+                                isReceivable
+                                    ? "rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                                    : "rounded-full bg-card/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                            }
+                        >
                             {typeLabels[type]}
                         </span>
                     </div>
@@ -240,8 +268,9 @@ export function VaultCard({
                                                     Delete this vault?
                                                 </p>
                                                 <p className="mt-1 text-[11px] text-muted-foreground">
-                                                    All transactions will be
-                                                    lost.
+                                                    {isReceivable
+                                                        ? "All pending accounts will be lost."
+                                                        : "All transactions will be lost."}
                                                 </p>
                                                 <div className="mt-3 flex gap-2">
                                                     <button
@@ -299,7 +328,7 @@ export function VaultCard({
                                                     <PencilSimple size={15} />
                                                     Edit
                                                 </button>
-                                                {isOwner && !isShared && (
+                                                {isOwner && !isShared && !isReceivable && (
                                                     <button
                                                         onClick={() => {
                                                             setMenuOpen(false);
@@ -345,16 +374,31 @@ export function VaultCard({
                 {/* Balance */}
                 <div className="relative mt-8">
                     <p className="text-[11px] font-medium tracking-[0.1em] uppercase text-muted-foreground">
-                        Balance
+                        {isReceivable ? t("vaults.pendingCollection") : t("vaults.balance")}
                     </p>
-                    <p className="mt-1 text-2xl font-bold tracking-tight">
+                    <p
+                        className={`mt-1 text-2xl font-bold tracking-tight ${
+                            isReceivable ? "text-amber-700 dark:text-amber-400" : ""
+                        }`}
+                    >
                         {symbol}
                         {Math.abs(balance).toLocaleString("en-US", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                         })}
                     </p>
-                    <EquivalentBalance balance={balance} currency={currency} />
+                    {isReceivable ? (
+                        <p className="mt-0.5 text-xs font-medium text-muted-foreground/70">
+                            {receivableOverdueCount > 0
+                                ? t("vaults.receivableAccountsOverdue", {
+                                      count: receivableCount,
+                                      overdue: receivableOverdueCount,
+                                  })
+                                : t("vaults.receivableAccountsCount", { count: receivableCount })}
+                        </p>
+                    ) : (
+                        <EquivalentBalance balance={balance} currency={currency} />
+                    )}
                 </div>
 
                 {/* Footer */}
@@ -363,7 +407,7 @@ export function VaultCard({
                     <ArrowRight
                         size={16}
                         weight="bold"
-                        className="text-muted-foreground"
+                        className={isReceivable ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}
                     />
                 </div>
 
