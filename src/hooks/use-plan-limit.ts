@@ -12,7 +12,6 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useAuthStore } from "@/stores/auth-store";
 import { usePlan } from "@/hooks/use-plan";
 import { isAtLimit, limitFor, type GatedEntity } from "@/lib/plan";
 
@@ -28,11 +27,25 @@ const ENTITY_TABLE: Record<GatedEntity, string> = {
 };
 
 export function usePlanLimit(entity: GatedEntity) {
-    const userId = useAuthStore((s) => s.user?.id);
+    const [userId, setUserId] = useState<string | undefined>(undefined);
     const { tier, isLoading: planLoading } = usePlan();
 
     const [used, setUsed] = useState(0);
     const [countLoading, setCountLoading] = useState(true);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            const supabase = createClient();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            if (!cancelled) setUserId(user?.id);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         if (!userId) return;

@@ -10,16 +10,29 @@
 // grants select only, writes happen via the billing webhook, the manual
 // activation snippet, or a security-definer RPC.
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useAuthStore } from "@/stores/auth-store";
 import { usePlanStore, FREE_PLAN, type AccountPlan } from "@/stores/plan-store";
 
 const GRACE_MS = 3 * 24 * 60 * 60 * 1000; // same grace window as nomadix_current_tier()
 
 export function usePlan() {
-    const userId = useAuthStore((s) => s.user?.id);
+    const [userId, setUserId] = useState<string | undefined>(undefined);
     const { plan, loadedForUserId, isLoading, setPlan, setLoading } = usePlanStore();
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            const supabase = createClient();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            if (!cancelled) setUserId(user?.id);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         if (!userId || loadedForUserId === userId) return;
