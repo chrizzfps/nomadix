@@ -25,7 +25,7 @@ export type GatedEntity =
     | "document"
     | "trip";
 
-/** Entity limits for the free tier. Pro has no limit on any of these.
+/** Entity limits for the free tier.
  *  Mirrors the `case p_entity when ...` in nomadix_assert_quota() exactly. */
 export const PLAN_LIMITS: Record<GatedEntity, number> = {
     vault: 3,
@@ -35,6 +35,19 @@ export const PLAN_LIMITS: Record<GatedEntity, number> = {
     client: 0,
     document: 2,
     trip: 1,
+};
+
+/** Entity limits for the pro tier — generous, not unlimited, so nothing in
+ *  the product can be turned into an unbounded row count. Mirrors the pro
+ *  branch of nomadix_assert_quota() exactly. */
+export const PRO_PLAN_LIMITS: Record<GatedEntity, number> = {
+    vault: 20,
+    category: 30,
+    subscription: 30,
+    receivable: 20,
+    client: 20,
+    document: 15,
+    trip: 12,
 };
 
 /** How many months of history a free user can see in dashboards, charts,
@@ -56,8 +69,7 @@ export function historyCutoff(tier: Tier | null | undefined, now = new Date()): 
 }
 
 export function limitFor(entity: GatedEntity, tier: Tier | null | undefined): number | null {
-    if (isPro(tier)) return null;
-    return PLAN_LIMITS[entity];
+    return isPro(tier) ? PRO_PLAN_LIMITS[entity] : PLAN_LIMITS[entity];
 }
 
 export function isAtLimit(

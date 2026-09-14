@@ -54,9 +54,23 @@ function UsageRow({ entity, icon: Icon, labelKey }: (typeof USAGE_ROWS)[number])
     );
 }
 
+function PlanCardSkeleton() {
+    return (
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-center gap-3.5">
+                <div className="h-12 w-12 animate-pulse rounded-2xl bg-accent" />
+                <div className="space-y-2">
+                    <div className="h-4 w-24 animate-pulse rounded bg-accent" />
+                    <div className="h-3 w-40 animate-pulse rounded bg-accent" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function BillingPage() {
     const t = useLanguageStore((s) => s.t);
-    const { plan, isPro } = usePlan();
+    const { plan, isPro, isLoading } = usePlan();
     const [showUpgrade, setShowUpgrade] = useState(false);
 
     return (
@@ -79,82 +93,86 @@ export default function BillingPage() {
             </div>
 
             {/* Plan Card */}
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3.5">
-                        <div
-                            className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
-                                isPro ? "bg-primary text-primary-foreground" : "bg-accent text-foreground/70"
-                            }`}
-                        >
-                            <Crown size={24} weight="fill" />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-base font-bold text-foreground">
-                                    {isPro ? t("plan.tier.pro") : t("plan.tier.free")}
-                                </h3>
-                                {isPro && (
-                                    <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
-                                        {t("billing.active")}
-                                    </span>
-                                )}
+            {isLoading ? (
+                <PlanCardSkeleton />
+            ) : (
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3.5">
+                            <div
+                                className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+                                    isPro ? "bg-primary text-primary-foreground" : "bg-accent text-foreground/70"
+                                }`}
+                            >
+                                <Crown size={24} weight="fill" />
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                {isPro
-                                    ? t("billing.proSubtitle")
-                                    : t("billing.freeSubtitle")}
-                            </p>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-base font-bold text-foreground">
+                                        {isPro ? t("plan.tier.pro") : t("plan.tier.free")}
+                                    </h3>
+                                    {isPro && (
+                                        <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+                                            {t("billing.active")}
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    {isPro
+                                        ? t("billing.proSubtitle")
+                                        : t("billing.freeSubtitle")}
+                                </p>
+                            </div>
                         </div>
+                        {!isPro && (
+                            <button
+                                onClick={() => setShowUpgrade(true)}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
+                            >
+                                <Crown size={15} weight="fill" />
+                                {t("billing.upgradeCta")}
+                            </button>
+                        )}
                     </div>
+
+                    {isPro && plan.currentPeriodEnd && (
+                        <p className="mt-4 text-xs text-muted-foreground">
+                            {plan.cancelAtPeriodEnd
+                                ? t("billing.cancelsOn", {
+                                      date: new Date(plan.currentPeriodEnd).toLocaleDateString(),
+                                  })
+                                : t("billing.renewsOn", {
+                                      date: new Date(plan.currentPeriodEnd).toLocaleDateString(),
+                                  })}
+                        </p>
+                    )}
+
                     {!isPro && (
-                        <button
-                            onClick={() => setShowUpgrade(true)}
-                            className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
-                        >
-                            <Crown size={15} weight="fill" />
-                            {t("billing.upgradeCta")}
-                        </button>
+                        <div className="mt-6 space-y-2.5">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                                {t("billing.included")}
+                            </p>
+                            <ul className="space-y-2 text-xs text-foreground/80">
+                                {[
+                                    "plan.feature.vaults",
+                                    "plan.feature.receivables",
+                                    "plan.feature.reports",
+                                    "plan.feature.identity",
+                                    "plan.feature.travel",
+                                    "plan.feature.history",
+                                    "plan.feature.export",
+                                    "plan.feature.shareVault",
+                                ].map((key) => (
+                                    <li key={key} className="flex items-center gap-2">
+                                        <Check size={14} className="text-emerald-500 font-bold" />
+                                        {t(key)}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     )}
                 </div>
-
-                {isPro && plan.currentPeriodEnd && (
-                    <p className="mt-4 text-xs text-muted-foreground">
-                        {plan.cancelAtPeriodEnd
-                            ? t("billing.cancelsOn", {
-                                  date: new Date(plan.currentPeriodEnd).toLocaleDateString(),
-                              })
-                            : t("billing.renewsOn", {
-                                  date: new Date(plan.currentPeriodEnd).toLocaleDateString(),
-                              })}
-                    </p>
-                )}
-
-                {!isPro && (
-                    <div className="mt-6 space-y-2.5">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                            {t("billing.included")}
-                        </p>
-                        <ul className="space-y-2 text-xs text-foreground/80">
-                            {[
-                                "plan.feature.vaults",
-                                "plan.feature.receivables",
-                                "plan.feature.reports",
-                                "plan.feature.identity",
-                                "plan.feature.travel",
-                                "plan.feature.history",
-                                "plan.feature.export",
-                                "plan.feature.shareVault",
-                            ].map((key) => (
-                                <li key={key} className="flex items-center gap-2">
-                                    <Check size={14} className="text-emerald-500 font-bold" />
-                                    {t(key)}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-            </div>
+            )}
 
             {/* Account Limits & Metered Usage */}
             <div className="space-y-3">

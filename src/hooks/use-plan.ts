@@ -17,8 +17,9 @@ import { usePlanStore, FREE_PLAN, type AccountPlan } from "@/stores/plan-store";
 const GRACE_MS = 3 * 24 * 60 * 60 * 1000; // same grace window as nomadix_current_tier()
 
 export function usePlan() {
-    const [userId, setUserId] = useState<string | undefined>(undefined);
-    const { plan, loadedForUserId, isLoading, setPlan, setLoading } = usePlanStore();
+    const [userId, setUserId] = useState<string | null>(null);
+    const [authResolved, setAuthResolved] = useState(false);
+    const { plan, loadedForUserId, isLoading: planLoading, setPlan, setLoading } = usePlanStore();
 
     useEffect(() => {
         let cancelled = false;
@@ -27,7 +28,9 @@ export function usePlan() {
             const {
                 data: { user },
             } = await supabase.auth.getUser();
-            if (!cancelled) setUserId(user?.id);
+            if (cancelled) return;
+            setUserId(user?.id ?? null);
+            setAuthResolved(true);
         })();
         return () => {
             cancelled = true;
@@ -82,6 +85,11 @@ export function usePlan() {
             cancelled = true;
         };
     }, [userId, loadedForUserId, setPlan, setLoading]);
+
+    // Loading until auth resolves AND (no user, or that user's plan is
+    // fetched) -- otherwise the free default in the store reads as a real
+    // "you're on Free" for a moment before the Pro row arrives.
+    const isLoading = !authResolved || (!!userId && loadedForUserId !== userId) || planLoading;
 
     return {
         plan,

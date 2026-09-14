@@ -5747,12 +5747,14 @@ revoke all on function public.nomadix_current_tier(uuid) from public, anon;
 grant execute on function public.nomadix_current_tier(uuid) to authenticated;
 
 -- ---------------------------------------------------------------------------
--- nomadix_assert_quota: raises 'NOMADIX_PLAN_LIMIT:<entity>' when a free
--- user is about to create more than their entity limit. Pro users always
--- pass. Called from a before-insert trigger on each gated table, so the
--- limit holds even if a client calls supabase-js directly, bypassing the UI.
+-- nomadix_assert_quota: raises 'NOMADIX_PLAN_LIMIT:<entity>' when a user is
+-- about to create more than their tier's entity limit. Pro gets a more
+-- generous limit, not an unbounded one. Called from a before-insert trigger
+-- on each gated table, so the limit holds even if a client calls
+-- supabase-js directly, bypassing the UI.
 --
--- Limits here MUST mirror PLAN_LIMITS in src/lib/plan.ts exactly.
+-- Limits here MUST mirror PLAN_LIMITS / PRO_PLAN_LIMITS in src/lib/plan.ts
+-- exactly.
 -- ---------------------------------------------------------------------------
 create or replace function public.nomadix_assert_quota(p_entity text, p_user uuid)
 returns void
@@ -5761,21 +5763,18 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
+    v_pro boolean := public.nomadix_current_tier(p_user) = 'pro';
     v_limit integer;
     v_used integer;
 begin
-    if public.nomadix_current_tier(p_user) = 'pro' then
-        return;
-    end if;
-
     v_limit := case p_entity
-        when 'vault' then 3
-        when 'category' then 5
-        when 'subscription' then 5
-        when 'receivable' then 0
-        when 'client' then 0
-        when 'document' then 2
-        when 'trip' then 1
+        when 'vault' then case when v_pro then 20 else 3 end
+        when 'category' then case when v_pro then 30 else 5 end
+        when 'subscription' then case when v_pro then 30 else 5 end
+        when 'receivable' then case when v_pro then 20 else 0 end
+        when 'client' then case when v_pro then 20 else 0 end
+        when 'document' then case when v_pro then 15 else 2 end
+        when 'trip' then case when v_pro then 12 else 1 end
         else null
     end;
 

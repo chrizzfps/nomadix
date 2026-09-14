@@ -63,9 +63,9 @@ describe("New Settings Pages Functionality & i18n", () => {
     it("renders Billing page with plan details and benefits", async () => {
         render(<BillingPage />);
         expect(await screen.findByText("Billing & Subscription")).toBeInTheDocument();
-        // No authenticated user in this test's store -> usePlan() defaults
-        // to the free tier, same as any signed-out render.
-        expect(screen.getByText("Free")).toBeInTheDocument();
+        // Plan card renders a loading skeleton until the tier fetch resolves,
+        // so "Free" only appears after that -- never as a premature flash.
+        expect(await screen.findByText("Free")).toBeInTheDocument();
         expect(screen.getByText("Account Usage")).toBeInTheDocument();
     });
 
