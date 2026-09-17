@@ -43,6 +43,7 @@ import { CurrencyToggle } from "@/components/shared/currency-toggle";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { usePrivacyStore } from "@/stores/privacy-store";
 import { CURRENCY_SYMBOLS, TRANSACTION_CATEGORIES } from "@/lib/constants";
+import { getCategoryLabel } from "@/lib/transaction-categories";
 import { createClient } from "@/lib/supabase/client";
 import { convertTransactionAmount } from "@/lib/currency-helpers";
 import { isLiquidVault, totalsByVault } from "@/lib/receivables";
@@ -932,7 +933,7 @@ export default function VaultsPage() {
                                                             : "text-foreground/80 hover:bg-accent"
                                                             }`}
                                                     >
-                                                        {c}
+                                                        {getCategoryLabel(c, t)}
                                                     </button>
                                                 );
                                             })
@@ -1039,7 +1040,7 @@ export default function VaultsPage() {
                                             {item.vault_name}
                                         </span>
                                         <span className="hidden sm:block text-xs text-muted-foreground">
-                                            {item.category || "—"}
+                                            {item.category ? getCategoryLabel(item.category, t) : "—"}
                                         </span>
                                         <span
                                             className={`text-right font-semibold tabular-nums ${isIncome

@@ -17,6 +17,7 @@ import { usePrivacyStore } from "@/stores/privacy-store";
 import { formatMoney } from "@/lib/currency";
 import { todayISO } from "@/lib/subscriptions";
 import { historyCutoff } from "@/lib/plan";
+import { getCategoryLabel } from "@/lib/transaction-categories";
 import { usePlan } from "@/hooks/use-plan";
 import { AI_PROVIDERS, type AiProvider } from "@/lib/ai-providers";
 import { TransactionDetailModal } from "@/components/vaults/transaction-detail-modal";
@@ -377,7 +378,7 @@ export default function ReportsPage() {
                                     <div className="mt-3 space-y-2.5">
                                         {ctx.topExpenseCategories.map((c) => (
                                             <div key={c.category} className="flex items-center justify-between text-sm">
-                                                <span className="text-foreground/70">{c.category}</span>
+                                                <span className="text-foreground/70">{getCategoryLabel(c.category, t)}</span>
                                                 <span className={`font-semibold tabular-nums text-foreground ${blur}`}>
                                                     {formatMoney(c.amount, ctx.currency)}
                                                 </span>

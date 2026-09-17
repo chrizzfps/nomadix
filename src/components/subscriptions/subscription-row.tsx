@@ -2,7 +2,7 @@
 
 import { PauseCircle, Repeat } from "@phosphor-icons/react";
 import { usePrivacyStore } from "@/stores/privacy-store";
-import { CATEGORY_ICON_MAP } from "@/lib/transaction-categories";
+import { CATEGORY_ICON_MAP, getCategoryLabel } from "@/lib/transaction-categories";
 import { cycleLabel, costPerCycle } from "@/lib/subscriptions";
 import { useLanguageStore } from "@/stores/language-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
@@ -57,7 +57,7 @@ export function SubscriptionRow({
                         )}
                     </div>
                     <p className="truncate text-xs text-muted-foreground">
-                        {s.merchant || s.category || "—"}
+                        {s.merchant || (s.category ? getCategoryLabel(s.category, t) : "—")}
                     </p>
                 </div>
             </div>

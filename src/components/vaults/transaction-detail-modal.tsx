@@ -18,7 +18,9 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
+import { getCategoryLabel } from "@/lib/transaction-categories";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { useLanguageStore } from "@/stores/language-store";
 
 interface TransactionDetailModalProps {
     isOpen: boolean;
@@ -47,6 +49,7 @@ export function TransactionDetailModal({
 }: TransactionDetailModalProps) {
     const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
+    const t = useLanguageStore((s) => s.t);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -356,7 +359,7 @@ export function TransactionDetailModal({
                                             Category
                                         </p>
                                         <p className="text-sm font-medium text-foreground/80">
-                                            {transaction.category || "—"}
+                                            {transaction.category ? getCategoryLabel(transaction.category, t) : "—"}
                                         </p>
                                     </div>
                                 </div>

@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 import { useLanguageStore } from "@/stores/language-store";
 import { BILLING_CYCLES, SUBSCRIPTION_FEE_MODES } from "@/lib/constants";
-import { CATEGORY_ICON_MAP, normalizeHexColor } from "@/lib/transaction-categories";
+import { CATEGORY_ICON_MAP, getCategoryLabel, normalizeHexColor } from "@/lib/transaction-categories";
 import {
     validateSubscriptionForm,
     formValuesToInsert,
@@ -377,7 +377,7 @@ export function SubscriptionFormModal({
                                             <option value="">{t("subs.form.none")}</option>
                                             {categories.map((c) => (
                                                 <option key={c} value={c}>
-                                                    {c}
+                                                    {getCategoryLabel(c, t)}
                                                 </option>
                                             ))}
                                         </select>

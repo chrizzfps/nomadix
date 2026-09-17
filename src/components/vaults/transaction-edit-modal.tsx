@@ -18,8 +18,9 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { CURRENCY_SYMBOLS, SUPPORTED_CURRENCIES } from "@/lib/constants";
 import { useToastStore } from "@/stores/toast-store";
-import { DEFAULT_TRANSACTION_CATEGORIES } from "@/lib/transaction-categories";
+import { DEFAULT_TRANSACTION_CATEGORIES, getCategoryLabel } from "@/lib/transaction-categories";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { useLanguageStore } from "@/stores/language-store";
 
 type Tx = {
     id: string;
@@ -76,6 +77,7 @@ export function TransactionEditModal({
 }: TransactionEditModalProps) {
     const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
+    const t = useLanguageStore((s) => s.t);
 
     const { getActiveRate } = useCurrencyStore();
 
@@ -850,7 +852,9 @@ export function TransactionEditModal({
                                     <span className="flex-1 truncate">
                                         {type === "transfer"
                                             ? "Not applicable for transfers"
-                                            : category || "Select category"}
+                                            : category
+                                                ? getCategoryLabel(category, t)
+                                                : "Select category"}
                                     </span>
                                     <MagnifyingGlass
                                         size={16}
@@ -909,7 +913,7 @@ export function TransactionEditModal({
                                                                     : "text-foreground/80 hover:bg-accent"
                                                                 }`}
                                                         >
-                                                            {c}
+                                                            {getCategoryLabel(c, t)}
                                                         </button>
                                                     ))
                                                 )}

@@ -1047,6 +1047,15 @@ alter table public.users_profile
         check (preferred_ai_provider in ('openai', 'gemini')),
     add column if not exists preferred_ai_model text not null default 'gpt-4.1-mini';
 
+-- Optional public-profile fields shown on the Settings > Profile page. All
+-- nullable with no default copy -- an empty profile should render as empty,
+-- never as fabricated placeholder bio text.
+alter table public.users_profile
+    add column if not exists bio text,
+    add column if not exists occupation text,
+    add column if not exists tax_residency text,
+    add column if not exists website text;
+
 -- ---------------------------------------------------------------------------
 -- ai_monthly_reports: persisted report cache, one row per (user, month,
 -- language). `context` is the exact aggregated numbers that were narrated --

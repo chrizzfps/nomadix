@@ -35,6 +35,7 @@ import { NewTransactionModal } from "@/components/vaults/new-transaction-modal";
 import { TransactionEditModal } from "@/components/vaults/transaction-edit-modal";
 import { UpcomingChargesWidget } from "@/components/subscriptions/upcoming-charges-widget";
 import { useLanguageStore } from "@/stores/language-store";
+import { getCategoryLabel } from "@/lib/transaction-categories";
 import type { Receivable, VaultType } from "@/types";
 import Link from "next/link";
 import {
@@ -560,7 +561,7 @@ export default function DashboardPage() {
                                                 {tx.description || tx.type}
                                             </p>
                                             <p className="text-[11px] text-muted-foreground">
-                                                {tx.category || tx.type}
+                                                {tx.category ? getCategoryLabel(tx.category, t) : tx.type}
                                             </p>
                                         </div>
                                         <span

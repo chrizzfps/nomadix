@@ -315,7 +315,7 @@ export default function DataManagementPage() {
                                             disabled={confirmText !== "DELETE" || isDeleting}
                                             className="rounded-xl bg-red-600 px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
                                         >
-                                            {isDeleting ? "Wiping data..." : "Permanently Delete Everything"}
+                                            {isDeleting ? "Wiping data..." : t("data.deleteConfirmBtn")}
                                         </button>
                                     </div>
                                 </div>

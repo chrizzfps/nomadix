@@ -19,7 +19,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 import { useLanguageStore } from "@/stores/language-store";
-import { CATEGORY_ICON_MAP } from "@/lib/transaction-categories";
+import { CATEGORY_ICON_MAP, getCategoryLabel } from "@/lib/transaction-categories";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
 import {
     cycleLabel,
@@ -218,7 +218,7 @@ export function SubscriptionDetailModal({
                                         value: `${symbol}${s.amount.toFixed(2)} · ${cycleLabel(s.billing_cycle, s.interval_count, s.custom_interval_days)}`,
                                     },
                                     { label: t("subs.detail.summaryVault"), value: vaultName },
-                                    { label: t("subs.detail.summaryCategory"), value: s.category || "—" },
+                                    { label: t("subs.detail.summaryCategory"), value: s.category ? getCategoryLabel(s.category, t) : "—" },
                                     { label: t("subs.detail.summaryNextCharge"), value: formatDueDate(s.next_due_date) },
                                     { label: t("subs.detail.summaryMonthlyEq"), value: `${symbol}${monthlyEquivalent(s).toFixed(2)}` },
                                     { label: t("subs.detail.summaryAnnualized"), value: `${symbol}${annualEquivalent(s).toFixed(2)}` },

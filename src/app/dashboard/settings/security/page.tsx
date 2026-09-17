@@ -6,7 +6,6 @@ import {
     ShieldCheck,
     Key,
     Laptop,
-    DeviceMobile,
     SignOut,
     Eye,
     EyeSlash,
@@ -246,7 +245,11 @@ export default function SecurityPage() {
                 </div>
 
                 <div className="divide-y divide-border rounded-xl border border-border bg-accent/50">
-                    {/* Current Session */}
+                    {/* Current Session — the only one Supabase's client SDK can
+                        actually confirm; there is no API to list other
+                        devices, only to sign them all out ("others" scope
+                        above). Never fabricate entries for devices we can't
+                        see. */}
                     <div className="flex items-center justify-between p-4">
                         <div className="flex items-center gap-3">
                             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-foreground/80">
@@ -254,25 +257,15 @@ export default function SecurityPage() {
                             </div>
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <p className="text-sm font-medium text-foreground">Current Web Session</p>
+                                    <p className="text-sm font-medium text-foreground">{t("security.currentSession")}</p>
                                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                                        Active
+                                        {t("security.active")}
                                     </span>
                                 </div>
-                                <p className="text-xs text-muted-foreground">Desktop browser · Active now</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Secondary Device / Mobile */}
-                    <div className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-muted-foreground">
-                                <DeviceMobile size={18} />
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-foreground/80">Mobile Companion</p>
-                                <p className="text-xs text-muted-foreground">Responsive web / PWA · Synced</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {userEmail || "user"}
+                                    {lastSignIn && ` · ${t("security.lastSignIn")} ${lastSignIn}`}
+                                </p>
                             </div>
                         </div>
                     </div>

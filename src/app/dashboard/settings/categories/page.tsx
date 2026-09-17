@@ -18,9 +18,11 @@ import { usePlanLimit } from "@/hooks/use-plan-limit";
 import {
     CATEGORY_ICON_MAP,
     DEFAULT_TRANSACTION_CATEGORIES,
+    getCategoryLabel,
     normalizeHexColor,
     slugifyKey,
 } from "@/lib/transaction-categories";
+import { useLanguageStore } from "@/stores/language-store";
 
 type CategoryRow = {
     id: string;
@@ -36,6 +38,7 @@ type CategoryRow = {
 
 export default function CategoriesPage() {
     const supabase = createClient();
+    const t = useLanguageStore((s) => s.t);
 
     const formatDbError = (message: string) => {
         if (
@@ -484,7 +487,7 @@ export default function CategoriesPage() {
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-1.5">
                                                     <p className="truncate text-sm font-semibold text-foreground">
-                                                        {c.name}
+                                                        {getCategoryLabel(c.name, t)}
                                                     </p>
                                                     {c.is_system && (
                                                         <span className="shrink-0 rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -710,7 +713,7 @@ export default function CategoriesPage() {
                         >
                             <div className="flex items-center justify-between border-b border-border px-6 py-4">
                                 <h3 className="text-base font-semibold text-foreground">
-                                    Delete &ldquo;{deleteTarget.name}&rdquo;
+                                    Delete &ldquo;{getCategoryLabel(deleteTarget.name, t)}&rdquo;
                                 </h3>
                                 <button
                                     type="button"
@@ -777,7 +780,7 @@ export default function CategoriesPage() {
                                     >
                                         {reassignOptions.map((c) => (
                                             <option key={c.id} value={c.id}>
-                                                {c.name}
+                                                {getCategoryLabel(c.name, t)}
                                                 {c.is_system ? " (default)" : ""}
                                             </option>
                                         ))}

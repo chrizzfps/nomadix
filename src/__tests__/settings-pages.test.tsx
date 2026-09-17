@@ -55,9 +55,8 @@ describe("New Settings Pages Functionality & i18n", () => {
     it("renders Notifications page with subscription and push toggles", () => {
         render(<NotificationsPage />);
         expect(screen.getByText("Notifications & Alerts")).toBeInTheDocument();
-        expect(screen.getByText("1-Day Due Date Alert")).toBeInTheDocument();
         expect(screen.getByText("Price Changes & Trial Expirations")).toBeInTheDocument();
-        expect(screen.getByText("Low Balance Warnings")).toBeInTheDocument();
+        expect(screen.getByText("Pending Collection Reminders")).toBeInTheDocument();
     });
 
     it("renders Billing page with plan details and benefits", async () => {

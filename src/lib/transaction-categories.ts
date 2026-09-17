@@ -267,6 +267,41 @@ export const DEFAULT_TRANSACTION_CATEGORIES: TransactionCategory[] = [
     },
 ];
 
+const CATEGORY_NAME_TO_KEY: Record<string, TransactionCategoryKey> = {
+    housing: "housing",
+    food: "food",
+    transport: "transport",
+    travel: "travel",
+    technology: "technology",
+    entertainment: "entertainment",
+    sport: "sport",
+    tickets: "tickets",
+    health: "health",
+    wellness: "wellness",
+    education: "education",
+    books: "books",
+    freelance: "freelance",
+    salary: "salary",
+    investment: "investment",
+    transfer: "transfer",
+    other: "other",
+    shopping: "shopping",
+    clothing: "clothing",
+    "video games": "video_games",
+    snacks: "snacks",
+    accessories: "accessories",
+    home: "home",
+    uncategorized: "uncategorized",
+};
+
+// Translates a stored category name (English) into the active language.
+// Custom user categories have no matching key and pass through unchanged.
+export function getCategoryLabel(name: string, t: (key: string) => string): string {
+    if (!name) return name;
+    const key = CATEGORY_NAME_TO_KEY[name.trim().toLowerCase()];
+    return key ? t(`category.${key}`) : name;
+}
+
 export function normalizeHexColor(value: string) {
     const v = value.trim();
     if (/^#[0-9A-Fa-f]{6}$/.test(v)) return v;

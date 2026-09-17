@@ -4,40 +4,26 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
     Bell,
-    Receipt,
-    EnvelopeSimple,
-    DeviceMobile,
     WarningCircle,
-    CalendarCheck,
-    Vault,
+    DeviceMobile,
     HandCoins,
 } from "@phosphor-icons/react";
 import { useToastStore } from "@/stores/toast-store";
 import { useLanguageStore } from "@/stores/language-store";
 import { useRemindersStore } from "@/stores/reminders-store";
 
+// Only these two flags are ever read (see reminders-store.ts's load()) --
+// every other toggle this page used to render (per-day due-date reminders,
+// vault low-balance, email digests) wrote to localStorage but nothing
+// consumed them, so they were removed rather than left as fake controls.
 interface NotificationConfig {
-    subReminder1d: boolean;
-    subReminder3d: boolean;
-    subReminder7d: boolean;
     subPriceChange: boolean;
-    vaultLowBalance: boolean;
     receivableReminder: boolean;
-    emailWeeklyDigest: boolean;
-    emailSecurityAlerts: boolean;
-    browserPushEnabled: boolean;
 }
 
 const DEFAULT_CONFIG: NotificationConfig = {
-    subReminder1d: true,
-    subReminder3d: true,
-    subReminder7d: false,
     subPriceChange: true,
-    vaultLowBalance: true,
     receivableReminder: true,
-    emailWeeklyDigest: false,
-    emailSecurityAlerts: true,
-    browserPushEnabled: false,
 };
 
 const STORAGE_KEY = "nomadix_notification_settings";
@@ -87,7 +73,6 @@ export default function NotificationsPage() {
             const res = await Notification.requestPermission();
             setPushPermission(res);
             if (res === "granted") {
-                toggle("browserPushEnabled");
                 addToast("Notificaciones push activadas", "success");
                 new Notification("Nomadix Notifications", {
                     body: "Alertas y avisos activados en tu navegador.",
@@ -159,50 +144,6 @@ export default function NotificationsPage() {
                     <div className="flex items-center justify-between p-4">
                         <div className="flex items-center gap-3">
                             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-foreground/70">
-                                <CalendarCheck size={18} />
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-foreground">{t("notif.sub1d")}</p>
-                                <p className="text-xs text-muted-foreground">24 horas antes del cargo</p>
-                            </div>
-                        </div>
-                        <label className="relative cursor-pointer shrink-0">
-                            <input
-                                type="checkbox"
-                                checked={config.subReminder1d}
-                                onChange={() => toggle("subReminder1d")}
-                                className="peer sr-only"
-                            />
-                            <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
-                            <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
-                        </label>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-foreground/70">
-                                <Receipt size={18} />
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-foreground">{t("notif.sub3d")}</p>
-                                <p className="text-xs text-muted-foreground">Aviso preventivo para revisar fondos</p>
-                            </div>
-                        </div>
-                        <label className="relative cursor-pointer shrink-0">
-                            <input
-                                type="checkbox"
-                                checked={config.subReminder3d}
-                                onChange={() => toggle("subReminder3d")}
-                                className="peer sr-only"
-                            />
-                            <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
-                            <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
-                        </label>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-foreground/70">
                                 <WarningCircle size={18} />
                             </div>
                             <div>
@@ -224,33 +165,12 @@ export default function NotificationsPage() {
                 </div>
             </div>
 
-            {/* Financial & Vault Alerts */}
+            {/* Receivables */}
             <div className="space-y-3">
                 <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-muted-foreground">
-                    {t("notif.vaultsSection")}
+                    {t("notif.receivablesSection")}
                 </h3>
                 <div className="divide-y divide-border rounded-2xl border border-border bg-card shadow-sm">
-                    <div className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-foreground/70">
-                                <Vault size={18} />
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-foreground">{t("notif.vaultLow")}</p>
-                                <p className="text-xs text-muted-foreground">{t("notif.vaultLowDesc")}</p>
-                            </div>
-                        </div>
-                        <label className="relative cursor-pointer shrink-0">
-                            <input
-                                type="checkbox"
-                                checked={config.vaultLowBalance}
-                                onChange={() => toggle("vaultLowBalance")}
-                                className="peer sr-only"
-                            />
-                            <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
-                            <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
-                        </label>
-                    </div>
                     <div className="flex items-center justify-between p-4">
                         <div className="flex items-center gap-3">
                             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-foreground/70">
@@ -266,36 +186,6 @@ export default function NotificationsPage() {
                                 type="checkbox"
                                 checked={config.receivableReminder}
                                 onChange={() => toggle("receivableReminder")}
-                                className="peer sr-only"
-                            />
-                            <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
-                            <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform peer-checked:translate-x-4" />
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            {/* Email Digests */}
-            <div className="space-y-3">
-                <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-muted-foreground">
-                    {t("notif.emailSection")}
-                </h3>
-                <div className="divide-y divide-border rounded-2xl border border-border bg-card shadow-sm">
-                    <div className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-foreground/70">
-                                <EnvelopeSimple size={18} />
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-foreground">{t("notif.emailWeekly")}</p>
-                                <p className="text-xs text-muted-foreground">Reporte de balance y cambio de divisas</p>
-                            </div>
-                        </div>
-                        <label className="relative cursor-pointer shrink-0">
-                            <input
-                                type="checkbox"
-                                checked={config.emailWeeklyDigest}
-                                onChange={() => toggle("emailWeeklyDigest")}
                                 className="peer sr-only"
                             />
                             <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-primary transition-colors" />

@@ -26,25 +26,12 @@ interface ExtendedNomadProfile {
     website: string;
 }
 
-const DEFAULT_EXTENDED: ExtendedNomadProfile = {
-    bio: "Digital nomad navigating multi-currency finances and global ventures.",
-    occupation: "Remote Professional / Founder",
-    taxResidency: "Spain / Nomad Tax Status",
-    website: "https://nomadix.app",
+const EMPTY_EXTENDED: ExtendedNomadProfile = {
+    bio: "",
+    occupation: "",
+    taxResidency: "",
+    website: "",
 };
-
-const EXTENDED_KEY = "nomadix_profile_extended";
-
-function loadExtendedProfile(): ExtendedNomadProfile {
-    if (typeof window === "undefined") return DEFAULT_EXTENDED;
-    try {
-        const raw = localStorage.getItem(EXTENDED_KEY);
-        if (!raw) return DEFAULT_EXTENDED;
-        return { ...DEFAULT_EXTENDED, ...JSON.parse(raw) };
-    } catch {
-        return DEFAULT_EXTENDED;
-    }
-}
 
 export default function ProfilePage() {
     const supabase = createClient();
@@ -69,7 +56,7 @@ export default function ProfilePage() {
     // Edit state
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState("");
-    const [extended, setExtended] = useState<ExtendedNomadProfile>(loadExtendedProfile);
+    const [extended, setExtended] = useState<ExtendedNomadProfile>(EMPTY_EXTENDED);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
@@ -94,6 +81,12 @@ export default function ProfilePage() {
                     created_at: profileData.created_at,
                 });
                 setEditName(profileData.full_name || "");
+                setExtended({
+                    bio: profileData.bio || "",
+                    occupation: profileData.occupation || "",
+                    taxResidency: profileData.tax_residency || "",
+                    website: profileData.website || "",
+                });
             }
 
             const { count: vaultCount } = await supabase
@@ -127,20 +120,22 @@ export default function ProfilePage() {
             } = await supabase.auth.getUser();
             if (!user) throw new Error("Not logged in");
 
+            const { error } = await supabase
+                .from("users_profile")
+                .update({
+                    full_name: editName.trim() || profile?.full_name,
+                    bio: extended.bio.trim() || null,
+                    occupation: extended.occupation.trim() || null,
+                    tax_residency: extended.taxResidency.trim() || null,
+                    website: extended.website.trim() || null,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", user.id);
+
+            if (error) throw error;
+
             if (editName.trim()) {
-                await supabase
-                    .from("users_profile")
-                    .update({
-                        full_name: editName.trim(),
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq("id", user.id);
-
                 setProfile((prev) => (prev ? { ...prev, full_name: editName.trim() } : null));
-            }
-
-            if (typeof window !== "undefined") {
-                localStorage.setItem(EXTENDED_KEY, JSON.stringify(extended));
             }
 
             setIsEditing(false);
@@ -222,23 +217,31 @@ export default function ProfilePage() {
                         </div>
                         <div className="mb-1 flex-1">
                             <h3 className="text-xl font-bold text-foreground">{profile.full_name}</h3>
-                            <p className="text-xs font-medium text-muted-foreground">{extended.occupation}</p>
-                            <p className="mt-2 text-xs text-foreground/70 max-w-xl leading-relaxed">
-                                {extended.bio}
-                            </p>
+                            {extended.occupation && (
+                                <p className="text-xs font-medium text-muted-foreground">{extended.occupation}</p>
+                            )}
+                            {extended.bio && (
+                                <p className="mt-2 text-xs text-foreground/70 max-w-xl leading-relaxed">
+                                    {extended.bio}
+                                </p>
+                            )}
                         </div>
                     </div>
 
                     {/* Details Badges */}
                     <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <MapPin size={14} className="text-muted-foreground" />
-                            {extended.taxResidency}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Globe size={14} className="text-muted-foreground" />
-                            {extended.website}
-                        </div>
+                        {extended.taxResidency && (
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <MapPin size={14} className="text-muted-foreground" />
+                                {extended.taxResidency}
+                            </div>
+                        )}
+                        {extended.website && (
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <Globe size={14} className="text-muted-foreground" />
+                                {extended.website}
+                            </div>
+                        )}
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <CalendarBlank size={14} className="text-muted-foreground" />
                             Member since {memberSince}

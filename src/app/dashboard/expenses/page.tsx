@@ -22,6 +22,7 @@ import { createClient } from "@/lib/supabase/client";
 import { CurrencyToggle } from "@/components/shared/currency-toggle";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
+import { getCategoryLabel } from "@/lib/transaction-categories";
 import { convertWithRate, getActiveUsdToEurRate } from "@/lib/currency";
 import { useLanguageStore } from "@/stores/language-store";
 
@@ -49,6 +50,11 @@ function toISODate(d: Date) {
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
+}
+
+function parseLocalDate(iso: string) {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, (m || 1) - 1, d || 1);
 }
 
 function clampDateRange(from: string, to: string) {
@@ -188,8 +194,8 @@ export default function ExpensesPage() {
     );
 
     const rangeBounds = useMemo(() => {
-        const from = normalizedRange.from ? startOfDay(new Date(normalizedRange.from)) : null;
-        const to = normalizedRange.to ? endOfDay(new Date(normalizedRange.to)) : null;
+        const from = normalizedRange.from ? startOfDay(parseLocalDate(normalizedRange.from)) : null;
+        const to = normalizedRange.to ? endOfDay(parseLocalDate(normalizedRange.to)) : null;
         return { from, to };
     }, [normalizedRange.from, normalizedRange.to]);
 
@@ -319,17 +325,17 @@ export default function ExpensesPage() {
 
     const categoryBarData = useMemo(() => {
         return totalsByCategory.items.slice(0, 8).map((x) => ({
-            name: x.category,
+            name: getCategoryLabel(x.category, t),
             total: Math.round(x.total),
         }));
-    }, [totalsByCategory.items]);
+    }, [totalsByCategory.items, t]);
 
     const pieData = useMemo(() => {
         return totalsByCategory.items.slice(0, 8).map((x) => ({
-            name: x.category,
+            name: getCategoryLabel(x.category, t),
             value: x.total,
         }));
-    }, [totalsByCategory.items]);
+    }, [totalsByCategory.items, t]);
 
     const palette = [
         "#18181b",
@@ -350,10 +356,11 @@ export default function ExpensesPage() {
 
     const metrics = useMemo(() => {
         const total = totalsByCategory.grandTotal;
-        const topCategory = totalsByCategory.items[0]?.category || "—";
+        const topCategoryRaw = totalsByCategory.items[0]?.category;
+        const topCategory = topCategoryRaw ? getCategoryLabel(topCategoryRaw, t) : "—";
         const topCategoryPct = totalsByCategory.items[0]?.percent ?? 0;
         return { total, topCategory, topCategoryPct };
-    }, [totalsByCategory.grandTotal, totalsByCategory.items]);
+    }, [totalsByCategory.grandTotal, totalsByCategory.items, t]);
 
     if (isLoading) {
         return (
@@ -643,7 +650,7 @@ export default function ExpensesPage() {
                                         className="grid grid-cols-[1fr_120px_80px] gap-3 px-4 py-3 text-sm"
                                     >
                                         <span className="font-medium text-foreground">
-                                            {x.category}
+                                            {getCategoryLabel(x.category, t)}
                                         </span>
                                         <span className="text-right font-semibold tabular-nums text-foreground">
                                             {symbol}

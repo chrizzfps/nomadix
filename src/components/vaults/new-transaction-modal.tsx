@@ -14,6 +14,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useToastStore } from "@/stores/toast-store";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
+import { getCategoryLabel } from "@/lib/transaction-categories";
+import { useLanguageStore } from "@/stores/language-store";
 import type { Currency } from "@/types";
 
 interface Vault {
@@ -44,6 +46,7 @@ export function NewTransactionModal({
     const supabase = createClient();
     const addToast = useToastStore((s) => s.addToast);
     const { getActiveRate } = useCurrencyStore();
+    const t = useLanguageStore((s) => s.t);
 
     const [txType, setTxType] = useState<
         "income" | "expense" | "transfer" | "mixed"
@@ -1496,7 +1499,7 @@ export function NewTransactionModal({
                                                         : "border-border text-muted-foreground hover:border-ring"
                                                     }`}
                                             >
-                                                {cat}
+                                                {getCategoryLabel(cat, t)}
                                             </button>
                                         ))}
                                     </div>
